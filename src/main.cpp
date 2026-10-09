@@ -18,12 +18,11 @@ AudioConnection right(player, 0, output, 1);
 AudioControlSGTL5000 codec;
 HardwareControls controls;
 constexpr uint32_t durations_ms[] = {5, 20, 50, 100};
-constexpr uint32_t grain_counts[] = {2, 4, 8, 16};
-int grain_count_id = 1;
+constexpr uint32_t searches_ms[] = {0, 1, 2, 5, 10};
+int search_id = 3;
 constexpr char filename[] = "Adv_01.raw";
 int pitch_cents = 0;
 int duration_id = 2;
-int slope_percent = 25;
 int volume_percent = 25;
 bool running = false;
 bool ready = false;
@@ -43,18 +42,18 @@ void PrintLine(const char *message)
 void ApplyControls()
 {
     const float pitch = exp2f(pitch_cents / 1200.0f);
-    const uint32_t length = static_cast<uint32_t>(AUDIO_SAMPLE_RATE_EXACT * durations_ms[duration_id] / 1000.0f) / GranularCore::GrainCount * GranularCore::GrainCount;
+    const uint32_t length = static_cast<uint32_t>(AUDIO_SAMPLE_RATE_EXACT * durations_ms[duration_id] / 1000.0f) / 2u * 2u;
 
     AudioNoInterrupts();
     player.core.SetPitch(pitch);
-    player.core.SetGrainCount(grain_counts[grain_count_id]);
-    player.core.SetGrain(length, slope_percent / 100.0f);
+    player.core.SetWindow(length);
+    player.core.SetSearch(static_cast<uint32_t>(AUDIO_SAMPLE_RATE_EXACT * searches_ms[search_id] / 1000.0f));
     player.core.SetVolume(volume_percent / 100.0f);
     player.core.SetRunning(running);
     AudioInterrupts();
 
     char message[160];
-    snprintf(message, sizeof(message), "%s pitch=%.4f (%d cents) grain=%lu ms slope=%d%%/edge volume=%d%% grains=%lu", running ? "PLAY" : "STOP", pitch, pitch_cents, static_cast<unsigned long>(durations_ms[duration_id]), slope_percent, volume_percent, static_cast<unsigned long>(grain_counts[grain_count_id]));
+    snprintf(message, sizeof(message), "%s WSOLA pitch=%.4f (%d cents) window=%lu ms search=+/- %lu ms overlap=50%% volume=%d%%", running ? "PLAY" : "STOP", pitch, pitch_cents, static_cast<unsigned long>(durations_ms[duration_id]), static_cast<unsigned long>(searches_ms[search_id]), volume_percent);
     PrintLine(message);
 }
 
@@ -124,7 +123,7 @@ void setup()
     {
         yield();
     }
-    PrintLine("Granular 0.1.2 - Lilla hardware - selectable grains 2/4/8/16 - tempo 1");
+    PrintLine("Granular 0.2.0 - WSOLA + resampling - tempo 1");
     AudioMemory(12);
     if (!controls.Begin())
     {
@@ -143,7 +142,7 @@ void setup()
     if (ready)
     {
         ApplyControls();
-        PrintLine("Step: pitch / press=start-stop; From: duration / press=grain count; To: slope; LineOutVol: volume.");
+        PrintLine("Step: pitch / press=start-stop; From: analysis window; To: alignment search; LineOutVol: volume.");
     }
 }
 
@@ -157,13 +156,13 @@ void loop()
     bool changed = false;
     const int pitch_delta = controls.TakeRotation(HardwareControls::Step);
     const int duration_delta = controls.TakeRotation(HardwareControls::From);
-    const int slope_delta = controls.TakeRotation(HardwareControls::To);
+    const int search_delta = controls.TakeRotation(HardwareControls::To);
     const int volume_delta = controls.TakeRotation(HardwareControls::Volume);
-    if (pitch_delta != 0 || duration_delta != 0 || slope_delta != 0 || volume_delta != 0)
+    if (pitch_delta != 0 || duration_delta != 0 || search_delta != 0 || volume_delta != 0)
     {
         pitch_cents = constrain(pitch_cents + pitch_delta * 10, -2400, 2400);
         duration_id = constrain(duration_id + duration_delta, 0, 3);
-        slope_percent = constrain(slope_percent + slope_delta, 5, 50);
+        search_id = constrain(search_id + search_delta, 0, 4);
         volume_percent = constrain(volume_percent + volume_delta, 0, 100);
         changed = true;
     }
@@ -172,11 +171,7 @@ void loop()
         running = !running;
         changed = true;
     }
-    if (controls.TakeFromPress())
-    {
-        grain_count_id = (grain_count_id + 1) % 4;
-        changed = true;
-    }
+    controls.TakeFromPress(); // Unused in WSOLA; consume the debounced event.
     if (changed)
     {
         ApplyControls();
@@ -188,9 +183,15 @@ void loop()
         uint32_t missed;
         float cpu_max;
         uint16_t pool_max;
+        GranularAudio::Levels levels;
+        float correlation;
+        int32_t offset;
 
         AudioNoInterrupts();
         player.TakeDiagnostics(maximum, missed);
+        levels = player.TakeLevels();
+        correlation = player.core.Correlation();
+        offset = player.core.Offset();
         cpu_max = AudioProcessorUsageMax();
         pool_max = AudioMemoryUsageMax();
         AudioProcessorUsageMaxReset();
@@ -199,6 +200,12 @@ void loop()
 
         char message[128];
         snprintf(message, sizeof(message), "DIAG render_max=%.1f us audio_cpu_max=%.1f%% pool_max=%u missed=%lu", maximum / (F_CPU_ACTUAL / 1000000.0f), cpu_max, pool_max, static_cast<unsigned long>(missed));
+        PrintLine(message);
+        const float input_rms = levels.samples > 0 ? sqrtf(static_cast<float>(levels.source_energy) / levels.samples) : 0.0f;
+        const float output_rms = levels.samples > 0 ? sqrtf(static_cast<float>(levels.output_energy) / levels.samples) : 0.0f;
+        const float input_db = input_rms > 0.0f ? 20.0f * log10f(input_rms / 32768.0f) : -120.0f;
+        const float output_db = output_rms > 0.0f ? 20.0f * log10f(output_rms / 32768.0f) : -120.0f;
+        snprintf(message, sizeof(message), "LEVEL src=%.1f out=%.1f dBFS peak=%u corr=%.3f offset=%ld late=%lu", input_db, output_db, levels.peak, correlation, static_cast<long>(offset), static_cast<unsigned long>(levels.over_budget));
         PrintLine(message);
     }
 }
