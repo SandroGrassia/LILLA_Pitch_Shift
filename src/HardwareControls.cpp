@@ -16,8 +16,8 @@ struct Transition
     uint8_t state;
     int8_t rotation;
 };
-// Lilla green-encoder decoder, with its original rotation polarity.
-constexpr Transition transitions[4][8] = { {{7, 0}, {2, 0}, {2, 0}, {2, 0}, {5, 0}, {5, 0}, {5, 0}, {7, 0}}, {{4, 0}, {3, 0}, {3, 0}, {3, 0}, {4, 0}, {4, 0}, {4, 0}, {3, 0}}, {{1, 0}, {1, 0}, {1, 0}, {1, 0}, {6, 0}, {6, 0}, {6, 0}, {6, 0}}, {{0, 0}, {0, 0}, {0, -1}, {0, 0}, {0, 0}, {0, 1}, {0, 0}, {0, 0}} };
+// Full-cycle quadrature decoder with Lilla green-encoder rotation polarity.
+constexpr Transition transitions[4][8] = { {{7, 0}, {2, 0}, {2, 0}, {2, 0}, {5, 0}, {5, 0}, {5, 0}, {7, 0}}, {{4, 0}, {3, 0}, {3, 0}, {3, 0}, {4, 0}, {4, 0}, {4, 0}, {3, 0}}, {{1, 0}, {1, 0}, {1, 0}, {1, 0}, {6, 0}, {6, 0}, {6, 0}, {6, 0}}, {{0, 0}, {0, 0}, {0, 0}, {0, -1}, {0, 0}, {0, 0}, {0, 1}, {0, 0}} };
 }
 
 bool HardwareControls::Begin()
@@ -45,9 +45,13 @@ bool HardwareControls::Begin()
         chips[pin.chip].pinMode(pin.dt, INPUT_PULLUP);
         chips[pin.chip].pinMode(pin.clk, INPUT_PULLUP);
     }
-    chips[0].pinMode(2, INPUT_PULLUP); // Step pushbutton: chip 3, a2.
-    button_raw = chips[0].digitalRead(2);
-    button_stable = button_raw;
+    for (uint8_t i = 0; i < 2; ++i)
+    {
+        const uint8_t pin = i == 0 ? 2 : 5; // Step=a2, From=a5 on chip 3.
+        chips[0].pinMode(pin, INPUT_PULLUP);
+        buttons[i].raw = chips[0].digitalRead(pin);
+        buttons[i].stable = buttons[i].raw;
+    }
     return true;
 }
 
@@ -67,18 +71,23 @@ void HardwareControls::Poll()
         rotations[i] += transition.rotation;
         states[i] = transition.state;
     }
-    const bool pressed_level = (values[0] & (1u << 2)) != 0;
-    if (pressed_level != button_raw)
+    for (uint8_t i = 0; i < 2; ++i)
     {
-        button_raw = pressed_level;
-        button_changed = millis();
-    }
-    if (button_stable != button_raw && millis() - button_changed >= 25u)
-    {
-        button_stable = button_raw;
-        if (!button_stable)
+        Button &button = buttons[i];
+        const uint8_t pin = i == 0 ? 2 : 5;
+        const bool level = (values[0] & (1u << pin)) != 0;
+        if (level != button.raw)
         {
-            step_pressed = true;
+            button.raw = level;
+            button.changed = millis();
+        }
+        if (button.stable != button.raw && millis() - button.changed >= 25u)
+        {
+            button.stable = button.raw;
+            if (!button.stable)
+            {
+                button.pressed = true;
+            }
         }
     }
 }
@@ -92,7 +101,14 @@ int HardwareControls::TakeRotation(Control control)
 
 bool HardwareControls::TakeStepPress()
 {
-    const bool value = step_pressed;
-    step_pressed = false;
+    const bool value = buttons[0].pressed;
+    buttons[0].pressed = false;
+    return value;
+}
+
+bool HardwareControls::TakeFromPress()
+{
+    const bool value = buttons[1].pressed;
+    buttons[1].pressed = false;
     return value;
 }

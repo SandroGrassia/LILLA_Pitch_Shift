@@ -10,14 +10,19 @@ public:
     void Poll();
     int TakeRotation(Control control);
     bool TakeStepPress();
+    bool TakeFromPress();
 
 private:
     Adafruit_MCP23X17 chips[2];
     uint8_t states[Count] = {};
     int rotations[Count] = {};
-    bool button_raw = true;
-    bool button_stable = true;
-    bool step_pressed = false;
-    uint32_t button_changed = 0;
+    struct Button
+    {
+        bool raw = true;
+        bool stable = true;
+        bool pressed = false;
+        uint32_t changed = 0;
+    };
+    Button buttons[2];
     uint32_t last_scan = 0;
 };

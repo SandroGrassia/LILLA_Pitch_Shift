@@ -22,6 +22,15 @@ void GranularCore::SetGrain(uint32_t samples, float slope)
     grain_slope = slope;
 }
 
+void GranularCore::SetGrainCount(uint32_t value)
+{
+    if (value != requested_count && initialized)
+    {
+        geometry_pending = true;
+    }
+    requested_count = value;
+}
+
 void GranularCore::SetVolume(float value)
 {
     volume_target = value;
@@ -53,16 +62,18 @@ void GranularCore::Restart(Grain &grain)
 
 void GranularCore::Prime()
 {
-    for (uint32_t i = 0; i < GrainCount; ++i)
+    active_count = requested_count;
+    for (uint32_t i = 0; i < active_count; ++i)
     {
         Grain &grain = grains[i];
         Restart(grain);
-        grain.age = i * grain_length / GrainCount;
-        const float distance = grain.age * pitch_now;
-        const int64_t whole = static_cast<int64_t>(std::ceil(distance));
-        const int64_t wrapped = ((static_cast<int64_t>(transport) - whole) % source_count + source_count) % source_count;
+        grain.age = i * grain_length / active_count;
+        // Birth position is transport - age; elapsed playback advances by pitch * age.
+        const float offset = grain.age * (pitch_now - 1.0f);
+        const int64_t whole = static_cast<int64_t>(std::floor(offset));
+        const int64_t wrapped = ((static_cast<int64_t>(transport) + whole) % source_count + source_count) % source_count;
         grain.index = static_cast<uint32_t>(wrapped);
-        grain.fraction = static_cast<float>(whole) - distance;
+        grain.fraction = offset - static_cast<float>(whole);
     }
     initialized = true;
 }
@@ -93,13 +104,14 @@ int16_t GranularCore::Render()
     }
     if (geometry_pending && gate == 0.0f)
     {
-        Prime(); // Restore quarter-grain spacing at the current transport position.
+        Prime(); // Restore evenly staggered grains at the current transport position.
         geometry_pending = false;
     }
     float sum = 0.0f;
     float weights = 0.0f;
-    for (Grain &grain : grains)
+    for (uint32_t i = 0; i < active_count; ++i)
     {
+        Grain &grain = grains[i];
         const float attack = grain.age / grain.ramp;
         const float release = (grain.length - 1u - grain.age) / grain.ramp;
         const float weight = std::fmax(0.0f, std::fmin(1.0f, std::fmin(attack, release)));
@@ -121,8 +133,9 @@ int16_t GranularCore::Render()
     {
         transport = 0;
     }
-    for (Grain &grain : grains)
+    for (uint32_t i = 0; i < active_count; ++i)
     {
+        Grain &grain = grains[i];
         ++grain.age;
         if (grain.age == grain.length)
         {

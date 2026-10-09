@@ -18,6 +18,8 @@ AudioConnection right(player, 0, output, 1);
 AudioControlSGTL5000 codec;
 HardwareControls controls;
 constexpr uint32_t durations_ms[] = {5, 20, 50, 100};
+constexpr uint32_t grain_counts[] = {2, 4, 8, 16};
+int grain_count_id = 1;
 constexpr char filename[] = "Adv_01.raw";
 int pitch_cents = 0;
 int duration_id = 2;
@@ -45,13 +47,14 @@ void ApplyControls()
 
     AudioNoInterrupts();
     player.core.SetPitch(pitch);
+    player.core.SetGrainCount(grain_counts[grain_count_id]);
     player.core.SetGrain(length, slope_percent / 100.0f);
     player.core.SetVolume(volume_percent / 100.0f);
     player.core.SetRunning(running);
     AudioInterrupts();
 
     char message[160];
-    snprintf(message, sizeof(message), "%s pitch=%.4f (%d cents) grain=%lu ms slope=%d%%/edge volume=%d%% grains=%lu", running ? "PLAY" : "STOP", pitch, pitch_cents, static_cast<unsigned long>(durations_ms[duration_id]), slope_percent, volume_percent, static_cast<unsigned long>(GranularCore::GrainCount));
+    snprintf(message, sizeof(message), "%s pitch=%.4f (%d cents) grain=%lu ms slope=%d%%/edge volume=%d%% grains=%lu", running ? "PLAY" : "STOP", pitch, pitch_cents, static_cast<unsigned long>(durations_ms[duration_id]), slope_percent, volume_percent, static_cast<unsigned long>(grain_counts[grain_count_id]));
     PrintLine(message);
 }
 
@@ -121,7 +124,7 @@ void setup()
     {
         yield();
     }
-    PrintLine("Granular 0.1.0 - Lilla hardware - four grains - tempo 1");
+    PrintLine("Granular 0.1.2 - Lilla hardware - selectable grains 2/4/8/16 - tempo 1");
     AudioMemory(12);
     if (!controls.Begin())
     {
@@ -140,7 +143,7 @@ void setup()
     if (ready)
     {
         ApplyControls();
-        PrintLine("Step: pitch / press=start-stop; From: grain; To: slope; LineOutVol: volume.");
+        PrintLine("Step: pitch / press=start-stop; From: duration / press=grain count; To: slope; LineOutVol: volume.");
     }
 }
 
@@ -167,6 +170,11 @@ void loop()
     if (controls.TakeStepPress())
     {
         running = !running;
+        changed = true;
+    }
+    if (controls.TakeFromPress())
+    {
+        grain_count_id = (grain_count_id + 1) % 4;
         changed = true;
     }
     if (changed)

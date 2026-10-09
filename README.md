@@ -1,7 +1,7 @@
 # Granular
 
 Minimal granular pitch-shift experiment for the existing Lilla PCB 2026 hardware.
-One fixed mono source, four overlapping grains, original transport speed.
+One fixed mono source, 2, 4, 8 or 16 overlapping grains, original transport speed.
 No MIDI, display, effects, recording, terminal commands, or Flash writes.
 
 ## Controls
@@ -9,16 +9,16 @@ No MIDI, display, effects, recording, terminal commands, or Flash writes.
 | Encoder | Rotation | Pushbutton |
 | --- | --- | --- |
 | Step | Pitch in 10-cent steps, ratio 0.25 to 4 | Start/stop |
-| From | Output grain duration: 5, 20, 50, 100 ms | Unused |
+| From | Output grain duration: 5, 20, 50, 100 ms | Cycle grain count: 4 -> 8 -> 16 -> 2 -> 4 |
 | To | Symmetric linear attack/release, 5 to 50 percent per edge | Unused |
 | LineOutVol | Output gain, 0 to 100 percent | Unused |
 
-Startup: stopped, pitch 1, grain 50 ms, slope 25 percent per edge, volume 25 percent.
+Startup: stopped, pitch 1, grain 50 ms, slope 25 percent per edge, volume 25 percent, four active grains.
 Start after a completed stop begins at sample zero. Start/stop use approximately
 5 ms fades. Pitch and volume are smoothed per sample with a 256-sample time constant.
 Pitch changes apply to active grains without resetting their read pointers.
-Slope changes apply to newly started grains. Duration changes use approximately
-5 ms fade-out and 5 ms fade-in and restore quarter-grain spacing while transport
+Slope changes apply to newly started grains. Duration and grain-count changes use approximately
+5 ms fade-out and 5 ms fade-in and restore evenly staggered grains while transport
 continues. This deliberately simple transition prevents grains from synchronizing
 when changing between durations that are exact multiples.
 
@@ -40,31 +40,32 @@ Display CS 38 is kept high.
 | Control | MCP23S17 chip | DT | CLK | Button |
 | --- | --- | --- | --- | --- |
 | Step | 3 | a3 | a4 | a2 |
-| From | 3 | a6 | a7 | unused |
+| From | 3 | a6 | a7 | a5 |
 | To | 3 | a1 | a0 | unused |
 | LineOutVol | 4 | a2 | a1 | unused |
 
-Control scanning runs in loop at up to 2 kHz, with Lilla's original green-encoder
-quadrature decoder and a 25 ms Step-button debounce. No controller work runs in
+Control scanning runs in loop at up to 2 kHz, with a full-cycle quadrature decoder using Lilla's green-encoder
+rotation polarity and a 25 ms Step-button debounce. No controller work runs in
 the audio interrupt.
 
 ## Audio core
 
 Each grain has its own integer source index and fractional phase, linear
 interpolation, age, length, and trapezoidal window. Source indices wrap cyclically.
-At steady settings, starts are separated by a quarter of the grain duration.
+At steady settings, starts are separated by the grain duration divided by the selected grain count.
 Transport advances exactly one source sample per output sample, independent of
 pitch. Grain readers advance by the smoothed pitch ratio. Windowed values are
 summed and divided by the sum of window weights before volume and gate fades.
-At pitch 1 this reproduces the source, apart from gain/fades and integer rounding.
+Primed grains of age a start reading at T + (pitch - 1) * a, where T is
+the current transport. At pitch 1 all grains read the current sample, including
+startup and density/duration transitions, apart from gain/fades and integer rounding.
 
-The source is cyclic, including the pre-roll used to prime the four grains.
+The source is cyclic, including the pre-roll used to prime the active grains.
 There is no dedicated treatment of an abrupt file-end discontinuity.
 This is a listening/measurement prototype: no anti-alias filter for upward
-transposition, transient alignment, formant correction, adaptive density, or
-quality guarantee for complex material. Four grains are an experimental baseline.
-Change GranularCore::GrainCount to compare fixed densities and rebuild; the
-minimum duration must still support the chosen number of grains.
+transposition, transient alignment, formant correction, automatic pitch-dependent density, or
+quality guarantee for complex material. Grain count is selected explicitly with the From pushbutton; startup is four.
+Increasing density increases CPU and PSRAM traffic; monitor DIAG at 16 grains.
 
 ## Build and use
 
@@ -77,7 +78,7 @@ pio device monitor --baud 115200
 ```
 
 The generated firmware is .pio/build/teensy41/firmware.hex. A matching prebuilt
-Granular_v0_1_0.hex is supplied at the repository root. Load it with Teensy Loader
+Granular_v0_1_2.hex is supplied at the repository root. Load it with Teensy Loader
 when ready to test the hardware. Firmware loading was not performed during project
 creation. Restoring the Lilla firmware restores the original application.
 
@@ -93,6 +94,9 @@ g++ -std=c++20 -O2 -Wall -Wextra -Werror -I include src/GranularCore.cpp tests/c
 ./tests/core_test.exe
 ```
 
+Run `python tests/encoder_test.py` to verify both rotation directions, repeated
+polls, contact bounce, and incomplete cycles.
+
 Host tests check source reconstruction at pitch 1 across every duration and
 representative slopes, measured tone transposition at ratios 0.25/0.5/1/2/4,
 DC normalization, short-source wrapping, pitch changes,
@@ -107,7 +111,11 @@ listen especially for attacks, periodic coloration, and file-wrap discontinuitie
 
 ## Provenance
 
-Hardware mapping and green-encoder transition table derive from Sandro Grassia's
+Hardware mapping and the basis of the corrected green-encoder transition table derive from Sandro Grassia's
 Lilla firmware (source commit 283739101236e5ebba9e0c3b307b56c8177b23e9).
 The granular core is implemented specifically for this experiment.
 Teensy Audio, SerialFlash, and Adafruit dependencies retain their own licenses.
+
+Version 0.1.2 fixes initial grain read positions. Regression tests compare the
+first samples with an independent grain birth-time model at six pitch ratios,
+and check unity reconstruction through duration/density fades.
