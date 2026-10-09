@@ -1,4 +1,4 @@
-# Granular 0.2.3 - WSOLA experiment
+# Granular 0.2.4 - WSOLA experiment
 
 Standalone PlatformIO firmware for the existing Lilla hardware. The active engine
 uses waveform-similarity overlap-add (WSOLA) followed by resampling, replacing the
@@ -109,7 +109,7 @@ python tests/encoder_test.py
 If pio is absent from PATH, use the installed executable at
 C:/Users/Utente/.platformio/penv/Scripts/platformio.exe.
 
-Firmware: .pio/build/teensy41/firmware.hex, also exported as Granular_v0_2_3.hex.
+Firmware: .pio/build/teensy41/firmware.hex, also exported as Granular_v0_2_4.hex.
 No upload is performed during development. Load the HEX with Teensy Loader for
 testing; Granular_v0_1_2.hex provides the previous listening baseline.
 
@@ -141,3 +141,32 @@ WSOLA is implemented here without importing an external processing library.
 Algorithm references: https://www.isca-archive.org/eurospeech_1993/roelands93_eurospeech.html
 and https://www.surina.net/article/time-and-pitch-scaling.html.
 Teensy Audio, SerialFlash and Adafruit libraries retain their own licenses.
+
+## Processing-time measurements (0.2.4)
+
+Every two seconds BENCH identifies the settings and the audio-block budget:
+128 samples at 44.1 kHz, approximately 2902.49 microseconds at 600 MHz.
+TIME values use the hardware cycle counter, converted to microseconds.
+
+- engine_us[min/avg/max]: rendering 128 samples, including any WSOLA generation.
+- callback_us[avg/max]: allocation, rendering, reference RMS/peak metering and output delivery. Final timing-statistics bookkeeping is excluded.
+- WARM: first 260 active blocks after a control change (approximately 755 ms), including startup or parameter transitions.
+- READ: steady blocks without a new WSOLA hop.
+- GEN: steady blocks generating one or more WSOLA hops.
+- ALL: READ and GEN combined, excluding WARM and stopped playback.
+- n: measured blocks; hops: generated hops; hmax: maximum hops in one block; late: callbacks exceeding the block budget.
+
+A control change resets the measurement interval and increments its id. Statistics
+reset every report; WARM can span reports. AudioProcessorUsageMax also includes
+other audio objects and measurement bookkeeping. Serial output can drop lines
+if the terminal cannot accept them immediately.
+
+For an initial comparison, keep search at 10 ms and test windows 15 and 20 ms,
+with pitch 0.25, 0.5, 1, 2 and 4. Hold each setting for at least 10 seconds and
+preferably a complete source loop. Save BENCH, TIME, DIAG and LEVEL lines.
+Keep WARM maxima separately and compare steady averages and GEN maxima.
+The approximately 2902 us budget is shared by all voices and other audio work;
+one-voice measurements alone cannot establish safe Lilla polyphony because
+PSRAM/cache contention and coincident generation peaks can change the cost.
+Hardware timings must be acquired after loading this firmware; host tests do
+not measure Teensy performance.

@@ -27,6 +27,7 @@ int volume_percent = 25;
 bool running = false;
 bool ready = false;
 uint32_t last_diagnostics = 0;
+uint32_t measurement_id = 0;
 
 void PrintLine(const char *message)
 {
@@ -50,10 +51,25 @@ void ApplyControls()
     player.core.SetSearch(static_cast<uint32_t>(AUDIO_SAMPLE_RATE_EXACT * searches_ms[search_id] / 1000.0f));
     player.core.SetVolume(volume_percent / 100.0f);
     player.core.SetRunning(running);
+    player.ResetMeasurement();
     AudioInterrupts();
 
+    ++measurement_id;
+    last_diagnostics = millis();
     char message[160];
     snprintf(message, sizeof(message), "%s WSOLA pitch=%.4f (%d cents) window=%lu ms search=+/- %lu ms overlap=50%% volume=%d%%", running ? "PLAY" : "STOP", pitch, pitch_cents, static_cast<unsigned long>(durations_ms[duration_id]), static_cast<unsigned long>(searches_ms[search_id]), volume_percent);
+    PrintLine(message);
+}
+
+void PrintTiming(const char *name, const GranularAudio::Timing &timing)
+{
+    if (timing.blocks == 0)
+    {
+        return;
+    }
+    const double cycles_per_us = F_CPU_ACTUAL / 1000000.0;
+    char message[200];
+    snprintf(message, sizeof(message), "TIME %s id=%lu n=%lu engine_us[min/avg/max]=%.2f/%.2f/%.2f callback_us[avg/max]=%.2f/%.2f hops=%lu hmax=%lu late=%lu", name, static_cast<unsigned long>(measurement_id), static_cast<unsigned long>(timing.blocks), timing.engine_min / cycles_per_us, timing.engine_cycles / (cycles_per_us * timing.blocks), timing.engine_max / cycles_per_us, timing.callback_cycles / (cycles_per_us * timing.blocks), timing.callback_max / cycles_per_us, static_cast<unsigned long>(timing.hops), static_cast<unsigned long>(timing.hops_max), static_cast<unsigned long>(timing.late));
     PrintLine(message);
 }
 
@@ -123,7 +139,7 @@ void setup()
     {
         yield();
     }
-    PrintLine("Granular 0.2.3 - WSOLA + resampling - tempo 1");
+    PrintLine("Granular 0.2.4 - WSOLA + resampling - tempo 1");
     AudioMemory(12);
     if (!controls.Begin())
     {
@@ -184,12 +200,14 @@ void loop()
         float cpu_max;
         uint16_t pool_max;
         GranularAudio::Levels levels;
+        GranularAudio::Timings timings;
         float correlation;
         int32_t offset;
 
         AudioNoInterrupts();
         player.TakeDiagnostics(maximum, missed);
         levels = player.TakeLevels();
+        timings = player.TakeTimings();
         correlation = player.core.Correlation();
         offset = player.core.Offset();
         cpu_max = AudioProcessorUsageMax();
@@ -198,7 +216,23 @@ void loop()
         AudioMemoryUsageMaxReset();
         AudioInterrupts();
 
-        char message[128];
+        char message[160];
+        snprintf(message, sizeof(message), "BENCH id=%lu play=%u pitch=%.4f window_ms=%lu search_ms=%lu block=%u budget_us=%.2f MHz=%.0f", static_cast<unsigned long>(measurement_id), running ? 1u : 0u, exp2f(pitch_cents / 1200.0f), static_cast<unsigned long>(durations_ms[duration_id]), static_cast<unsigned long>(searches_ms[search_id]), AUDIO_BLOCK_SAMPLES, AUDIO_BLOCK_SAMPLES * 1000000.0 / AUDIO_SAMPLE_RATE_EXACT, F_CPU_ACTUAL / 1000000.0);
+        PrintLine(message);
+        PrintTiming("WARM", timings.transient);
+        PrintTiming("READ", timings.read);
+        PrintTiming("GEN", timings.generate);
+        GranularAudio::Timing steady = timings.read;
+        steady.blocks += timings.generate.blocks;
+        steady.engine_cycles += timings.generate.engine_cycles;
+        steady.callback_cycles += timings.generate.callback_cycles;
+        steady.engine_min = min(steady.engine_min, timings.generate.engine_min);
+        steady.engine_max = max(steady.engine_max, timings.generate.engine_max);
+        steady.callback_max = max(steady.callback_max, timings.generate.callback_max);
+        steady.hops += timings.generate.hops;
+        steady.hops_max = max(steady.hops_max, timings.generate.hops_max);
+        steady.late += timings.generate.late;
+        PrintTiming("ALL", steady);
         snprintf(message, sizeof(message), "DIAG render_max=%.1f us audio_cpu_max=%.1f%% pool_max=%u missed=%lu", maximum / (F_CPU_ACTUAL / 1000000.0f), cpu_max, pool_max, static_cast<unsigned long>(missed));
         PrintLine(message);
         const float input_rms = levels.samples > 0 ? sqrtf(static_cast<float>(levels.source_energy) / levels.samples) : 0.0f;

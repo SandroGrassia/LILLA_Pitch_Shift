@@ -17,6 +17,9 @@ public:
     void SetRunning(bool value);
     int16_t Render();
     int16_t ReferenceSample() const;
+    bool IsActive() const;
+    uint32_t GeneratedHops() const;
+    void ReadReferenceBlock(int16_t *destination, uint32_t first, uint32_t count) const;
     uint32_t Transport() const;
     float Pitch() const;
     float Correlation() const;
@@ -42,6 +45,7 @@ private:
     int16_t blocks[2][MaxHop] = {};
     int16_t tail[MaxHop] = {};
     int16_t search[MaxWindow + 2 * MaxSearch] = {};
+    uint32_t generated_hops = 0;
     float last_correlation = 1.0f;
     int32_t last_offset = 0;
     uint32_t Wrap(int64_t position) const;

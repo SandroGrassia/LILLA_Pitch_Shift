@@ -63,6 +63,21 @@ int16_t WsolaCore::ReferenceSample() const
     return running || gate > 0.0f ? source[transport] : 0;
 }
 
+bool WsolaCore::IsActive() const
+{
+    return running || gate > 0.0f;
+}
+
+uint32_t WsolaCore::GeneratedHops() const
+{
+    return generated_hops;
+}
+
+void WsolaCore::ReadReferenceBlock(int16_t *destination, uint32_t first, uint32_t count) const
+{
+    CopySource(destination, first, count);
+}
+
 uint32_t WsolaCore::Wrap(int64_t position) const
 {
     return static_cast<uint32_t>((position % source_count + source_count) % source_count);
@@ -110,6 +125,7 @@ float WsolaCore::Score(uint32_t offset, uint32_t stride) const
 
 void WsolaCore::Generate(uint32_t destination)
 {
+    ++generated_hops;
     // One synthesis hop ahead. Anchor to the actual output transport, not the last
     // search match: local alignment errors never accumulate into tempo drift.
     const float ahead = (hop - read_position) / pitch_now;
