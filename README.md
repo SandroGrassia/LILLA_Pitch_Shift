@@ -1,4 +1,4 @@
-# Granular 0.2.0 - WSOLA experiment
+# Granular 0.2.3 - WSOLA experiment
 
 Standalone PlatformIO firmware for the existing Lilla hardware. The active engine
 uses waveform-similarity overlap-add (WSOLA) followed by resampling, replacing the
@@ -10,11 +10,11 @@ and its tests remain in the repository as a baseline; they are not connected to 
 | Encoder | Rotation | Pushbutton |
 | --- | --- | --- |
 | Step | Pitch 0.25 to 4, in 10-cent steps | Start/stop |
-| From | Analysis window: 5, 20, 50, 100 ms | Unused |
-| To | Alignment search radius: 0, 1, 2, 5, 10 ms | Unused |
+| From | Analysis window: 5, 10, 15, 20, 25, 30, 40, 50, 100 ms | Unused |
+| To | Alignment search radius: 0, 1, 2, 5, 10, 15, 20 ms | Unused |
 | LineOutVol | Output gain: 0 to 100 percent | Unused |
 
-Startup is stopped, pitch 1, window 50 ms, search +/-5 ms, volume 25 percent.
+Startup is stopped, pitch 1, window 20 ms, search +/-10 ms, volume 25 percent.
 Overlap is fixed at 50 percent, with complementary linear ramps. Grain-count and
 slope controls from 0.1.2 are replaced by the WSOLA geometry and search control.
 Search zero disables alignment and provides a direct listening comparison.
@@ -25,7 +25,7 @@ parameter from the fixed output-grain duration of the previous engine.
 
 ## Signal path
 
-Adv_01.raw is copied from SPI Flash to PSRAM at startup. It must already exist under
+RIthm_01.raw is copied from SPI Flash to PSRAM at startup. It must already exist under
 that exact name and contain headerless mono signed 16-bit little-endian PCM at
 44.1 kHz. Flash is read only. No source recording is included in this repository.
 Missing PSRAM/file, invalid byte count, or allocation failure disables playback
@@ -109,7 +109,7 @@ python tests/encoder_test.py
 If pio is absent from PATH, use the installed executable at
 C:/Users/Utente/.platformio/penv/Scripts/platformio.exe.
 
-Firmware: .pio/build/teensy41/firmware.hex, also exported as Granular_v0_2_0.hex.
+Firmware: .pio/build/teensy41/firmware.hex, also exported as Granular_v0_2_3.hex.
 No upload is performed during development. Load the HEX with Teensy Loader for
 testing; Granular_v0_1_2.hex provides the previous listening baseline.
 
@@ -122,9 +122,9 @@ This demonstrates the alignment effect on a tone, not quality on complex music.
 
 ## Listening pass and limitations
 
-Start with a 50 ms window and compare search 0, 5 and 10 ms at pitch 0.5 and 2.
-Check LEVEL and DIAG, then compare 20 and 100 ms windows. Keep volume fixed.
-Actual Adv_01.raw quality and CPU headroom require physical Lilla measurements.
+At pitch 0.5, keep search at 10 ms and compare windows 10, 15, 20, 25, 30 and 40 ms.
+Check LEVEL and DIAG, especially late, then compare other pitch settings. Keep volume fixed.
+Actual RIthm_01.raw quality and CPU headroom require physical Lilla measurements.
 
 This implementation has no transient detector, phase-vocoder stage, formant
 preservation, or automatic gain compensation. Linear resampling has no dedicated

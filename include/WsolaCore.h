@@ -2,13 +2,13 @@
 #include <cstdint>
 
 // Call setters with audio IRQ disabled. Source has >= 2 samples; pitch is 0.25..4;
-// window is even, 220..4410 samples; search radius is 0..441; volume is 0..1.
+// window is even, 220..4410 samples; search radius is 0..882; volume is 0..1.
 class WsolaCore
 {
 public:
     static constexpr uint32_t MaxWindow = 4410;
     static constexpr uint32_t MaxHop = MaxWindow / 2;
-    static constexpr uint32_t MaxSearch = 441;
+    static constexpr uint32_t MaxSearch = 882;
     void Attach(const int16_t *samples, uint32_t count);
     void SetPitch(float value);
     void SetWindow(uint32_t samples);
@@ -26,9 +26,9 @@ private:
     const int16_t *source = nullptr;
     uint32_t source_count = 0;
     uint32_t transport = 0;
-    uint32_t requested_window = 2204;
-    uint32_t hop = 1102;
-    uint32_t search_radius = 220;
+    uint32_t requested_window = 882;
+    uint32_t hop = 441;
+    uint32_t search_radius = 441;
     float pitch_target = 1.0f;
     float pitch_now = 1.0f;
     float volume_target = 0.25f;

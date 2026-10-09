@@ -74,7 +74,16 @@ int main()
     for (uint32_t i = 0; i < 30000u; ++i)
     {
         core.SetPitch(i < 15000u ? 4.0f : 0.25f);
-        core.SetSearch(i % 442u);
+        core.SetSearch(i % (WsolaCore::MaxSearch + 1u));
+        assert(std::abs(static_cast<int>(core.Render())) <= 3001);
+        ++total;
+    }
+    assert(core.Transport() == total % source.size());
+    core.SetWindow(220u);
+    core.SetPitch(4.0f);
+    core.SetSearch(WsolaCore::MaxSearch);
+    for (uint32_t i = 0; i < 3000u; ++i)
+    {
         assert(std::abs(static_cast<int>(core.Render())) <= 3001);
         ++total;
     }

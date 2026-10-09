@@ -17,12 +17,12 @@ AudioConnection left(player, 0, output, 0);
 AudioConnection right(player, 0, output, 1);
 AudioControlSGTL5000 codec;
 HardwareControls controls;
-constexpr uint32_t durations_ms[] = {5, 20, 50, 100};
-constexpr uint32_t searches_ms[] = {0, 1, 2, 5, 10};
-int search_id = 3;
-constexpr char filename[] = "Adv_01.raw";
+constexpr uint32_t durations_ms[] = {5, 10, 15, 20, 25, 30, 40, 50, 100};
+constexpr uint32_t searches_ms[] = {0, 1, 2, 5, 10, 15, 20};
+int search_id = 4;
+constexpr char filename[] = "RIthm_01.raw";
 int pitch_cents = 0;
-int duration_id = 2;
+int duration_id = 3;
 int volume_percent = 25;
 bool running = false;
 bool ready = false;
@@ -75,7 +75,7 @@ bool LoadSource()
     SerialFlashFile file = SerialFlash.open(filename);
     if (!file)
     {
-        PrintLine("ERROR: Adv_01.raw not found in Flash; playback disabled.");
+        PrintLine("ERROR: RIthm_01.raw not found in Flash; playback disabled.");
         return false;
     }
     const uint32_t bytes = file.size();
@@ -110,7 +110,7 @@ bool LoadSource()
     player.SetReady();
     AudioInterrupts();
 
-    snprintf(message, sizeof(message), "Loaded Adv_01.raw: %lu bytes, %.3f seconds. Flash remains unchanged.", static_cast<unsigned long>(bytes), bytes / (2.0f * AUDIO_SAMPLE_RATE_EXACT));
+    snprintf(message, sizeof(message), "Loaded RIthm_01.raw: %lu bytes, %.3f seconds. Flash remains unchanged.", static_cast<unsigned long>(bytes), bytes / (2.0f * AUDIO_SAMPLE_RATE_EXACT));
     PrintLine(message);
     return true;
 }
@@ -123,7 +123,7 @@ void setup()
     {
         yield();
     }
-    PrintLine("Granular 0.2.0 - WSOLA + resampling - tempo 1");
+    PrintLine("Granular 0.2.3 - WSOLA + resampling - tempo 1");
     AudioMemory(12);
     if (!controls.Begin())
     {
@@ -161,8 +161,8 @@ void loop()
     if (pitch_delta != 0 || duration_delta != 0 || search_delta != 0 || volume_delta != 0)
     {
         pitch_cents = constrain(pitch_cents + pitch_delta * 10, -2400, 2400);
-        duration_id = constrain(duration_id + duration_delta, 0, 3);
-        search_id = constrain(search_id + search_delta, 0, 4);
+        duration_id = constrain(duration_id + duration_delta, 0, static_cast<int>(sizeof(durations_ms) / sizeof(durations_ms[0])) - 1);
+        search_id = constrain(search_id + search_delta, 0, static_cast<int>(sizeof(searches_ms) / sizeof(searches_ms[0])) - 1);
         volume_percent = constrain(volume_percent + volume_delta, 0, 100);
         changed = true;
     }
