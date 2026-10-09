@@ -1,4 +1,4 @@
-# Granular 0.2.4 - WSOLA experiment
+# Granular 0.3.0 - WSOLA experiment
 
 Standalone PlatformIO firmware for the existing Lilla hardware. The active engine
 uses waveform-similarity overlap-add (WSOLA) followed by resampling, replacing the
@@ -9,15 +9,23 @@ and its tests remain in the repository as a baseline; they are not connected to 
 
 | Encoder | Rotation | Pushbutton |
 | --- | --- | --- |
-| Step | Pitch 0.25 to 4, in 10-cent steps | Start/stop |
-| From | Analysis window: 5, 10, 15, 20, 25, 30, 40, 50, 100 ms | Unused |
-| To | Alignment search radius: 0, 1, 2, 5, 10, 15, 20 ms | Unused |
-| LineOutVol | Output gain: 0 to 100 percent | Unused |
+| Step | Unused | Unused |
+| From | Player 1 pitch 0.5 to 2, in 10-cent steps | Player 1 play/stop |
+| To | Player 2 pitch 0.5 to 2, in 10-cent steps | Player 2 play/stop |
+| LineOutVol | Master volume: 0 to 100 percent | Unused |
 
-Startup is stopped, pitch 1, window 20 ms, search +/-10 ms, volume 25 percent.
-Overlap is fixed at 50 percent, with complementary linear ramps. Grain-count and
-slope controls from 0.1.2 are replaced by the WSOLA geometry and search control.
-Search zero disables alignment and provides a direct listening comparison.
+Both players start stopped, with pitch 1 and master volume 25 percent.
+Window is fixed at 20 ms (882 samples), search at +/-10 ms (441 samples).
+Overlap is fixed at 50 percent, with complementary linear ramps.
+Each voice has its own transport, pitch smoothing, start/stop fade and WSOLA state.
+Both share a single read-only source allocation in PSRAM. Controls for one voice
+never restart or reposition the other voice. Restart after a completed stop begins
+at sample zero; a press during the stop fade reverses the fade without restarting.
+
+The mono mix is (player1 + player2) / 2, duplicated to left and right outputs.
+This fixed headroom prevents sum overflow even for coincident full-scale voices.
+A solo voice is therefore 6 dB quieter than in 0.2.4 at the same volume setting;
+the factor does not change when the other voice starts or stops.
 
 Window duration refers to the intermediate WSOLA stream, before resampling. At
 pitch p its output duration is approximately window/p. It is therefore a different
@@ -62,22 +70,23 @@ when another hop is generated. Restart after a completed stop begins at sample z
 
 Output only; no terminal commands are accepted. Every two seconds:
 
-- DIAG: maximum render time, maximum whole-audio CPU use, audio-pool peak and missed allocations.
-- LEVEL: original-source RMS and actual output RMS in dBFS, output peak in PCM units,
-  latest overlap correlation, latest search offset in source samples, and late blocks.
+- BENCH: both players' play/pitch settings, fixed geometry, volume and block budget.
+- TIME MIX: measured combined rendering time and complete audio callback time.
+- TIME P1 / P2: rendering time for each active voice, before reference metering.
+- DIAG: maximum callback time, maximum whole-audio CPU use, audio-pool peak, missed allocations and callbacks over budget (late).
+- LEVEL MIX: actual mixed output RMS in dBFS and PCM peak.
+- LEVEL P1 / P2: source/output RMS, peak, latest correlation and offset, before the fixed mix gain.
 
-Output RMS includes LineOutVol. At the default 25 percent volume, a preserved
-signal is approximately 12 dB below the original source. Compare different pitch
-settings at the same volume. Source and output RMS windows follow the nominal
-transport, so local alignment/lookahead can affect comparisons around transients.
-Correlation is the most recent overlap estimate, not an average; -1 also identifies
-silence or an overlap with negligible variance. A nonzero late count means the
-renderer exceeded the approximately 2.9 ms audio-block budget. Search is executed
-inside the audio callback: small windows, wide search and high pitch are the most
-expensive combination. Hardware timing remains to be established.
+Voice output levels include master volume but precede the half-gain mix. At 25 percent
+volume, a preserved voice is approximately 12 dB below its source before mixing,
+and approximately 18 dB below when heard alone after mixing. Reference metering
+follows the nominal transport; it is approximate around startup and transients.
+Correlation is the latest overlap estimate, not an average; -1 also identifies
+silence or an overlap with negligible variance.
 
-Logging runs in loop and drops lines if the terminal cannot accept them immediately.
-Controller scanning runs at up to 2 kHz with a 25 ms button debounce.
+Logs use a nonblocking 4096-byte queue, drained as USB accepts data. Lines are
+dropped if the queue is full. No terminal input is used. Controls are scanned at
+up to 2 kHz with a 25 ms button debounce.
 
 ## Hardware
 
@@ -88,9 +97,9 @@ SPI1: MOSI 26, SCK 27, MISO 39, CS 37. Display CS 38 stays high.
 
 | Control | MCP23S17 chip | DT | CLK | Active button |
 | --- | --- | --- | --- | --- |
-| Step | 3 | a3 | a4 | a2 |
-| From | 3 | a6 | a7 | none |
-| To | 3 | a1 | a0 | none |
+| Step | 3 | a3 | a4 | unused (a2) |
+| From | 3 | a6 | a7 | a5 |
+| To | 3 | a1 | a0 | b6 |
 | LineOutVol | 4 | a2 | a1 | none |
 
 The pinned Teensyduino 1.62 core supports Lilla's two ISSI 16 MiB PSRAM chips.
@@ -104,12 +113,14 @@ pio device monitor --baud 115200
 g++ -std=c++20 -O2 -Wall -Wextra -Werror -I include src/WsolaCore.cpp tests/wsola_test.cpp -o .pio/wsola_test.exe
 ./.pio/wsola_test.exe
 python tests/encoder_test.py
+g++ -std=c++20 -O2 -Wall -Wextra -Werror -I tests/stubs -I include src/WsolaCore.cpp src/GranularAudio.cpp tests/two_voice_test.cpp -o .pio/two_voice_test.exe
+./.pio/two_voice_test.exe
 ```
 
 If pio is absent from PATH, use the installed executable at
 C:/Users/Utente/.platformio/penv/Scripts/platformio.exe.
 
-Firmware: .pio/build/teensy41/firmware.hex, also exported as Granular_v0_2_4.hex.
+Firmware: .pio/build/teensy41/firmware.hex, also exported as Granular_v0_3_0.hex.
 No upload is performed during development. Load the HEX with Teensy Loader for
 testing; Granular_v0_1_2.hex provides the previous listening baseline.
 
@@ -119,12 +130,20 @@ at 67 Hz and 997 Hz for ratios 0.25, 0.5, 1, 1.3, 2 and 4. These tones are not
 chosen to align with the window. At 67 Hz and pitch 0.5, search +/-10 ms restores
 RMS to about 2121 versus 1521 with search off (12000 peak input, volume 25 percent).
 This demonstrates the alignment effect on a tone, not quality on complex music.
+The two-voice test exercises the actual audio wrapper with a mocked AudioStream:
+sample-exact mixing against independent cores, coincident hop counts, independent
+stop/pitch, statistics reset, allocation failure and full-scale headroom. Its clock
+is mocked; it cannot validate physical timing or encoder wiring.
 
 ## Listening pass and limitations
 
-At pitch 0.5, keep search at 10 ms and compare windows 10, 15, 20, 25, 30 and 40 ms.
-Check LEVEL and DIAG, especially late, then compare other pitch settings. Keep volume fixed.
-Actual RIthm_01.raw quality and CPU headroom require physical Lilla measurements.
+First test From and To independently, then both players at pitch 2 for at least
+10 seconds, preferably a full source loop. Repeat with different start times,
+both buttons pressed together, and continuous independent pitch changes.
+Check TIME MIX maxima, audio_cpu_max, late and missed. Starting both together is
+useful but does not guarantee sample-synchronous starts because of button scanning
+and debounce; MIX hmax=2 confirms two generations occurred within one callback.
+Actual two-voice CPU headroom still requires physical Teensy measurements.
 
 This implementation has no transient detector, phase-vocoder stage, formant
 preservation, or automatic gain compensation. Linear resampling has no dedicated
@@ -142,31 +161,29 @@ Algorithm references: https://www.isca-archive.org/eurospeech_1993/roelands93_eu
 and https://www.surina.net/article/time-and-pitch-scaling.html.
 Teensy Audio, SerialFlash and Adafruit libraries retain their own licenses.
 
-## Processing-time measurements (0.2.4)
+## Processing-time measurements (0.3.0)
 
-Every two seconds BENCH identifies the settings and the audio-block budget:
-128 samples at 44.1 kHz, approximately 2902.49 microseconds at 600 MHz.
-TIME values use the hardware cycle counter, converted to microseconds.
+The shared callback budget is 128 samples at 44.1 kHz, approximately 2902.49 us.
+Hardware cycle-counter readings are converted to microseconds at the actual CPU clock.
 
-- engine_us[min/avg/max]: rendering 128 samples, including any WSOLA generation.
-- callback_us[avg/max]: allocation, rendering, reference RMS/peak metering and output delivery. Final timing-statistics bookkeeping is excluded.
-- WARM: first 260 active blocks after a control change (approximately 755 ms), including startup or parameter transitions.
-- READ: steady blocks without a new WSOLA hop.
-- GEN: steady blocks generating one or more WSOLA hops.
-- ALL: READ and GEN combined, excluding WARM and stopped playback.
-- n: measured blocks; hops: generated hops; hmax: maximum hops in one block; late: callbacks exceeding the block budget.
+- engine_us[min/avg/max]: rendering 128 samples; MIX sums both measured render intervals in that same callback, including an idle renderer if present.
+- callback_us[avg/max]: MIX only; actual elapsed time from entry through allocation, both renderers, reference metering, mixing, output delivery and per-voice timing statistics. Final MIX timing bookkeeping is excluded.
+- WARM: first 260 active blocks after a control change, tracked separately per voice and for MIX (approximately 755 ms).
+- READ: steady blocks with no new WSOLA hop in that scope.
+- GEN: steady blocks with at least one new hop; MIX includes either or both voices generating.
+- ALL: READ and GEN combined; excludes WARM and fully stopped scopes.
+- n: measured blocks; hops: total generated hops; hmax: most hops in one block. MIX hmax=2 identifies coincident work from both voices at the permitted steady pitches.
+- late: MIX callbacks exceeding the shared budget. DIAG also includes idle callbacks.
 
-A control change resets the measurement interval and increments its id. Statistics
-reset every report; WARM can span reports. AudioProcessorUsageMax also includes
-other audio objects and measurement bookkeeping. Serial output can drop lines
-if the terminal cannot accept them immediately.
+Any effective control change resets all timing/level intervals, audio CPU maxima,
+and the measurement id. It does not reset transports or force re-priming of an
+already playing voice. Each two-second report clears accumulated statistics;
+remaining WARM counts persist. Individual and MIX ALL groups can cover different
+blocks if a voice starts or stops, so their averages should not be added blindly.
+The measured MIX callback is the reference for total cost.
 
-For an initial comparison, keep search at 10 ms and test windows 15 and 20 ms,
-with pitch 0.25, 0.5, 1, 2 and 4. Hold each setting for at least 10 seconds and
-preferably a complete source loop. Save BENCH, TIME, DIAG and LEVEL lines.
-Keep WARM maxima separately and compare steady averages and GEN maxima.
-The approximately 2902 us budget is shared by all voices and other audio work;
-one-voice measurements alone cannot establish safe Lilla polyphony because
-PSRAM/cache contention and coincident generation peaks can change the cost.
-Hardware timings must be acquired after loading this firmware; host tests do
-not measure Teensy performance.
+Single-voice 0.2.4 hardware measurements at this geometry gave approximately
+165 us mean / 1019 us steady maximum at pitch 0.5, and 573 us mean / 982 us maximum
+at pitch 2 (callback times). They motivate this dual-voice experiment, but cannot
+establish safe polyphony inside the full Lilla firmware. Simultaneous searches,
+PSRAM/cache behavior and other audio work must be measured together.

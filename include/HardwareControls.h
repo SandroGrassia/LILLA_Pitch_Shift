@@ -11,6 +11,7 @@ public:
     int TakeRotation(Control control);
     bool TakeStepPress();
     bool TakeFromPress();
+    bool TakeToPress();
 
 private:
     Adafruit_MCP23X17 chips[2];
@@ -23,6 +24,6 @@ private:
         bool pressed = false;
         uint32_t changed = 0;
     };
-    Button buttons[2];
+    Button buttons[3];
     uint32_t last_scan = 0;
 };

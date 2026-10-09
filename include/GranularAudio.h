@@ -7,7 +7,9 @@ class GranularAudio : public AudioStream
 {
 public:
     GranularAudio();
-    WsolaCore core;
+    static constexpr uint32_t VoiceCount = 2;
+    static constexpr uint32_t Mix = VoiceCount;
+    WsolaCore core[VoiceCount];
     struct Levels
     {
         uint64_t source_energy = 0;
@@ -34,21 +36,24 @@ public:
         Timing read;
         Timing generate;
     };
-    Levels TakeLevels();
-    Timings TakeTimings();
+    Levels TakeLevels(uint32_t scope);
+    Timings TakeTimings(uint32_t scope);
     void ResetMeasurement(); // Caller disables the audio IRQ; first 260 active blocks are transient.
     void SetReady();
     void TakeDiagnostics(uint32_t &maximum, uint32_t &missed);
     void update() override;
 
 private:
-    Levels levels;
-    Timings timings;
-    uint32_t transient_remaining = 260;
+    Levels levels[VoiceCount + 1];
+    Timings timings[VoiceCount + 1];
+    uint32_t transient_remaining[VoiceCount + 1] = {260, 260, 260};
     bool ready = false;
     uint32_t maximum_cycles = 0;
     uint32_t missed_blocks = 0;
     int16_t fallback[AUDIO_BLOCK_SAMPLES];
+    int16_t rendered[VoiceCount][AUDIO_BLOCK_SAMPLES];
     int16_t reference[AUDIO_BLOCK_SAMPLES];
+    void RecordBlock(uint32_t scope, uint32_t engine, uint32_t callback, uint32_t hops, uint32_t budget);
+    void RecordLevel(Levels &target, int32_t original, int32_t output);
     void RecordTiming(Timing &target, uint32_t engine, uint32_t callback, uint32_t hops, uint32_t budget);
 };

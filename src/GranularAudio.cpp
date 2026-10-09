@@ -18,25 +18,28 @@ void GranularAudio::TakeDiagnostics(uint32_t &maximum, uint32_t &missed)
     missed_blocks = 0;
 }
 
-GranularAudio::Levels GranularAudio::TakeLevels()
+GranularAudio::Levels GranularAudio::TakeLevels(uint32_t scope)
 {
-    const Levels result = levels;
-    levels = {};
+    const Levels result = levels[scope];
+    levels[scope] = {};
     return result;
 }
 
-GranularAudio::Timings GranularAudio::TakeTimings()
+GranularAudio::Timings GranularAudio::TakeTimings(uint32_t scope)
 {
-    const Timings result = timings;
-    timings = {};
+    const Timings result = timings[scope];
+    timings[scope] = {};
     return result;
 }
 
 void GranularAudio::ResetMeasurement()
 {
-    timings = {};
-    levels = {};
-    transient_remaining = 260;
+    for (uint32_t scope = 0; scope <= Mix; ++scope)
+    {
+        timings[scope] = {};
+        levels[scope] = {};
+        transient_remaining[scope] = 260;
+    }
     maximum_cycles = 0;
     missed_blocks = 0;
 }
@@ -69,83 +72,122 @@ void GranularAudio::RecordTiming(Timing &target, uint32_t engine, uint32_t callb
     }
 }
 
+void GranularAudio::RecordBlock(uint32_t scope, uint32_t engine, uint32_t callback, uint32_t hops, uint32_t budget)
+{
+    if (transient_remaining[scope] > 0)
+    {
+        --transient_remaining[scope];
+        RecordTiming(timings[scope].transient, engine, callback, hops, budget);
+    }
+    else if (hops > 0)
+    {
+        RecordTiming(timings[scope].generate, engine, callback, hops, budget);
+    }
+    else
+    {
+        RecordTiming(timings[scope].read, engine, callback, hops, budget);
+    }
+}
+
+void GranularAudio::RecordLevel(Levels &target, int32_t original, int32_t output)
+{
+    target.source_energy += static_cast<uint64_t>(static_cast<int64_t>(original) * original);
+    target.output_energy += static_cast<uint64_t>(static_cast<int64_t>(output) * output);
+    ++target.samples;
+    const uint16_t magnitude = static_cast<uint16_t>(output < 0 ? -output : output);
+    if (magnitude > target.peak)
+    {
+        target.peak = magnitude;
+    }
+}
+
 void GranularAudio::update()
 {
     const uint32_t started = ARM_DWT_CYCCNT;
-    const bool active = ready && core.IsActive();
-    const uint32_t first = core.Transport();
-    const uint32_t hops_before = core.GeneratedHops();
+    bool active[VoiceCount];
+    uint32_t first[VoiceCount];
+    uint32_t engine_elapsed[VoiceCount];
+    uint32_t hops[VoiceCount];
+    uint32_t total_engine = 0;
+    uint32_t total_hops = 0;
+    bool any_active = false;
     audio_block_t *block = allocate();
     int16_t *destination = block != nullptr ? block->data : fallback;
     if (block == nullptr)
     {
         ++missed_blocks;
     }
-    const uint32_t engine_started = ARM_DWT_CYCCNT;
-    if (ready)
+    for (uint32_t voice = 0; voice < VoiceCount; ++voice)
     {
+        active[voice] = ready && core[voice].IsActive();
+        any_active = any_active || active[voice];
+        first[voice] = core[voice].Transport();
+        const uint32_t hops_before = core[voice].GeneratedHops();
+        const uint32_t engine_started = ARM_DWT_CYCCNT;
+        if (ready)
+        {
+            for (uint32_t i = 0; i < AUDIO_BLOCK_SAMPLES; ++i)
+            {
+                rendered[voice][i] = core[voice].Render();
+            }
+        }
+        else
+        {
+            std::memset(rendered[voice], 0, sizeof(rendered[voice]));
+        }
+        engine_elapsed[voice] = ARM_DWT_CYCCNT - engine_started;
+        hops[voice] = core[voice].GeneratedHops() - hops_before;
+        total_engine += engine_elapsed[voice];
+        total_hops += hops[voice];
+    }
+    // Meter reads follow both renders, so they do not prewarm either voice in this block.
+    for (uint32_t voice = 0; voice < VoiceCount; ++voice)
+    {
+        if (active[voice])
+        {
+            core[voice].ReadReferenceBlock(reference, first[voice], AUDIO_BLOCK_SAMPLES);
+        }
+        else
+        {
+            std::memset(reference, 0, sizeof(reference));
+        }
         for (uint32_t i = 0; i < AUDIO_BLOCK_SAMPLES; ++i)
         {
-            destination[i] = core.Render();
+            RecordLevel(levels[voice], reference[i], rendered[voice][i]);
         }
-    }
-    else
-    {
-        std::memset(destination, 0, AUDIO_BLOCK_SAMPLES * sizeof(int16_t));
-    }
-    const uint32_t engine_elapsed = ARM_DWT_CYCCNT - engine_started;
-    const uint32_t hops = core.GeneratedHops() - hops_before;
-    // Reference reads follow rendering, so this meter does not prewarm its source region.
-    if (active)
-    {
-        core.ReadReferenceBlock(reference, first, AUDIO_BLOCK_SAMPLES);
-    }
-    else
-    {
-        std::memset(reference, 0, sizeof(reference));
     }
     for (uint32_t i = 0; i < AUDIO_BLOCK_SAMPLES; ++i)
     {
-        const int32_t original = reference[i];
-        const int32_t value = destination[i];
-        levels.source_energy += static_cast<uint64_t>(static_cast<int64_t>(original) * original);
-        levels.output_energy += static_cast<uint64_t>(static_cast<int64_t>(value) * value);
-        ++levels.samples;
-        const uint16_t magnitude = static_cast<uint16_t>(value < 0 ? -value : value);
-        if (magnitude > levels.peak)
-        {
-            levels.peak = magnitude;
-        }
+        // Fixed headroom: no level jump in the other voice when one starts or stops.
+        const int32_t sum = static_cast<int32_t>(rendered[0][i]) + rendered[1][i];
+        destination[i] = static_cast<int16_t>(sum / 2);
+        RecordLevel(levels[Mix], 0, destination[i]);
     }
     if (block != nullptr)
     {
         transmit(block);
         release(block);
     }
-    const uint32_t elapsed = ARM_DWT_CYCCNT - started;
     const uint32_t budget = static_cast<uint32_t>(F_CPU_ACTUAL * (AUDIO_BLOCK_SAMPLES / AUDIO_SAMPLE_RATE_EXACT));
+    for (uint32_t voice = 0; voice < VoiceCount; ++voice)
+    {
+        if (active[voice])
+        {
+            RecordBlock(voice, engine_elapsed[voice], engine_elapsed[voice], hops[voice], budget);
+        }
+    }
+    // Full callback includes both renderers, meters, mixing and per-voice statistics.
+    const uint32_t elapsed = ARM_DWT_CYCCNT - started;
     if (elapsed > budget)
     {
-        ++levels.over_budget;
+        ++levels[Mix].over_budget;
     }
     if (elapsed > maximum_cycles)
     {
         maximum_cycles = elapsed;
     }
-    if (active)
+    if (any_active)
     {
-        if (transient_remaining > 0)
-        {
-            --transient_remaining;
-            RecordTiming(timings.transient, engine_elapsed, elapsed, hops, budget);
-        }
-        else if (hops > 0)
-        {
-            RecordTiming(timings.generate, engine_elapsed, elapsed, hops, budget);
-        }
-        else
-        {
-            RecordTiming(timings.read, engine_elapsed, elapsed, hops, budget);
-        }
+        RecordBlock(Mix, total_engine, elapsed, total_hops, budget);
     }
 }
