@@ -33,7 +33,7 @@ parameter from the fixed output-grain duration of the previous engine.
 
 ## Signal path
 
-RIthm_01.raw is copied from SPI Flash to PSRAM at startup. It must already exist under
+Rithm_01.raw is copied from SPI Flash to PSRAM at startup. It must already exist under
 that exact name and contain headerless mono signed 16-bit little-endian PCM at
 44.1 kHz. Flash is read only. No source recording is included in this repository.
 Missing PSRAM/file, invalid byte count, or allocation failure disables playback
