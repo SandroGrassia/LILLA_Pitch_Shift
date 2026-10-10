@@ -17,7 +17,7 @@ AudioConnection left(player, 0, output, 0);
 AudioConnection right(player, 0, output, 1);
 AudioControlSGTL5000 codec;
 HardwareControls controls;
-constexpr char filename[] = "RIthm_01.raw";
+constexpr char filename[] = "Giotto.raw";
 constexpr const char *scope_names[] = {"P1", "P2", "MIX"};
 int pitch_cents[GranularAudio::VoiceCount] = {};
 int volume_percent = 25;
@@ -145,7 +145,7 @@ bool LoadSource()
     SerialFlashFile file = SerialFlash.open(filename);
     if (!file)
     {
-        PrintLine("ERROR: RIthm_01.raw not found in Flash; playback disabled.");
+        PrintLine("ERROR: Rithm_01.raw not found in Flash; playback disabled.");
         return false;
     }
     const uint32_t bytes = file.size();
@@ -185,7 +185,7 @@ bool LoadSource()
     player.SetReady();
     AudioInterrupts();
 
-    snprintf(message, sizeof(message), "Loaded RIthm_01.raw: %lu bytes, %.3f seconds. Flash remains unchanged.", static_cast<unsigned long>(bytes), bytes / (2.0f * AUDIO_SAMPLE_RATE_EXACT));
+    snprintf(message, sizeof(message), "Loaded : %lu bytes, %.3f seconds. Flash remains unchanged.", static_cast<unsigned long>(bytes), bytes / (2.0f * AUDIO_SAMPLE_RATE_EXACT));
     PrintLine(message);
     return true;
 }
