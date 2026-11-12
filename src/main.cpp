@@ -6,8 +6,9 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
-#include <new>
 #include "ExperimentConfig.h"
+#include "FileDisplay.h"
+#include "RawFiles.h"
 #include "GranularAudio.h"
 #include "HardwareControls.h"
 #include "MidiInput.h"
@@ -15,20 +16,28 @@
 
 namespace
 {
-GranularAudio player;
+FftPitchCore fft_voices[GranularAudio::VoiceCount];
+GranularAudio player(fft_voices);
 AudioOutputI2S output;
 AudioConnection left(player, 0, output, 0);
 AudioConnection right(player, 0, output, 1);
 AudioControlSGTL5000 codec;
 HardwareControls controls;
+FileDisplay display;
+RawFiles raw_files;
+int selected_file = -1;
+int loaded_file = -1;
+int requested_file = -1;
+int loading_file = -1;
+uint32_t selection_time = 0;
+SerialFlashFile pending_file;
+int16_t *pending_samples = nullptr;
+uint32_t pending_bytes = 0;
+uint32_t pending_read = 0;
 MidiInput midi_input;
 NoteVoices voices(player);
-NoteVoices::Source sources[2];
-constexpr uint32_t overlaps[] = {10, 25, 50, 75};
-constexpr int overlap_id = 2;
-constexpr int grain_ms = 20;
+NoteVoices::Source source;
 int volume_percent = 25;
-bool antialias_enabled = true;
 bool ready = false;
 uint32_t last_diagnostics = 0;
 char log_buffer[16384];
@@ -70,24 +79,14 @@ void FlushLogs()
     }
 }
 
-uint32_t WindowSamples()
-{
-    // Nearest even source-sample count; WSOLA requires an even window, 220..4410.
-    return static_cast<uint32_t>(grain_ms * (44100.0f / 2000.0f) + 0.5f) * 2u;
-}
-
 void PrintOverlap()
 {
-    char message[48];
-    snprintf(message, sizeof(message), "OVERLAP=%lu%% (fixed)", static_cast<unsigned long>(overlaps[overlap_id]));
-    PrintLine(message);
+    PrintLine("FFT overlap=75% (fixed)");
 }
 
 void PrintGrain()
 {
-    char message[48];
-    snprintf(message, sizeof(message), "GRAIN samples=%lu (fixed)", static_cast<unsigned long>(WindowSamples()));
-    PrintLine(message);
+    PrintLine("FFT samples=1024 hop=256 (fixed)");
 }
 
 GranularAudio::Timing TotalTiming(const GranularAudio::Timings &timings)
@@ -139,6 +138,10 @@ void HandleMidi(const MidiInput::Message &message)
     }
     else if (message.type == 0x90)
     {
+        if (loading_file >= 0)
+        {
+            return; // During replacement, release tails finish but new notes wait for the next key press.
+        }
         uint32_t voice;
 
         AudioNoInterrupts();
@@ -171,113 +174,198 @@ void HandleMidi(const MidiInput::Message &message)
     }
 }
 
-bool LoadSources()
+bool LoadSource()
 {
     char message[180];
-    snprintf(message, sizeof(message), "PSRAM pool=%lu KiB; WSOLA state=%lu bytes/voice x %lu", static_cast<unsigned long>(extmem_smalloc_pool.pool_size / 1024u), static_cast<unsigned long>(sizeof(WsolaCore)), static_cast<unsigned long>(GranularAudio::VoiceCount));
+    snprintf(message, sizeof(message), "PSRAM pool=%lu KiB; FFT state=%lu bytes/voice in internal RAM", static_cast<unsigned long>(extmem_smalloc_pool.pool_size / 1024u), static_cast<unsigned long>(sizeof(FftPitchCore)));
     PrintLine(message);
     if (extmem_smalloc_pool.pool_size == 0 || !SerialFlash.begin(6))
     {
         PrintLine("ERROR: PSRAM absent or Flash initialization failed; playback disabled.");
         return false;
     }
-    void *storage = sm_malloc_pool(&extmem_smalloc_pool, sizeof(WsolaCore) * GranularAudio::VoiceCount);
-    if (storage == nullptr)
+    raw_files.Scan();
+    if (raw_files.Count() == 0)
     {
-        PrintLine("ERROR: cannot allocate WSOLA voices in PSRAM.");
+        display.Show("No RAW files", "None", "Playback disabled");
+        PrintLine("ERROR: no valid RAW files in Flash.");
         return false;
     }
-    player.core = new (storage) WsolaCore[GranularAudio::VoiceCount];
-    for (uint32_t source = 0; source < 2; ++source)
+    selected_file = raw_files.Find(ExperimentConfig::SourceFile);
+    if (selected_file < 0)
     {
-        if (source == 1 && strcmp(ExperimentConfig::SourceFiles[0], ExperimentConfig::SourceFiles[1]) == 0)
-        {
-            sources[1] = sources[0];
-            PrintLine("SOURCE B shares SOURCE A (same filename; no duplicate allocation).");
-            continue;
-        }
-        SerialFlashFile file = SerialFlash.open(ExperimentConfig::SourceFiles[source]);
-        if (!file)
-        {
-            snprintf(message, sizeof(message), "ERROR: %s not found in Flash; playback disabled.", ExperimentConfig::SourceFiles[source]);
-            PrintLine(message);
-            return false;
-        }
-        const uint32_t bytes = file.size();
-        if (bytes < 4u || (bytes & 1u) != 0u || bytes > extmem_smalloc_pool.pool_size)
-        {
-            file.close();
-            PrintLine("ERROR: invalid PCM size or source larger than PSRAM.");
-            return false;
-        }
-        auto *samples = static_cast<int16_t *>(sm_malloc_pool(&extmem_smalloc_pool, bytes));
-        if (samples == nullptr)
-        {
-            file.close();
-            PrintLine("ERROR: insufficient free PSRAM for audio sources and voice states.");
-            return false;
-        }
-        sources[source] = {samples, bytes / sizeof(int16_t)};
-        for (uint32_t offset = 0; offset < bytes; offset += 4096u)
-        {
-            const uint32_t count = std::min<uint32_t>(bytes - offset, 4096u);
-            if (file.read(reinterpret_cast<uint8_t *>(samples) + offset, count) != count)
-            {
-                file.close();
-                PrintLine("ERROR: incomplete Flash read; playback disabled.");
-                return false;
-            }
-        }
-        file.close();
-        snprintf(message, sizeof(message), "SOURCE %c file=%s bytes=%lu duration=%.3f s", 'A' + static_cast<int>(source), ExperimentConfig::SourceFiles[source], static_cast<unsigned long>(bytes), bytes / (2.0 * AUDIO_SAMPLE_RATE_EXACT));
-        PrintLine(message);
+        selected_file = 0;
     }
-    voices.SetSources(sources[0], sources[1]);
+    if (raw_files.Truncated())
+    {
+        PrintLine("WARNING: RAW catalog limited to 1024 names shorter than 64 bytes.");
+    }
+    display.Show(raw_files.Name(selected_file), "None", "Loading...");
+    SerialFlashFile file = SerialFlash.open(raw_files.Name(selected_file));
+    if (!file)
+    {
+        snprintf(message, sizeof(message), "ERROR: %s not found in Flash; playback disabled.", raw_files.Name(selected_file));
+        PrintLine(message);
+        return false;
+    }
+    const uint32_t bytes = file.size();
+    if (bytes < 4u || (bytes & 1u) != 0u || bytes > extmem_smalloc_pool.pool_size)
+    {
+        file.close();
+        PrintLine("ERROR: invalid PCM size or source larger than PSRAM.");
+        return false;
+    }
+    auto *samples = static_cast<int16_t *>(sm_malloc_pool(&extmem_smalloc_pool, bytes));
+    if (samples == nullptr)
+    {
+        file.close();
+        PrintLine("ERROR: insufficient PSRAM for source.");
+        return false;
+    }
+    for (uint32_t offset = 0; offset < bytes; offset += 4096u)
+    {
+        const uint32_t count = std::min<uint32_t>(bytes - offset, 4096u);
+        if (file.read(reinterpret_cast<uint8_t *>(samples) + offset, count) != count)
+        {
+            file.close();
+            sm_free_pool(&extmem_smalloc_pool, samples);
+            PrintLine("ERROR: incomplete Flash read; playback disabled.");
+            return false;
+        }
+    }
+    file.close();
+    source = {samples, bytes / sizeof(int16_t)};
+    voices.SetSource(source);
+    loaded_file = selected_file;
+    display.Show(raw_files.Name(selected_file), raw_files.Name(loaded_file), "Ready");
+    snprintf(message, sizeof(message), "SOURCE file=%s bytes=%lu duration=%.3f s (shared by all 4 voices)", raw_files.Name(selected_file), static_cast<unsigned long>(bytes), bytes / (2.0 * AUDIO_SAMPLE_RATE_EXACT));
+    PrintLine(message);
     return true;
 }
 
-void FreeSources()
+void ShowFileStatus(const char *status)
 {
-    if (sources[1].samples != nullptr && sources[1].samples != sources[0].samples)
+    display.Show(raw_files.Name(selected_file), raw_files.Name(loaded_file), status);
+}
+
+void FailFileLoad(const char *reason)
+{
+    pending_file.close();
+    if (pending_samples != nullptr)
     {
-        sm_free_pool(&extmem_smalloc_pool, const_cast<int16_t *>(sources[1].samples));
+        sm_free_pool(&extmem_smalloc_pool, pending_samples);
+        pending_samples = nullptr;
     }
-    if (sources[0].samples != nullptr)
+    loading_file = -1;
+    PrintLine(reason);
+    ShowFileStatus(reason);
+}
+
+void PollFileLoad()
+{
+    if (loading_file < 0)
     {
-        sm_free_pool(&extmem_smalloc_pool, const_cast<int16_t *>(sources[0].samples));
-    }
-    if (player.core != nullptr)
-    {
-        for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
+        if (requested_file < 0 || millis() - selection_time < 250u)
         {
-            player.core[voice].~WsolaCore();
+            return;
         }
-        sm_free_pool(&extmem_smalloc_pool, player.core);
-        player.core = nullptr;
+        const int target = requested_file;
+        requested_file = -1;
+        if (target == loaded_file)
+        {
+            ShowFileStatus("Ready");
+            return;
+        }
+        pending_file = SerialFlash.open(raw_files.Name(target));
+        if (!pending_file)
+        {
+            FailFileLoad("File unavailable");
+            return;
+        }
+        pending_bytes = pending_file.size();
+        pending_samples = static_cast<int16_t *>(sm_malloc_pool(&extmem_smalloc_pool, pending_bytes));
+        if (pending_samples == nullptr)
+        {
+            FailFileLoad("Not enough free PSRAM");
+            return;
+        }
+        loading_file = target;
+        pending_read = 0;
+        ReleaseAll();
+        ShowFileStatus("Loading - notes stopped");
     }
+    if (pending_read < pending_bytes)
+    {
+        const uint32_t count = std::min<uint32_t>(4096u, pending_bytes - pending_read);
+        if (pending_file.read(reinterpret_cast<uint8_t *>(pending_samples) + pending_read, count) != count)
+        {
+            FailFileLoad("File read failed");
+            return;
+        }
+        pending_read += count;
+        return; // Keep servicing MIDI, encoders and diagnostics between chunks.
+    }
+    bool active = false;
+
+    AudioNoInterrupts();
+    for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
+    {
+        active = active || player.core[voice].IsActive();
+    }
+    AudioInterrupts();
+
+    if (active)
+    {
+        return; // Old source must survive until every anticlick tail is finished.
+    }
+    const int16_t *old_samples = source.samples;
+    source = {pending_samples, pending_bytes / sizeof(int16_t)};
+
+    AudioNoInterrupts();
+    voices.SetSource(source);
+    voices.ClearRejected();
+    for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
+    {
+        player.core[voice].Attach(source.samples, source.count);
+    }
+    player.ResetMeasurement();
+    AudioInterrupts();
+
+    pending_samples = nullptr;
+    pending_file.close();
+    sm_free_pool(&extmem_smalloc_pool, const_cast<int16_t *>(old_samples));
+    loaded_file = loading_file;
+    loading_file = -1;
+    ShowFileStatus(requested_file >= 0 ? "Selection pending" : "Ready");
+    char message[100];
+    snprintf(message, sizeof(message), "FILE loaded=%s", raw_files.Name(loaded_file));
+    PrintLine(message);
 }
 
 void PollControls()
 {
     controls.Poll();
+    const int selection = controls.TakeRotation(HardwareControls::Select);
+    if (selection != 0)
+    {
+        selected_file = constrain(selected_file + selection, 0, raw_files.Count() - 1);
+        requested_file = selected_file;
+        selection_time = millis();
+        ShowFileStatus(loading_file >= 0 ? "Loading..." : "Selection pending");
+    }
     const int overlap_rotation = controls.TakeRotation(HardwareControls::Step);
     const int grain_rotation = controls.TakeRotation(HardwareControls::To);
     const int next_volume = constrain(volume_percent + controls.TakeRotation(HardwareControls::Volume), 0, 100);
     controls.TakeRotation(HardwareControls::From);
-    const bool toggle_antialias = controls.TakeStepPress();
+    controls.TakeStepPress();
     controls.TakeFromPress();
     controls.TakeToPress();
-    if (next_volume != volume_percent || toggle_antialias)
+    if (next_volume != volume_percent)
     {
         volume_percent = next_volume;
-        if (toggle_antialias)
-        {
-            antialias_enabled = !antialias_enabled;
-        }
 
         AudioNoInterrupts();
-        voices.SetParameters(WindowSamples(), overlaps[overlap_id], volume_percent);
-        voices.SetAntialias(antialias_enabled);
+        voices.SetVolume(volume_percent);
         AudioInterrupts();
     }
     if (overlap_rotation != 0)
@@ -287,10 +375,6 @@ void PollControls()
     if (grain_rotation != 0)
     {
         PrintGrain();
-    }
-    if (toggle_antialias)
-    {
-        PrintLine(antialias_enabled ? "AA=ON" : "AA=BYPASS");
     }
 }
 
@@ -325,13 +409,15 @@ void setup()
     {
         yield();
     }
-    PrintLine("Granular 0.5.6 - MIDI DIN Serial1 CH1 - WSOLA 12 voices - per-candidate reference 64/128 - LOOP_FWD tempo 1");
+    PrintLine("Granular 0.6.3 - FFT phase vocoder - 4 voices - MIDI DIN CH1 - LOOP_FWD tempo 1");
     AudioMemory(12);
     if (!controls.Begin())
     {
         PrintLine("ERROR: MCP23S17 initialization failed.");
         return;
     }
+    display.Begin();
+    display.Show(ExperimentConfig::SourceFile, "None", "Starting...");
     if (!codec.enable())
     {
         PrintLine("ERROR: Audio Board initialization failed.");
@@ -340,9 +426,9 @@ void setup()
     codec.lineOutLevel(13);
     codec.volume(0.8f);
     codec.audioProcessorDisable();
-    if (!LoadSources())
+    if (!LoadSource())
     {
-        FreeSources();
+        display.Show(selected_file >= 0 ? raw_files.Name(selected_file) : ExperimentConfig::SourceFile, "None", "Load failed - see serial");
         return;
     }
     midi_input.Begin();
@@ -353,11 +439,10 @@ void setup()
     AudioInterrupts();
 
     ready = true;
-    PrintLine("Grain fixed at 882 samples; overlap fixed at 50%; To/Step rotation: show fixed value; Step press: AA bypass; LineOutVol: master 0..100%.");
+    PrintLine("FFT 1024 samples; overlap 75%; hop 256; To/Step rotation: show fixed value; Select: RAW file; LineOutVol: master 0..100%; buttons unused.");
     PrintLine("MIDI notes 36..84; velocity gain; bend +/-2st clamped to pitch 0.25..4; no ADSR, existing 5ms anticlick only. CC120/123: release all.");
     PrintOverlap();
     PrintGrain();
-    PrintLine(antialias_enabled ? "AA=ON" : "AA=BYPASS");
 }
 
 void loop()
@@ -373,6 +458,7 @@ void loop()
         HandleMidi(midi_input.messages[i]);
     }
     PollControls();
+    PollFileLoad();
     if (millis() - last_diagnostics >= 2000u)
     {
         last_diagnostics = millis();

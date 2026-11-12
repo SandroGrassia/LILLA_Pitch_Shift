@@ -1,15 +1,15 @@
 #pragma once
 #include <Arduino.h>
 #include <AudioStream.h>
-#include "WsolaCore.h"
+#include "FftPitchCore.h"
 
 class GranularAudio : public AudioStream
 {
 public:
-    explicit GranularAudio(WsolaCore *voices = nullptr);
-    static constexpr uint32_t VoiceCount = 12;
+    explicit GranularAudio(FftPitchCore *voices = nullptr);
+    static constexpr uint32_t VoiceCount = 4;
     static constexpr uint32_t Mix = VoiceCount;
-    WsolaCore *core; // Constructed once in PSRAM before SetReady; no allocation in the audio callback.
+    FftPitchCore *core; // Constructed once in internal RAM before SetReady; no allocation in the audio callback.
     struct Levels
     {
         uint64_t source_energy = 0;
