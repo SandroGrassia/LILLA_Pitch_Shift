@@ -3,15 +3,39 @@
 #include <cmath>
 #include <cstring>
 
+alignas(32) int16_t WsolaCore::search[WsolaCore::MaxWindow + 2 * WsolaCore::MaxSearch] = {};
+alignas(32) int16_t WsolaCore::correlation_tail[WsolaCore::MaxWindow] = {};
+
 void WsolaCore::Attach(const int16_t *samples, uint32_t count)
 {
     source = samples;
     source_count = count;
 }
 
+void WsolaCore::StartNote(const int16_t *samples, uint32_t count, float pitch, float volume)
+{
+    Attach(samples, count);
+    transport = 0;
+    pitch_target = pitch;
+    pitch_now = pitch;
+    volume_target = volume;
+    volume_now = volume;
+    gate = 0.0f;
+    initialized = false;
+    geometry_pending = false;
+    generated_hops = 0;
+    running = true;
+}
+
 void WsolaCore::SetPitch(float value)
 {
     pitch_target = value;
+    antialias.SetPitch(std::max(pitch_now, pitch_target));
+}
+
+void WsolaCore::SetAntialias(bool enabled)
+{
+    antialias_enabled = enabled;
 }
 
 void WsolaCore::SetWindow(uint32_t samples)
@@ -114,7 +138,7 @@ float WsolaCore::Score(uint32_t offset, uint32_t stride) const
     uint32_t count = 0;
     for (uint32_t i = 0; i < overlap; i += stride)
     {
-        const float x = tail[i] * (1.0f / 32768.0f);
+        const float x = correlation_tail[i] * (1.0f / 32768.0f);
         const float y = search[offset + i] * (1.0f / 32768.0f);
         a += x;
         b += y;
@@ -139,8 +163,12 @@ void WsolaCore::Generate(uint32_t destination)
     {
         for (uint32_t i = 0; i < overlap; ++i)
         {
-            tail[i] = static_cast<int16_t>(accumulated[i] / weights[i]);
+            correlation_tail[i] = static_cast<int16_t>(accumulated[i] / weights[i]);
         }
+    }
+    else
+    {
+        std::memcpy(correlation_tail, tail, overlap * sizeof(int16_t));
     }
     // One synthesis hop ahead. Anchor to the actual output transport, not the last
     // search match: local alignment errors never accumulate into tempo drift.
@@ -148,7 +176,8 @@ void WsolaCore::Generate(uint32_t destination)
     const uint32_t nominal = Wrap(static_cast<int64_t>(transport) + static_cast<int64_t>(std::lround(ahead)));
     CopySource(search, Wrap(static_cast<int64_t>(nominal) - search_radius), window + 2u * search_radius);
     uint32_t best = search_radius;
-    const uint32_t coarse_stride = std::max<uint32_t>(1u, overlap / 128u);
+    // Reduced correlation sampling; keep candidate positions and the search radius unchanged.
+    const uint32_t coarse_stride = std::max<uint32_t>(1u, overlap / 64u);
     float best_score = Score(best, coarse_stride);
     if (search_radius > 0 && std::fabs(pitch_now - 1.0f) > 0.00001f)
     {
@@ -164,7 +193,7 @@ void WsolaCore::Generate(uint32_t destination)
         }
         const uint32_t first = best > 8u ? best - 8u : 0u;
         const uint32_t last = std::min(best + 8u, 2u * search_radius);
-        const uint32_t fine_stride = std::max<uint32_t>(1u, overlap / 256u);
+        const uint32_t fine_stride = std::max<uint32_t>(1u, overlap / 128u);
         best_score = Score(best, fine_stride) - 0.002f * std::abs(static_cast<int32_t>(best) - static_cast<int32_t>(search_radius)) / search_radius;
         for (uint32_t candidate = first; candidate <= last; ++candidate)
         {
@@ -178,7 +207,7 @@ void WsolaCore::Generate(uint32_t destination)
         }
     }
     last_offset = static_cast<int32_t>(best) - static_cast<int32_t>(search_radius);
-    last_correlation = Score(best, std::max<uint32_t>(1u, overlap / 256u));
+    last_correlation = Score(best, std::max<uint32_t>(1u, overlap / 128u));
     if (overlap != hop)
     {
         MixFragment(destination, best);
@@ -187,7 +216,7 @@ void WsolaCore::Generate(uint32_t destination)
     for (uint32_t i = 0; i < hop; ++i)
     {
         const float incoming = static_cast<float>(i) / (hop - 1u);
-        const float value = tail[i] + incoming * (search[best + i] - tail[i]);
+        const float value = correlation_tail[i] + incoming * (search[best + i] - correlation_tail[i]);
         blocks[destination][i] = static_cast<int16_t>(value);
         tail[i] = search[best + hop + i];
     }
@@ -200,6 +229,10 @@ void WsolaCore::Prime()
     hop = window - overlap;
     current = 0;
     read_position = 0.0f;
+    antialias_running = false;
+    antialias_mix = antialias_enabled ? std::clamp((pitch_now - 1.0f) * 20.0f, 0.0f, 1.0f) : 0.0f;
+    filter_update = 0;
+    antialias.SetPitch(std::max(pitch_now, pitch_target));
     CopySource(blocks[current], transport, hop);
     CopySource(tail, Wrap(static_cast<int64_t>(transport) + hop), overlap);
     if (overlap != hop)
@@ -248,6 +281,11 @@ int16_t WsolaCore::Render()
     }
     while (read_position >= hop)
     {
+        if (antialias_running)
+        {
+            AdvanceFilter(static_cast<int32_t>(hop) - 1);
+            filtered_index -= static_cast<int32_t>(hop);
+        }
         read_position -= hop;
         current ^= 1u;
         Generate(current ^ 1u);
@@ -255,7 +293,31 @@ int16_t WsolaCore::Render()
     const uint32_t index = static_cast<uint32_t>(read_position);
     const float fraction = read_position - index;
     const int16_t next = index + 1u < hop ? blocks[current][index + 1u] : blocks[current ^ 1u][0];
-    const float value = blocks[current][index] + fraction * (next - blocks[current][index]);
+    float value = blocks[current][index] + fraction * (next - blocks[current][index]);
+    const float target_mix = antialias_enabled ? std::clamp((pitch_now - 1.0f) * 20.0f, 0.0f, 1.0f) : 0.0f;
+    antialias_mix += std::clamp(target_mix - antialias_mix, -1.0f / 221.0f, 1.0f / 221.0f);
+    if (antialias_mix > 0.0f)
+    {
+        if (filter_update == 0)
+        {
+            antialias.SetPitch(std::max(pitch_now, pitch_target));
+        }
+        filter_update = (filter_update + 1u) & 63u;
+        if (!antialias_running)
+        {
+            antialias.Reset(blocks[current][index]);
+            filtered_index = static_cast<int32_t>(index) - 1;
+            antialias_running = true;
+        }
+        AdvanceFilter(static_cast<int32_t>(index) + 1);
+        const float filtered = filtered_previous + fraction * (filtered_next - filtered_previous);
+        value += antialias_mix * (filtered - value);
+    }
+    else
+    {
+        antialias_running = false;
+        filter_update = 0;
+    }
     read_position += pitch_now;
     ++transport;
     if (transport == source_count)
@@ -264,6 +326,17 @@ int16_t WsolaCore::Render()
     }
     const float output = value * volume_now * gate;
     return static_cast<int16_t>(std::fmax(-32768.0f, std::fmin(32767.0f, output)));
+}
+
+void WsolaCore::AdvanceFilter(int32_t index)
+{
+    while (filtered_index < index)
+    {
+        ++filtered_index;
+        const float input = filtered_index < static_cast<int32_t>(hop) ? blocks[current][filtered_index] : blocks[current ^ 1u][0];
+        filtered_previous = filtered_next;
+        filtered_next = antialias.Process(input);
+    }
 }
 
 void WsolaCore::MixFragment(uint32_t destination, uint32_t best)

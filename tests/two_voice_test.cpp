@@ -11,7 +11,8 @@ int main()
     {
         source[i] = static_cast<int16_t>(25000 * std::sin(i * 0.19));
     }
-    GranularAudio audio;
+    WsolaCore audio_cores[GranularAudio::VoiceCount];
+    GranularAudio audio(audio_cores);
     WsolaCore reference[2];
     audio.update();
     for (int16_t value : AudioStream::transmitted.data)
@@ -36,7 +37,7 @@ int main()
         {
             const int32_t first = reference[0].Render();
             const int32_t second = reference[1].Render();
-            assert(AudioStream::transmitted.data[i] == (first + second) / 2);
+            assert(AudioStream::transmitted.data[i] == (first + second) / static_cast<int32_t>(GranularAudio::VoiceCount));
         }
     }
     const auto first = audio.TakeTimings(0);
@@ -44,6 +45,7 @@ int main()
     const auto mix = audio.TakeTimings(GranularAudio::Mix);
     assert(first.transient.blocks == 260 && second.transient.blocks == 260 && mix.transient.blocks == 260);
     assert(mix.read.blocks + mix.generate.blocks == 50);
+    assert(mix.transient.engine_cycles == first.transient.engine_cycles + second.transient.engine_cycles); // Idle slots must not contribute to the reported player cost.
     assert(first.generate.hops == second.generate.hops);
     assert(mix.generate.hops == first.generate.hops + second.generate.hops);
     assert(first.generate.hops_max == 1 && second.generate.hops_max == 1 && mix.generate.hops_max == 2);
@@ -65,7 +67,7 @@ int main()
             {
                 const int32_t first_sample = reference[0].Render();
                 const int32_t second_sample = reference[1].Render();
-                assert(AudioStream::transmitted.data[i] == (first_sample + second_sample) / 2);
+                assert(AudioStream::transmitted.data[i] == (first_sample + second_sample) / static_cast<int32_t>(GranularAudio::VoiceCount));
             }
         }
     }
@@ -82,7 +84,7 @@ int main()
         {
             const int32_t first_sample = reference[0].Render();
             const int32_t second_sample = reference[1].Render();
-            assert(AudioStream::transmitted.data[i] == (first_sample + second_sample) / 2);
+            assert(AudioStream::transmitted.data[i] == (first_sample + second_sample) / static_cast<int32_t>(GranularAudio::VoiceCount));
         }
     }
     assert(!audio.core[0].IsActive() && audio.core[1].IsActive());
@@ -105,12 +107,13 @@ int main()
     assert(audio.TakeTimings(0).transient.blocks == 0);
     assert(audio.TakeTimings(1).transient.blocks == 1);
     assert(audio.TakeTimings(GranularAudio::Mix).transient.blocks == 1);
-    // Full-scale coincident voices must remain in range with the fixed half-gain mix.
+    // Full-scale coincident voices must remain in range with the fixed 1/VoiceCount mix.
     for (int16_t value : {int16_t(32767), int16_t(-32768)})
     {
         std::vector<int16_t> full_scale(1009, value);
-        GranularAudio loud;
-        for (auto &core : loud.core)
+        WsolaCore loud_cores[GranularAudio::VoiceCount];
+        GranularAudio loud(loud_cores);
+        for (auto &core : loud_cores)
         {
             core.Attach(full_scale.data(), full_scale.size());
             core.SetVolume(1.0f);

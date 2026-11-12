@@ -1,8 +1,9 @@
 #include "GranularAudio.h"
 #include <cstring>
 
-GranularAudio::GranularAudio() : AudioStream(0, nullptr)
+GranularAudio::GranularAudio(WsolaCore *voices) : AudioStream(0, nullptr), core(voices)
 {
+    ResetMeasurement();
 }
 
 void GranularAudio::SetReady()
@@ -42,6 +43,13 @@ void GranularAudio::ResetMeasurement()
     }
     maximum_cycles = 0;
     missed_blocks = 0;
+}
+
+void GranularAudio::ResetVoiceMeasurement(uint32_t voice)
+{
+    timings[voice] = {};
+    levels[voice] = {};
+    transient_remaining[voice] = 260;
 }
 
 void GranularAudio::RecordTiming(Timing &target, uint32_t engine, uint32_t callback, uint32_t hops, uint32_t budget)
@@ -121,10 +129,10 @@ void GranularAudio::update()
     {
         active[voice] = ready && core[voice].IsActive();
         any_active = any_active || active[voice];
-        first[voice] = core[voice].Transport();
-        const uint32_t hops_before = core[voice].GeneratedHops();
+        first[voice] = active[voice] ? core[voice].Transport() : 0;
+        const uint32_t hops_before = active[voice] ? core[voice].GeneratedHops() : 0;
         const uint32_t engine_started = ARM_DWT_CYCCNT;
-        if (ready)
+        if (active[voice])
         {
             for (uint32_t i = 0; i < AUDIO_BLOCK_SAMPLES; ++i)
             {
@@ -136,11 +144,11 @@ void GranularAudio::update()
             std::memset(rendered[voice], 0, sizeof(rendered[voice]));
         }
         engine_elapsed[voice] = ARM_DWT_CYCCNT - engine_started;
-        hops[voice] = core[voice].GeneratedHops() - hops_before;
-        total_engine += engine_elapsed[voice];
+        hops[voice] = active[voice] ? core[voice].GeneratedHops() - hops_before : 0;
+        total_engine += active[voice] ? engine_elapsed[voice] : 0u; // Sum only active renderers in this callback.
         total_hops += hops[voice];
     }
-    // Meter reads follow both renders, so they do not prewarm either voice in this block.
+    // Meter reads follow all renders, so they do not prewarm voices in this block.
     for (uint32_t voice = 0; voice < VoiceCount; ++voice)
     {
         if (active[voice])
@@ -159,8 +167,12 @@ void GranularAudio::update()
     for (uint32_t i = 0; i < AUDIO_BLOCK_SAMPLES; ++i)
     {
         // Fixed headroom: no level jump in the other voice when one starts or stops.
-        const int32_t sum = static_cast<int32_t>(rendered[0][i]) + rendered[1][i];
-        destination[i] = static_cast<int16_t>(sum / 2);
+        int32_t sum = 0;
+        for (uint32_t voice = 0; voice < VoiceCount; ++voice)
+        {
+            sum += rendered[voice][i];
+        }
+        destination[i] = static_cast<int16_t>(sum / static_cast<int32_t>(VoiceCount));
         RecordLevel(levels[Mix], 0, destination[i]);
     }
     if (block != nullptr)
@@ -176,7 +188,7 @@ void GranularAudio::update()
             RecordBlock(voice, engine_elapsed[voice], engine_elapsed[voice], hops[voice], budget);
         }
     }
-    // Full callback includes both renderers, meters, mixing and per-voice statistics.
+    // Full callback includes all renderers, meters, mixing and per-voice statistics.
     const uint32_t elapsed = ARM_DWT_CYCCNT - started;
     if (elapsed > budget)
     {

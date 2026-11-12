@@ -3,11 +3,15 @@
 #include <SerialFlash.h>
 #include <SPI.h>
 #include <smalloc.h>
-#include <cmath>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <new>
+#include "ExperimentConfig.h"
 #include "GranularAudio.h"
 #include "HardwareControls.h"
+#include "MidiInput.h"
+#include "NoteVoices.h"
 
 namespace
 {
@@ -17,181 +21,300 @@ AudioConnection left(player, 0, output, 0);
 AudioConnection right(player, 0, output, 1);
 AudioControlSGTL5000 codec;
 HardwareControls controls;
-constexpr char filename[] = "Giotto.raw";
-constexpr const char *scope_names[] = {"P1", "P2", "MIX"};
-int pitch_cents[GranularAudio::VoiceCount] = {};
-constexpr uint32_t overlaps[] = {10, 25, 50, 75}; // Step selects a common overlap for both voices.
-int overlap_id = 2; // Start with the original 50-percent geometry.
+MidiInput midi_input;
+NoteVoices voices(player);
+NoteVoices::Source sources[2];
+constexpr uint32_t overlaps[] = {10, 25, 50, 75};
+constexpr int overlap_id = 2;
+constexpr int grain_ms = 20;
 int volume_percent = 25;
-bool running[GranularAudio::VoiceCount] = {};
+bool antialias_enabled = true;
 bool ready = false;
 uint32_t last_diagnostics = 0;
-uint32_t measurement_id = 0;
-char log_buffer[4096];
-size_t log_size = 0;
-size_t log_sent = 0;
+char log_buffer[16384];
+size_t log_read = 0;
+size_t log_write = 0;
+size_t log_count = 0;
 
 void PrintLine(const char *message)
 {
-    // Queue the diagnostic burst without blocking the controls or audio.
     const size_t size = strlen(message);
-    if (log_size + size + 2u <= sizeof(log_buffer))
+    if (size + 2u > sizeof(log_buffer) - log_count)
     {
-        memcpy(log_buffer + log_size, message, size);
-        log_size += size;
-        log_buffer[log_size++] = '\r';
-        log_buffer[log_size++] = '\n';
+        return;
     }
+    for (size_t i = 0; i < size; ++i)
+    {
+        log_buffer[log_write] = message[i];
+        log_write = (log_write + 1u) % sizeof(log_buffer);
+    }
+    log_buffer[log_write] = '\r';
+    log_write = (log_write + 1u) % sizeof(log_buffer);
+    log_buffer[log_write] = '\n';
+    log_write = (log_write + 1u) % sizeof(log_buffer);
+    log_count += size + 2u;
 }
 
 void FlushLogs()
 {
-    if (Serial && log_sent < log_size)
+    if (Serial && log_count > 0)
     {
         const size_t available = static_cast<size_t>(Serial.availableForWrite());
-        const size_t remaining = log_size - log_sent;
-        const size_t count = available < remaining ? available : remaining;
+        const size_t count = std::min(available, std::min(log_count, sizeof(log_buffer) - log_read));
         if (count > 0)
         {
-            log_sent += Serial.write(reinterpret_cast<const uint8_t *>(log_buffer + log_sent), count);
-        }
-        if (log_sent == log_size)
-        {
-            log_sent = 0;
-            log_size = 0;
+            const size_t sent = Serial.write(reinterpret_cast<const uint8_t *>(log_buffer + log_read), count);
+            log_read = (log_read + sent) % sizeof(log_buffer);
+            log_count -= sent;
         }
     }
 }
 
-void ApplyControls()
+uint32_t WindowSamples()
 {
-    const float pitches[] = {exp2f(pitch_cents[0] / 1200.0f), exp2f(pitch_cents[1] / 1200.0f)};
+    // Nearest even source-sample count; WSOLA requires an even window, 220..4410.
+    return static_cast<uint32_t>(grain_ms * (44100.0f / 2000.0f) + 0.5f) * 2u;
+}
+
+void PrintOverlap()
+{
+    char message[48];
+    snprintf(message, sizeof(message), "OVERLAP=%lu%% (fixed)", static_cast<unsigned long>(overlaps[overlap_id]));
+    PrintLine(message);
+}
+
+void PrintGrain()
+{
+    char message[48];
+    snprintf(message, sizeof(message), "GRAIN samples=%lu (fixed)", static_cast<unsigned long>(WindowSamples()));
+    PrintLine(message);
+}
+
+GranularAudio::Timing TotalTiming(const GranularAudio::Timings &timings)
+{
+    GranularAudio::Timing total;
+    const GranularAudio::Timing *parts[] = {&timings.transient, &timings.read, &timings.generate};
+    for (const auto *part : parts)
+    {
+        total.blocks += part->blocks;
+        total.engine_cycles += part->engine_cycles;
+        total.callback_cycles += part->callback_cycles;
+        total.engine_min = std::min(total.engine_min, part->engine_min);
+        total.engine_max = std::max(total.engine_max, part->engine_max);
+        total.callback_max = std::max(total.callback_max, part->callback_max);
+        total.hops += part->hops;
+        total.hops_max = std::max(total.hops_max, part->hops_max);
+        total.late += part->late;
+    }
+    return total;
+}
+
+void ReleaseNote(uint8_t key)
+{
+    NoteVoices::Report report;
 
     AudioNoInterrupts();
+    voices.NoteOff(key, report);
+    AudioInterrupts();
+}
+
+void ReleaseAll()
+{
     for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
     {
-        player.core[voice].SetPitch(pitches[voice]);
-        player.core[voice].SetOverlap(overlaps[overlap_id]);
-        player.core[voice].SetVolume(volume_percent / 100.0f);
-        player.core[voice].SetRunning(running[voice]);
-    }
-    player.ResetMeasurement();
-    AudioProcessorUsageMaxReset();
-    AudioMemoryUsageMaxReset();
-    AudioInterrupts();
+        NoteVoices::Report report;
 
-    ++measurement_id;
-    last_diagnostics = millis();
-    char message[180];
-    snprintf(message, sizeof(message), "WSOLA P1=%s pitch=%.4f (%d cents) P2=%s pitch=%.4f (%d cents) window=20 ms search=+/-10 ms overlap=%u%% volume=%d%% mix_gain=0.5", running[0] ? "PLAY" : "STOP", pitches[0], pitch_cents[0], running[1] ? "PLAY" : "STOP", pitches[1], pitch_cents[1], static_cast<unsigned>(overlaps[overlap_id]), volume_percent);
-    PrintLine(message);
+        AudioNoInterrupts();
+        voices.ReleaseVoice(voice, report);
+        AudioInterrupts();
+    }
+    voices.ClearRejected();
 }
 
-void PrintTiming(uint32_t scope, const char *name, const GranularAudio::Timing &timing)
+void HandleMidi(const MidiInput::Message &message)
 {
-    if (timing.blocks == 0)
+    if (message.type == 0x80 || (message.type == 0x90 && message.data2 == 0))
     {
-        return;
+        ReleaseNote(message.data1);
     }
-    const double cycles_per_us = F_CPU_ACTUAL / 1000000.0;
-    char message[230];
-    if (scope == GranularAudio::Mix)
+    else if (message.type == 0x90)
     {
-        snprintf(message, sizeof(message), "TIME MIX %s id=%lu n=%lu engine_us[min/avg/max]=%.2f/%.2f/%.2f callback_us[avg/max]=%.2f/%.2f hops=%lu hmax=%lu late=%lu", name, static_cast<unsigned long>(measurement_id), static_cast<unsigned long>(timing.blocks), timing.engine_min / cycles_per_us, timing.engine_cycles / (cycles_per_us * timing.blocks), timing.engine_max / cycles_per_us, timing.callback_cycles / (cycles_per_us * timing.blocks), timing.callback_max / cycles_per_us, static_cast<unsigned long>(timing.hops), static_cast<unsigned long>(timing.hops_max), static_cast<unsigned long>(timing.late));
-    }
-    else
-    {
-        snprintf(message, sizeof(message), "TIME %s %s id=%lu n=%lu engine_us[min/avg/max]=%.2f/%.2f/%.2f hops=%lu hmax=%lu", scope_names[scope], name, static_cast<unsigned long>(measurement_id), static_cast<unsigned long>(timing.blocks), timing.engine_min / cycles_per_us, timing.engine_cycles / (cycles_per_us * timing.blocks), timing.engine_max / cycles_per_us, static_cast<unsigned long>(timing.hops), static_cast<unsigned long>(timing.hops_max));
-    }
-    PrintLine(message);
-}
+        uint32_t voice;
 
-void PrintTimings(uint32_t scope, const GranularAudio::Timings &timings)
-{
-    PrintTiming(scope, "WARM", timings.transient);
-    PrintTiming(scope, "READ", timings.read);
-    PrintTiming(scope, "GEN", timings.generate);
-    GranularAudio::Timing steady = timings.read;
-    steady.blocks += timings.generate.blocks;
-    steady.engine_cycles += timings.generate.engine_cycles;
-    steady.callback_cycles += timings.generate.callback_cycles;
-    steady.engine_min = min(steady.engine_min, timings.generate.engine_min);
-    steady.engine_max = max(steady.engine_max, timings.generate.engine_max);
-    steady.callback_max = max(steady.callback_max, timings.generate.callback_max);
-    steady.hops += timings.generate.hops;
-    steady.hops_max = max(steady.hops_max, timings.generate.hops_max);
-    steady.late += timings.generate.late;
-    PrintTiming(scope, "ALL", steady);
-}
+        AudioNoInterrupts();
+        const auto result = voices.NoteOn(message.data1, message.data2, voice);
+        AudioInterrupts();
 
-float Dbfs(uint64_t energy, uint32_t samples)
-{
-    const float rms = samples > 0 ? sqrtf(static_cast<float>(energy) / samples) : 0.0f;
-    return rms > 0.0f ? 20.0f * log10f(rms / 32768.0f) : -120.0f;
-}
-
-bool LoadSource()
-{
-    char message[120];
-    snprintf(message, sizeof(message), "PSRAM pool: %lu KiB", static_cast<unsigned long>(extmem_smalloc_pool.pool_size / 1024u));
-    PrintLine(message);
-    if (extmem_smalloc_pool.pool_size == 0)
-    {
-        PrintLine("ERROR: no PSRAM; playback disabled.");
-        return false;
-    }
-    if (!SerialFlash.begin(6))
-    {
-        PrintLine("ERROR: Flash initialization failed; playback disabled.");
-        return false;
-    }
-    SerialFlashFile file = SerialFlash.open(filename);
-    if (!file)
-    {
-        snprintf(message, sizeof(message), "ERROR: %s not found in Flash; playback disabled.", filename);
-        PrintLine(message);
-        return false;
-    }
-    const uint32_t bytes = file.size();
-    if (bytes < 4u || (bytes & 1u) != 0u || bytes > extmem_smalloc_pool.pool_size)
-    {
-        PrintLine("ERROR: invalid PCM size or source larger than PSRAM.");
-        file.close();
-        return false;
-    }
-    auto *samples = static_cast<int16_t *>(sm_malloc_pool(&extmem_smalloc_pool, bytes));
-    if (samples == nullptr)
-    {
-        PrintLine("ERROR: PSRAM allocation failed.");
-        file.close();
-        return false;
-    }
-    for (uint32_t offset = 0; offset < bytes; offset += 4096u)
-    {
-        const uint32_t count = bytes - offset < 4096u ? bytes - offset : 4096u;
-        if (file.read(reinterpret_cast<uint8_t *>(samples) + offset, count) != count)
+        char text[200];
+        if (result == NoteVoices::Result::Started)
         {
-            PrintLine("ERROR: incomplete Flash read.");
-            sm_free_pool(&extmem_smalloc_pool, samples);
-            file.close();
+            snprintf(text, sizeof(text), "NOTE_ON pitch=%.5f", voices.TargetPitch(message.data1));
+        }
+        else
+        {
+            const char *reason = result == NoteVoices::Result::Full ? "capacity (including anticlick tails)" : result == NoteVoices::Result::OutOfRange ? "outside notes 36..84" : "waiting for rejected NoteOff";
+            snprintf(text, sizeof(text), "NOTE_REJECT note=%u reason=%s", message.data1, reason);
+        }
+        PrintLine(text);
+    }
+    else if (message.type == 0xE0)
+    {
+        const int bend = (static_cast<int>(message.data2) << 7) + message.data1 - 8192;
+
+        AudioNoInterrupts();
+        voices.PitchBend(bend);
+        AudioInterrupts();
+    }
+    else if (message.type == 0xB0 && (message.data1 == 120 || message.data1 == 123))
+    {
+        ReleaseAll();
+    }
+}
+
+bool LoadSources()
+{
+    char message[180];
+    snprintf(message, sizeof(message), "PSRAM pool=%lu KiB; WSOLA state=%lu bytes/voice x %lu", static_cast<unsigned long>(extmem_smalloc_pool.pool_size / 1024u), static_cast<unsigned long>(sizeof(WsolaCore)), static_cast<unsigned long>(GranularAudio::VoiceCount));
+    PrintLine(message);
+    if (extmem_smalloc_pool.pool_size == 0 || !SerialFlash.begin(6))
+    {
+        PrintLine("ERROR: PSRAM absent or Flash initialization failed; playback disabled.");
+        return false;
+    }
+    void *storage = sm_malloc_pool(&extmem_smalloc_pool, sizeof(WsolaCore) * GranularAudio::VoiceCount);
+    if (storage == nullptr)
+    {
+        PrintLine("ERROR: cannot allocate WSOLA voices in PSRAM.");
+        return false;
+    }
+    player.core = new (storage) WsolaCore[GranularAudio::VoiceCount];
+    for (uint32_t source = 0; source < 2; ++source)
+    {
+        if (source == 1 && strcmp(ExperimentConfig::SourceFiles[0], ExperimentConfig::SourceFiles[1]) == 0)
+        {
+            sources[1] = sources[0];
+            PrintLine("SOURCE B shares SOURCE A (same filename; no duplicate allocation).");
+            continue;
+        }
+        SerialFlashFile file = SerialFlash.open(ExperimentConfig::SourceFiles[source]);
+        if (!file)
+        {
+            snprintf(message, sizeof(message), "ERROR: %s not found in Flash; playback disabled.", ExperimentConfig::SourceFiles[source]);
+            PrintLine(message);
             return false;
         }
+        const uint32_t bytes = file.size();
+        if (bytes < 4u || (bytes & 1u) != 0u || bytes > extmem_smalloc_pool.pool_size)
+        {
+            file.close();
+            PrintLine("ERROR: invalid PCM size or source larger than PSRAM.");
+            return false;
+        }
+        auto *samples = static_cast<int16_t *>(sm_malloc_pool(&extmem_smalloc_pool, bytes));
+        if (samples == nullptr)
+        {
+            file.close();
+            PrintLine("ERROR: insufficient free PSRAM for audio sources and voice states.");
+            return false;
+        }
+        sources[source] = {samples, bytes / sizeof(int16_t)};
+        for (uint32_t offset = 0; offset < bytes; offset += 4096u)
+        {
+            const uint32_t count = std::min<uint32_t>(bytes - offset, 4096u);
+            if (file.read(reinterpret_cast<uint8_t *>(samples) + offset, count) != count)
+            {
+                file.close();
+                PrintLine("ERROR: incomplete Flash read; playback disabled.");
+                return false;
+            }
+        }
+        file.close();
+        snprintf(message, sizeof(message), "SOURCE %c file=%s bytes=%lu duration=%.3f s", 'A' + static_cast<int>(source), ExperimentConfig::SourceFiles[source], static_cast<unsigned long>(bytes), bytes / (2.0 * AUDIO_SAMPLE_RATE_EXACT));
+        PrintLine(message);
     }
-    file.close();
+    voices.SetSources(sources[0], sources[1]);
+    return true;
+}
+
+void FreeSources()
+{
+    if (sources[1].samples != nullptr && sources[1].samples != sources[0].samples)
+    {
+        sm_free_pool(&extmem_smalloc_pool, const_cast<int16_t *>(sources[1].samples));
+    }
+    if (sources[0].samples != nullptr)
+    {
+        sm_free_pool(&extmem_smalloc_pool, const_cast<int16_t *>(sources[0].samples));
+    }
+    if (player.core != nullptr)
+    {
+        for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
+        {
+            player.core[voice].~WsolaCore();
+        }
+        sm_free_pool(&extmem_smalloc_pool, player.core);
+        player.core = nullptr;
+    }
+}
+
+void PollControls()
+{
+    controls.Poll();
+    const int overlap_rotation = controls.TakeRotation(HardwareControls::Step);
+    const int grain_rotation = controls.TakeRotation(HardwareControls::To);
+    const int next_volume = constrain(volume_percent + controls.TakeRotation(HardwareControls::Volume), 0, 100);
+    controls.TakeRotation(HardwareControls::From);
+    const bool toggle_antialias = controls.TakeStepPress();
+    controls.TakeFromPress();
+    controls.TakeToPress();
+    if (next_volume != volume_percent || toggle_antialias)
+    {
+        volume_percent = next_volume;
+        if (toggle_antialias)
+        {
+            antialias_enabled = !antialias_enabled;
+        }
+
+        AudioNoInterrupts();
+        voices.SetParameters(WindowSamples(), overlaps[overlap_id], volume_percent);
+        voices.SetAntialias(antialias_enabled);
+        AudioInterrupts();
+    }
+    if (overlap_rotation != 0)
+    {
+        PrintOverlap();
+    }
+    if (grain_rotation != 0)
+    {
+        PrintGrain();
+    }
+    if (toggle_antialias)
+    {
+        PrintLine(antialias_enabled ? "AA=ON" : "AA=BYPASS");
+    }
+}
+
+void PrintDiagnostics()
+{
+    uint32_t active = 0;
+    GranularAudio::Timings timings;
 
     AudioNoInterrupts();
+    timings = player.TakeTimings(GranularAudio::Mix);
     for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
     {
-        player.core[voice].Attach(samples, bytes / sizeof(int16_t));
-        player.core[voice].SetWindow(882);
-        player.core[voice].SetSearch(441);
+        active += player.core[voice].IsActive() ? 1u : 0u;
     }
-    player.SetReady();
     AudioInterrupts();
 
-    snprintf(message, sizeof(message), "Loaded : %lu bytes, %.3f seconds. Flash remains unchanged.", static_cast<unsigned long>(bytes), bytes / (2.0f * AUDIO_SAMPLE_RATE_EXACT));
+    const auto total = TotalTiming(timings);
+    const double cycles_per_us = F_CPU_ACTUAL / 1000000.0;
+    const double average = total.blocks > 0 ? total.engine_cycles / (cycles_per_us * total.blocks) : 0.0;
+    const double maximum = total.engine_max / cycles_per_us;
+    const double budget = AUDIO_BLOCK_SAMPLES * 1000000.0 / AUDIO_SAMPLE_RATE_EXACT;
+    char message[180];
+    snprintf(message, sizeof(message), "PLAYERS n=%lu cost_us[avg/max]=%.2f/%.2f cost_pct[avg/max]=%.1f/%.1f", static_cast<unsigned long>(active), average, maximum, average * 100.0 / budget, maximum * 100.0 / budget);
     PrintLine(message);
-    return true;
 }
 }
 
@@ -202,7 +325,7 @@ void setup()
     {
         yield();
     }
-    PrintLine("Granular 0.4.0 - two independent WSOLA players - tempo 1");
+    PrintLine("Granular 0.5.6 - MIDI DIN Serial1 CH1 - WSOLA 12 voices - per-candidate reference 64/128 - LOOP_FWD tempo 1");
     AudioMemory(12);
     if (!controls.Begin())
     {
@@ -217,12 +340,24 @@ void setup()
     codec.lineOutLevel(13);
     codec.volume(0.8f);
     codec.audioProcessorDisable();
-    ready = LoadSource();
-    if (ready)
+    if (!LoadSources())
     {
-        ApplyControls();
-        PrintLine("From: P1 pitch / press=play-stop; To: P2 pitch / press=play-stop; LineOutVol: master volume; Step: overlap 10/25/50/75 percent (both players).");
+        FreeSources();
+        return;
     }
+    midi_input.Begin();
+
+    AudioNoInterrupts();
+    player.ResetMeasurement();
+    player.SetReady();
+    AudioInterrupts();
+
+    ready = true;
+    PrintLine("Grain fixed at 882 samples; overlap fixed at 50%; To/Step rotation: show fixed value; Step press: AA bypass; LineOutVol: master 0..100%.");
+    PrintLine("MIDI notes 36..84; velocity gain; bend +/-2st clamped to pitch 0.25..4; no ADSR, existing 5ms anticlick only. CC120/123: release all.");
+    PrintOverlap();
+    PrintGrain();
+    PrintLine(antialias_enabled ? "AA=ON" : "AA=BYPASS");
 }
 
 void loop()
@@ -232,85 +367,15 @@ void loop()
     {
         return;
     }
-    controls.Poll();
-    bool changed = false;
-    const int next_overlap = constrain(overlap_id + controls.TakeRotation(HardwareControls::Step), 0, 3);
-    if (next_overlap != overlap_id)
+    const uint8_t count = midi_input.Collect();
+    for (uint8_t i = 0; i < count; ++i)
     {
-        overlap_id = next_overlap;
-        changed = true;
+        HandleMidi(midi_input.messages[i]);
     }
-    controls.TakeStepPress();
-    const int deltas[] = {controls.TakeRotation(HardwareControls::From), controls.TakeRotation(HardwareControls::To)};
-    const bool presses[] = {controls.TakeFromPress(), controls.TakeToPress()};
-    for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
-    {
-        const int next_pitch = constrain(pitch_cents[voice] + deltas[voice] * 10, -1200, 1200);
-        if (next_pitch != pitch_cents[voice])
-        {
-            pitch_cents[voice] = next_pitch;
-            changed = true;
-        }
-        if (presses[voice])
-        {
-            running[voice] = !running[voice];
-            changed = true;
-        }
-    }
-    const int next_volume = constrain(volume_percent + controls.TakeRotation(HardwareControls::Volume), 0, 100);
-    if (next_volume != volume_percent)
-    {
-        volume_percent = next_volume;
-        changed = true;
-    }
-    if (changed)
-    {
-        ApplyControls();
-    }
+    PollControls();
     if (millis() - last_diagnostics >= 2000u)
     {
         last_diagnostics = millis();
-        uint32_t maximum;
-        uint32_t missed;
-        float cpu_max;
-        uint16_t pool_max;
-        GranularAudio::Levels levels[GranularAudio::VoiceCount + 1];
-        GranularAudio::Timings timings[GranularAudio::VoiceCount + 1];
-        float correlation[GranularAudio::VoiceCount];
-        int32_t offset[GranularAudio::VoiceCount];
-
-        AudioNoInterrupts();
-        player.TakeDiagnostics(maximum, missed);
-        for (uint32_t scope = 0; scope <= GranularAudio::Mix; ++scope)
-        {
-            levels[scope] = player.TakeLevels(scope);
-            timings[scope] = player.TakeTimings(scope);
-        }
-        for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
-        {
-            correlation[voice] = player.core[voice].Correlation();
-            offset[voice] = player.core[voice].Offset();
-        }
-        cpu_max = AudioProcessorUsageMax();
-        pool_max = AudioMemoryUsageMax();
-        AudioProcessorUsageMaxReset();
-        AudioMemoryUsageMaxReset();
-        AudioInterrupts();
-
-        char message[230];
-        snprintf(message, sizeof(message), "BENCH id=%lu P1_play=%u P1_pitch=%.4f P2_play=%u P2_pitch=%.4f window_ms=20 search_ms=10 overlap=%u volume=%d mix_gain=0.5 block=%u budget_us=%.2f MHz=%.0f", static_cast<unsigned long>(measurement_id), running[0] ? 1u : 0u, exp2f(pitch_cents[0] / 1200.0f), running[1] ? 1u : 0u, exp2f(pitch_cents[1] / 1200.0f), static_cast<unsigned>(overlaps[overlap_id]), volume_percent, AUDIO_BLOCK_SAMPLES, AUDIO_BLOCK_SAMPLES * 1000000.0 / AUDIO_SAMPLE_RATE_EXACT, F_CPU_ACTUAL / 1000000.0);
-        PrintLine(message);
-        PrintTimings(GranularAudio::Mix, timings[GranularAudio::Mix]);
-        snprintf(message, sizeof(message), "DIAG render_max=%.1f us audio_cpu_max=%.1f%% pool_max=%u missed=%lu late=%lu", maximum / (F_CPU_ACTUAL / 1000000.0f), cpu_max, pool_max, static_cast<unsigned long>(missed), static_cast<unsigned long>(levels[GranularAudio::Mix].over_budget));
-        PrintLine(message);
-        const GranularAudio::Levels &mix = levels[GranularAudio::Mix];
-        snprintf(message, sizeof(message), "LEVEL MIX out=%.1f dBFS peak=%u", Dbfs(mix.output_energy, mix.samples), mix.peak);
-        PrintLine(message);
-        for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
-        {
-            PrintTimings(voice, timings[voice]);
-            snprintf(message, sizeof(message), "LEVEL %s src=%.1f out=%.1f dBFS peak=%u corr=%.3f offset=%ld (before mix_gain)", scope_names[voice], Dbfs(levels[voice].source_energy, levels[voice].samples), Dbfs(levels[voice].output_energy, levels[voice].samples), levels[voice].peak, correlation[voice], static_cast<long>(offset[voice]));
-            PrintLine(message);
-        }
+        PrintDiagnostics();
     }
 }

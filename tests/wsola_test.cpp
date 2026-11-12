@@ -71,6 +71,9 @@ int main()
         }
     }
     assert(core.Transport() == total % source.size());
+    // Preserve the original convex-interpolation peak bound in bypass. The IIR path
+    // can overshoot input peaks; its response and transition bounds have a separate test.
+    core.SetAntialias(false);
     for (uint32_t i = 0; i < 30000u; ++i)
     {
         core.SetPitch(i < 15000u ? 4.0f : 0.25f);

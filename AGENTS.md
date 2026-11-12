@@ -1,18 +1,11 @@
 # Modifica della codebase
 
-In questo repository Codex può modificare la codebase con esplicita autorizzazione del tipo "procedi a modificare il codice", "ti autorizzo a modificare il codice".
-
-Assieme alla modifica del codice è anche autorizzata la compilazione.
+In questo repository Codex può modificare la codebase. Assieme alla modifica del codice è anche autorizzata la compilazione.
 
 
 # Commit, Merge e operazioni verso GitHub
 
 In questo repository Codex può effettuare le operazioni GIT locali e su GitHub quando richieste.
-
-
-# Terminatori di riga obbligatori
-
-Tutti i file di testo del repository devono usare esclusivamente terminatori CRLF.
 
 
 # Espressioni di codice su una sola riga

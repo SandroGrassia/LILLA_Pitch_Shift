@@ -6,10 +6,10 @@
 class GranularAudio : public AudioStream
 {
 public:
-    GranularAudio();
-    static constexpr uint32_t VoiceCount = 2;
+    explicit GranularAudio(WsolaCore *voices = nullptr);
+    static constexpr uint32_t VoiceCount = 12;
     static constexpr uint32_t Mix = VoiceCount;
-    WsolaCore core[VoiceCount];
+    WsolaCore *core; // Constructed once in PSRAM before SetReady; no allocation in the audio callback.
     struct Levels
     {
         uint64_t source_energy = 0;
@@ -39,6 +39,7 @@ public:
     Levels TakeLevels(uint32_t scope);
     Timings TakeTimings(uint32_t scope);
     void ResetMeasurement(); // Caller disables the audio IRQ; first 260 active blocks are transient.
+    void ResetVoiceMeasurement(uint32_t voice); // Reset only the new note, leaving other voices and MIX untouched.
     void SetReady();
     void TakeDiagnostics(uint32_t &maximum, uint32_t &missed);
     void update() override;
@@ -46,7 +47,7 @@ public:
 private:
     Levels levels[VoiceCount + 1];
     Timings timings[VoiceCount + 1];
-    uint32_t transient_remaining[VoiceCount + 1] = {260, 260, 260};
+    uint32_t transient_remaining[VoiceCount + 1] = {};
     bool ready = false;
     uint32_t maximum_cycles = 0;
     uint32_t missed_blocks = 0;

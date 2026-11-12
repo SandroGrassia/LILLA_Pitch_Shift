@@ -1,216 +1,265 @@
-# Granular 0.4.0 - WSOLA experiment
+# Granular 0.5.6 - MIDI WSOLA experiment
 
-Standalone PlatformIO firmware for the existing Lilla hardware. The active engine
-uses waveform-similarity overlap-add (WSOLA) followed by resampling, replacing the
-uniformly scheduled granular engine from version 0.1.2. The previous GranularCore
-and its tests remain in the repository as a baseline; they are not connected to audio.
+Standalone PlatformIO laboratory for pitch change on Lilla R1 hardware
+(Teensy 4.1, 16 MiB PSRAM, 128 KiB FRAM). FRAM is not used. The active engine is
+WSOLA followed by resampling. The previous GranularCore and its tests remain as
+an inactive baseline. No Lilla patch, sampler, MIDI-loop or storage manager is imported.
 
-## Controls
+## Playing and controls
+
+MIDI DIN uses Serial1 at 31250 baud, the same transport as Lilla, on channel 1 only.
+USB Serial is output-only diagnostics, not a MIDI input. MIDI Thru is disabled.
+
+- Note 60 plays the source at its original pitch. Notes 36..84 map to pitch 0.25..4.
+  Other notes are rejected and reported. Tempo remains 1x.
+- Pitch bend is +/-2 semitones and affects held notes, anticlick tails and new notes.
+  At the ends of the supported range the ratio is clamped to 0.25..4.
+- Each accepted Note On starts a separate player at source sample zero, alternating
+  A, B, A, B. Velocity scales gain by velocity/127; zero velocity is Note Off.
+- Each player loops forward through its entire source until Note Off (LOOP_FWD).
+- Up to 12 voices, including anticlick tails. At capacity, new notes are rejected;
+  there is no voice stealing. Rejected events do not advance the A/B alternation.
+- Repeated equal notes occupy different players. Note Off releases the oldest held
+  instance of that key. After a rejected Note On, further Note Ons of that key are
+  rejected until its outstanding Note Offs have been received, preserving ownership.
+- CC120 and CC123 release all held voices using the same anticlick fade and clear
+  rejected-note tracking. Sustain, program changes and other CCs are not implemented.
+- No ADSR is applied. The existing approximately 5 ms start/stop anticlick fades,
+  pitch smoothing and gain smoothing remain. A reused inactive voice starts fresh.
 
 | Encoder | Rotation | Pushbutton |
 | --- | --- | --- |
-| Step | Common overlap: 10, 25, 50, 75 percent | Unused |
-| From | Player 1 pitch 0.5 to 2, in 10-cent steps | Player 1 play/stop |
-| To | Player 2 pitch 0.5 to 2, in 10-cent steps | Player 2 play/stop |
-| LineOutVol | Master volume: 0 to 100 percent | Unused |
+| LineOutVol | Master volume 0..100%, 1% per step | Unused |
+| Step | Show fixed overlap: 50% | Toggle antialias ON/BYPASS |
+| To | Show fixed grain: 882 samples | Unused |
+| From | Unused | Unused |
 
-Both players start stopped, with pitch 1 and master volume 25 percent.
-Window is fixed at 20 ms (882 samples), search at +/-10 ms (441 samples).
-Overlap starts at 50 percent. Step selects 10, 25, 50 or 75 percent for both voices.
-Changes fade out, rebuild at the current transport and fade back in; they do not restart the source.
-The original complementary-ramp path is retained at 50 percent. Other settings use
-normalized weighted overlap-add; 75 percent retains contributions from up to four grains.
-Each voice has its own transport, pitch smoothing, start/stop fade and WSOLA state.
-Both share a single read-only source allocation in PSRAM. Controls for one voice
-never restart or reposition the other voice. Restart after a completed stop begins
-at sample zero; a press during the stop fade reverses the fade without restarting.
+Startup: no notes, grain 20 ms (882 samples), overlap 50%, volume 25%, centered bend.
+In 0.5.5 the firmware fixes the grain at 882 samples and overlap at 50%.
+To and Step rotations only display those fixed values. The core still supports
+variable geometry for regression tests, but the hardware controls do not change it. Search remains +/-441
+source samples (about 10 ms). Geometry changes fade out and rebuild at the current
+transport, then fade back in; they do not restart the source.
 
-The mono mix is (player1 + player2) / 2, duplicated to left and right outputs.
-This fixed headroom prevents sum overflow even for coincident full-scale voices.
-A solo voice is therefore 6 dB quieter than in 0.2.4 at the same volume setting;
-the factor does not change when the other voice starts or stops.
+The mono output is the sum of all voices divided by 12, duplicated to both I2S
+channels. This fixed headroom prevents overflow without gain jumps when notes enter
+or leave. One solo voice is attenuated by about 21.6 dB before master and velocity
+gain; at master 25% and velocity 127 its attenuation is about 33.6 dB.
 
-Window duration refers to the intermediate WSOLA stream, before resampling. At
-pitch p its output duration is approximately window/p. It is therefore a different
-parameter from the fixed output-grain duration of the previous engine.
+## Sources and R1 memory
 
-## Signal path
+Edit the two names in `src/ExperimentConfig.cpp` when the experiment files are known.
+Both slots currently use `0.raw`, preserving the existing local source selection.
+Identical filenames share one allocation: A/B alternation is implemented, but the
+two slots sound identical until two different files are configured.
 
-Giotto.raw is copied from SPI Flash to PSRAM at startup. It must already exist under
-that exact name and contain headerless mono signed 16-bit little-endian PCM at
-44.1 kHz. Flash is read only. No source recording is included in this repository.
-Missing PSRAM/file, invalid byte count, or allocation failure disables playback
-and reports the cause to Serial.
+Files must already exist in SPI Flash as headerless mono signed 16-bit little-endian
+PCM at 44.1 kHz. Startup copies each distinct file once into PSRAM. No Flash writes
+or source recordings are included. Missing files, invalid sizes or insufficient
+memory disable playback and report the cause. Allocations are freed on load failure.
 
-WSOLA uses a synthesis hop H equal to the window minus the integer overlap length. Each next fragment
-is selected near the position where the original-speed transport predicts it is
-needed. At constant pitch p this gives an analysis hop of approximately H/p. Its
-leading overlap is aligned with the pending mixed tail and combined using linear ramps. The resulting
-stream is resampled with linear interpolation at rate p.
+All 12 WsolaCore instances and their persistent working buffers are allocated and
+constructed in PSRAM before playback; their total state is approximately 0.69 MiB.
+The temporary search and correlation-reference buffers are shared in internal DTCM
+RAM (about 21 KiB total), independently of the PSRAM allocation of the cores.
+The exact size is printed at startup. This avoids exceeding internal RAM with 12
+large windows. Sources and voice states must fit the available PSRAM together.
+The firmware uses the detected PSRAM pool, not an assumed 32 MiB R2 capacity.
+There is no allocation in the audio callback. Mix buffers, search/correlation scratch and diagnostics remain
+in internal RAM. PSRAM traffic/cache effects are part of the measured engine cost.
 
-Candidate fragments are ranked by mean-removed normalized cross-correlation with
-the overlap tail. A small distance penalty favors positions near the nominal
-transport when matches are similar. The search scans every eight source samples,
-then refines near the best position at one-sample resolution. Correlation samples
-are decimated for bounded work: approximately 128 samples in the coarse pass and
-256 in the fine pass, except for shorter windows. Only one contiguous source
-region is copied from PSRAM per search; candidate comparisons use internal RAM.
-Silence/constant overlaps favor the nominal position. At pitch 1 the nominal
-position is used directly and reproduces the source apart from gain/rounding.
+## WSOLA behavior
 
-The nominal timeline is anchored to the output transport, which advances by one
-source sample per output sample. Selected offsets are local and do not accumulate
-into tempo drift. Two buffered hops provide interpolation across hop boundaries.
-For varying pitch, the next hop's lookahead uses the current smoothed pitch; this
-is a bounded local approximation, not a guarantee of exact transient positioning.
+The synthesis hop is window minus the integer overlap length. WSOLA aligns the
+next source fragment with the pending tail using mean-removed normalized
+cross-correlation near the nominal transport. Search uses coarse candidates every
+8 samples and a fine pass around the best candidate, with decimated correlation.
+The nominal source timeline advances one sample per output sample; local alignment
+offsets do not accumulate into tempo drift. At pitch 1 the nominal match is used.
 
-Pitch and gain are smoothed per sample with a 256-sample time constant. Start/stop
-uses approximately 5 ms fades. A window or overlap change fades out, rebuilds the WSOLA state
-at the current transport, and fades in. Changing the search radius takes effect
-when another hop is generated. Restart after a completed stop begins at sample zero.
+The 50% path uses the original complementary linear crossfade. Other overlaps use
+normalized weighted accumulation; 75% retains up to four overlapping contributions.
+The selected source window is also the intermediate WSOLA window before resampling:
+its approximate output duration is window/pitch. It is not a fixed output-grain
+length. Profiles were not changed in this version.
 
-## Serial diagnostics
+There is no transient detector or formant preservation. Complex/percussive sources can expose WSOLA limitations.
+Cyclic source endpoints have no separate crossfade. Hardware listening is required.
 
-Output only; no terminal commands are accepted. Every two seconds:
+## Antialias experiment (0.5.1)
 
-- BENCH: both players' play/pitch settings, window/search geometry, selected overlap, volume and block budget.
-- TIME MIX: measured combined rendering time and complete audio callback time.
-- TIME P1 / P2: rendering time for each active voice, before reference metering.
-- DIAG: maximum callback time, maximum whole-audio CPU use, audio-pool peak, missed allocations and callbacks over budget (late).
-- LEVEL MIX: actual mixed output RMS in dBFS and PCM peak.
-- LEVEL P1 / P2: source/output RMS, peak, latest correlation and offset, before the fixed mix gain.
+Antialias is ON at startup. Press Step to compare ON/BYPASS; rotation shows the
+fixed overlap in the current experiment. A press prints `AA=ON` or `AA=BYPASS`. Compare separate two-second
+intervals with fixed pitch, player count and parameters.
 
-Voice output levels include master volume but precede the half-gain mix. At 25 percent
-volume, a preserved voice is approximately 12 dB below its source before mixing,
-and approximately 18 dB below when heard alone after mixing. Reference metering
-follows the nominal transport; it is approximate around startup and transients.
-Correlation is the latest overlap estimate, not an average; -1 also identifies
-silence or an overlap with negligible variance.
+Two biquads form a fourth-order Butterworth lowpass with unity DC gain. They process
+the continuous intermediate WSOLA stream before interpolation/resampling, including
+all samples skipped when pitch exceeds 1. Filter state persists across hop boundaries;
+correlation and overlap accumulation continue to use the unfiltered source.
+There is no new audio buffer or heap allocation.
 
-Logs use a nonblocking 4096-byte queue, drained as USB accepts data. Lines are
-dropped if the queue is full. No terminal input is used. Controls are scanned at
-up to 2 kHz with a 25 ms button debounce.
+The target -3 dB cutoff is 0.45/max(1,pitch) cycles per intermediate sample, or about
+19845/pitch Hz at 44.1 kHz (9922.5 Hz at pitch 2, 4961.25 Hz at pitch 4). This leaves
+a transition band before the theoretical 22050/pitch Hz limit. It is a moderate
+filter, not complete alias rejection at the folding boundary.
 
-## Hardware
+At pitch <=1 the settled path is sample-exact with bypass. The wet contribution
+increases from 0 to 1 over pitch 1..1.05; manual bypass crossfades over about 5 ms.
+Coefficients follow the larger of current smoothed pitch and target pitch, with
+coefficient smoothing over intermediate samples. The current-pitch check runs every
+64 filtered output samples; new pitch commands also update the target coefficients.
+There is no trigonometric calculation per audio sample. Note starts and geometry
+rebuilds reset the filter state while the existing anticlick gate is closed.
 
-Teensy 4.1 at 600 MHz; Audio Board Rev D using standard I2S and SGTL5000 control.
-Both output channels carry the same mono signal. Line-out level is 13 and headphone
-level is 0.8, matching the earlier prototype. Flash uses SPI CS 6. Controls use
-SPI1: MOSI 26, SCK 27, MISO 39, CS 37. Display CS 38 stays high.
+Host tests of the complete WSOLA/resampling path reduce output alias RMS by about
+32 dB for a 16 kHz input at pitch 2, 30 dB for 10 kHz at pitch 4, and 56 dB for
+20 kHz at pitch 1.5, across all four overlaps. These are selected synthetic tones,
+not a guarantee for speech. Test consonants on one voice, toggling
+Step without changing grain/overlap. Avoid audio overruns during listening. The filter does not repair WSOLA transient
+alignment or CPU overruns. Its added CPU cost is included in the reported player timings
+and must be measured on R1. An IIR filter can overshoot input peaks on transients;
+the existing final sample saturation and fixed mixer headroom remain.
 
-| Control | MCP23S17 chip | DT | CLK | Active button |
-| --- | --- | --- | --- | --- |
-| Step | 3 | a3 | a4 | unused (a2) |
-| From | 3 | a6 | a7 | a5 |
-| To | 3 | a1 | a0 | b6 |
-| LineOutVol | 4 | a2 | a1 | none |
+## Shared WSOLA workspace (0.5.3)
 
-The pinned Teensyduino 1.62 core detects the installed PSRAM automatically, including
-two 8 MiB chips (16 MiB total) or two ISSI 16 MiB chips. The source must fit the
-available pool and is allocated once for both voices. FRAM is not used.
-No effects, MIDI, display UI, recording or Flash writes are used.
+The search region (6174 int16 samples) and the correlation reference (4410 int16
+samples) are static, 32-byte-aligned arrays in the normal internal `.bss` section.
+On Teensy 4.1 this is DTCM, not the external PSRAM used for each WsolaCore object.
+The shared workspace occupies 21168 bytes before alignment padding. Removing the
+per-voice search array saves 12348 bytes per voice, 148176 bytes for 12 voices.
 
-## Build and tests
+Each Generate fills the search region and reference before scoring candidates.
+For 50% overlap the persistent tail is copied once into the internal reference;
+other overlaps derive the normalized reference directly from that voice's pending
+accumulation. All repeated candidate comparisons then read internal RAM. Persistent
+tails, accumulated overlaps, output hops and filter state remain independent per voice.
 
-```powershell
-pio run
-pio device monitor --baud 115200
-g++ -std=c++20 -O2 -Wall -Wextra -Werror -I include src/WsolaCore.cpp tests/wsola_test.cpp -o .pio/wsola_test.exe
-./.pio/wsola_test.exe
-g++ -std=c++20 -O2 -Wall -Wextra -Werror -I include src/WsolaCore.cpp tests/overlap_test.cpp -o .pio/overlap_test.exe
-./.pio/overlap_test.exe
-python tests/encoder_test.py
-g++ -std=c++20 -O2 -Wall -Wextra -Werror -I tests/stubs -I include src/WsolaCore.cpp src/GranularAudio.cpp tests/two_voice_test.cpp -o .pio/two_voice_test.exe
-./.pio/two_voice_test.exe
+Render/Generate calls across all instances must be serialized, as in the audio
+callback. The workspace is not reentrant and must not be used by concurrent renders
+from another interrupt or thread. No lock, allocation, algorithm parameter or search
+resolution was added. Scratch is never retained as voice state between calls.
+
+The before/after host comparison produced identical samples and state for 12 voices
+with different sources, all overlaps, short/long grains, pitch/bypass changes and
+stop/restart. A separate per-block versus interleaved-render test checks isolation.
+The optimization must be measured on R1 with the same notes, grain, overlap and AA
+setting as 0.5.2; host timing cannot predict the DTCM/PSRAM speedup or safe polyphony.
+
+## Reduced correlation sampling (0.5.4)
+
+The coarse/fine correlation stride targets are reduced from 128/256 to 64/128.
+Stride still uses max(1, overlap/target) with integer division, so these are nominal
+sample counts, not strict limits. With the startup window of 882 and 50% overlap
+(441 samples), each coarse score compares 74 samples instead of 147; each fine
+score compares 147 instead of 441. The final correlation diagnostic uses the same
+reduced fine stride. Short overlaps can retain the original sample density.
+
+Candidate positions, search radius, normalization, distance penalty, grain length,
+overlap and antialias processing are unchanged. The shared DTCM workspace remains.
+No reference-statistic caching is included in this experiment. The selected match
+and audible result may differ because the comparison uses less information.
+Compare 0.5.3 and 0.5.4 with identical notes and controls, watching cost_us[avg/max]
+and listening for alignment artifacts. Any CPU/polyphony improvement requires R1
+measurements; the host regressions do not establish performance or speech quality.
+
+## Fixed geometry and per-candidate statistics (0.5.6)
+
+Grain remains fixed at 882 source samples (20 ms), overlap at 50% and hop at 441.
+Rotating Step or To reports the fixed value without changing audio parameters.
+Volume and the Step antialias button remain active. Correlation sampling remains
+at nominal 64/128, with shared DTCM search/reference buffers and the same filter.
+
+The experimental reference-statistic cache from 0.5.5 has been removed because it
+provided no appreciable measured benefit on R1. Score again computes reference and
+candidate sums, energies and sample count for every candidate, as in 0.5.4. Search
+positions, normalization and the scoring formula are unchanged. No other DSP or
+control behavior is reverted.
+
+## Serial reports (0.5.2, controls fixed in 0.5.5)
+
+The regular output is intentionally compact:
+
+```text
+NOTE_ON pitch=1.25992
+PLAYERS n=3 cost_us[avg/max]=1149.98/4285.17 cost_pct[avg/max]=39.6/147.6
+OVERLAP=50% (fixed)
+GRAIN samples=882 (fixed)
 ```
 
-If pio is absent from PATH, use the installed executable at
-C:/Users/Utente/.platformio/penv/Scripts/platformio.exe.
+- Every accepted Note On prints its target pitch ratio, including the current bend.
+- Every two seconds, `PLAYERS n` counts currently active players, including anticlick
+  tails. `cost_us[avg/max]` is the mean/maximum summed rendering time of active
+  players per 128-sample audio block during the interval. It includes startup and
+  generation, but excludes idle slots, metering, mixing and output delivery.
+- `cost_pct[avg/max]` expresses those two costs as percentages of the approximately
+  2902.49 us block budget. The maximum is the largest simultaneous sum in a block,
+  not the sum of independent per-player maxima. Total callback cost is higher than
+  this renderer-only cost; a value below 100% does not guarantee no overruns.
+- The mean uses only blocks containing an active voice. The count is instantaneous,
+  while the costs describe the interval: after the last Note Off, `n=0` may briefly
+  accompany nonzero costs. An entirely idle interval reports zero costs.
+- Rotating Step prints `OVERLAP=50% (fixed)` without changing the overlap.
+- Rotating To prints `GRAIN samples=882 (fixed)` without changing the grain.
+- Pressing Step still reports `AA=ON` or `AA=BYPASS` for the listening comparison.
+  Volume changes and Note Offs do not print a report. Startup information, errors
+  and rejected-note messages remain available.
 
-Firmware: .pio/build/teensy41/firmware.hex, also exported as Granular_v0_4_0.hex.
-No upload is performed during development. Load the HEX with Teensy Loader for
-testing; Granular_v0_1_2.hex provides the previous listening baseline.
+Printing is in the foreground with audio interrupts enabled, through a nonblocking
+16 KiB ring. A full ring drops complete lines. The MIDI collector preserves order,
+extends Serial1 RX by 512 bytes and bounds each parsing pass to 64 entry-snapshot
+bytes, 8 messages and 80 us. Unconsumed bytes remain for the next loop; the time
+limit excludes note processing. Host tests cannot establish hardware throughput.
 
-Host tests verify unity reconstruction from the first samples, window transitions,
-source wrapping, continuous pitch changes, transport, stop/restart and pitch/RMS
-at 67 Hz and 997 Hz for ratios 0.25, 0.5, 1, 1.3, 2 and 4. These tones are not
-chosen to align with the window. At 67 Hz and pitch 0.5, search +/-10 ms restores
-RMS to about 2121 versus 1521 with search off (12000 peak input, volume 25 percent).
-This demonstrates the alignment effect on a tone, not quality on complex music.
-The two-voice test exercises the actual audio wrapper with a mocked AudioStream:
-sample-exact mixing against independent cores, coincident hop counts, independent
-stop/pitch, statistics reset, allocation failure and full-scale headroom. Its clock
-is mocked; it cannot validate physical timing or encoder wiring.
+## Hardware and validation
 
-## Listening pass and limitations
+Teensy 4.1 at 600 MHz, Audio Board Rev D with I2S/SGTL5000. Line-out level 13,
+headphone level 0.8. SPI Flash CS 6. Controls use SPI1 MOSI 26, SCK 27, MISO 39,
+CS 37; display CS 38 stays high. MCP mapping is unchanged from the prior firmware.
+No effects, display UI, recording, FRAM access or configuration persistence.
 
-First test From and To independently, then both players at pitch 2 for at least
-10 seconds, preferably a full source loop. Repeat with different start times,
-both buttons pressed together, and continuous independent pitch changes.
-Check TIME MIX maxima, audio_cpu_max, late and missed. Starting both together is
-useful but does not guarantee sample-synchronous starts because of button scanning
-and debounce; MIX hmax=2 confirms two generations occurred within one callback.
-Actual two-voice CPU headroom still requires physical Teensy measurements.
+Twelve slots are an experimental ceiling, not a guarantee of real-time polyphony.
+Measure 1, 2, 4, 8 and 12 held notes, both simultaneous and staggered, using different
+pitches and both sources. This firmware uses fixed 20 ms grains and 50% overlap;
+older variable-geometry experiments remain available in the previous HEX files. Hold the same notes and settings for complete two-second reporting intervals.
+Compare player cost maxima and audible artifacts; the compact report excludes
+callback overhead, so leave headroom below the block budget. Older timings from the two-voice/internal-RAM firmware do not apply.
 
-This implementation has no transient detector, phase-vocoder stage, formant
-preservation, or automatic gain compensation. Linear resampling has no dedicated
-anti-alias filter for upward transposition; bright material can still alias.
-WSOLA cannot align every component of polyphonic or percussive material at once.
-The cyclic source wrap has no separate endpoint crossfade. Large pitch changes
-can reveal the buffered overlap and local alignment approximation.
+Build with `pio run`; if absent from PATH, use
+`C:/Users/Utente/.platformio/penv/Scripts/platformio.exe run`.
+Firmware: `.pio/build/teensy41/firmware.hex`, exported as `Granular_v0_5_6.hex`.
+No upload is performed; load the HEX with Teensy Loader for physical tests.
+
+Host checks (GCC; `-static` avoids Windows runtime DLL mismatches):
+
+```powershell
+g++ -std=c++20 -O2 -Wall -Wextra -Werror -static -I include src/WsolaCore.cpp src/WsolaAntialias.cpp tests/wsola_test.cpp -o .pio/wsola_test.exe
+./.pio/wsola_test.exe
+g++ -std=c++20 -O2 -Wall -Wextra -Werror -static -I include src/WsolaCore.cpp src/WsolaAntialias.cpp tests/overlap_test.cpp -o .pio/overlap_test.exe
+./.pio/overlap_test.exe
+g++ -std=c++20 -O2 -Wall -Wextra -Werror -static -I tests/stubs -I include src/WsolaCore.cpp src/WsolaAntialias.cpp src/GranularAudio.cpp tests/two_voice_test.cpp -o .pio/two_voice_test.exe
+./.pio/two_voice_test.exe
+g++ -std=c++20 -O2 -Wall -Wextra -Werror -static -I tests/stubs -I include src/WsolaCore.cpp src/WsolaAntialias.cpp src/GranularAudio.cpp src/NoteVoices.cpp src/ExperimentConfig.cpp tests/midi_voices_test.cpp -o .pio/midi_voices_test.exe
+./.pio/midi_voices_test.exe
+g++ -std=c++20 -O2 -Wall -Wextra -Werror -static -I tests/midi_stubs -I include -I C:/Users/Utente/.platformio/packages/framework-arduinoteensy/libraries/MIDI/src src/MidiInput.cpp tests/midi_input_test.cpp -o .pio/midi_input_test.exe
+./.pio/midi_input_test.exe
+g++ -std=c++20 -O2 -Wall -Wextra -Werror -static -I include src/WsolaCore.cpp src/WsolaAntialias.cpp tests/antialias_test.cpp -o .pio/antialias_test.exe
+./.pio/antialias_test.exe
+g++ -std=c++20 -O2 -Wall -Wextra -Werror -static -I include src/WsolaCore.cpp src/WsolaAntialias.cpp tests/wsola_workspace_test.cpp -o .pio/wsola_workspace_test.exe
+./.pio/wsola_workspace_test.exe
+python tests/encoder_test.py
+```
+
+The MIDI input test uses the actual bundled MIDI library with a mocked UART/clock.
+Voice tests cover 12 simultaneous voices, alternating distinct sources, repeated
+notes, rejection/NoteOff ownership, release tails, fresh restart, bend, geometry and
+independent statistics. The older two-voice test now checks its two active voices
+inside the 12-slot mixer, plus coincident full-scale output from all 12 slots.
+Clock values are mocked: these tests establish behavior, not CPU headroom or wiring.
 
 ## Provenance
 
 Lilla hardware mapping and encoder basis: Sandro Grassia's firmware, source commit
-283739101236e5ebba9e0c3b307b56c8177b23e9. The committed granular baseline is b3e1811.
-WSOLA is implemented here without importing an external processing library.
-Algorithm references: https://www.isca-archive.org/eurospeech_1993/roelands93_eurospeech.html
-and https://www.surina.net/article/time-and-pitch-scaling.html.
-Teensy Audio, SerialFlash and Adafruit libraries retain their own licenses.
-
-## Processing-time measurements (0.3.0)
-
-The shared callback budget is 128 samples at 44.1 kHz, approximately 2902.49 us.
-Hardware cycle-counter readings are converted to microseconds at the actual CPU clock.
-
-- engine_us[min/avg/max]: rendering 128 samples; MIX sums both measured render intervals in that same callback, including an idle renderer if present.
-- callback_us[avg/max]: MIX only; actual elapsed time from entry through allocation, both renderers, reference metering, mixing, output delivery and per-voice timing statistics. Final MIX timing bookkeeping is excluded.
-- WARM: first 260 active blocks after a control change, tracked separately per voice and for MIX (approximately 755 ms).
-- READ: steady blocks with no new WSOLA hop in that scope.
-- GEN: steady blocks with at least one new hop; MIX includes either or both voices generating.
-- ALL: READ and GEN combined; excludes WARM and fully stopped scopes.
-- n: measured blocks; hops: total generated hops; hmax: most hops in one block. MIX hmax=2 identifies coincident work from both voices at the permitted steady pitches.
-- late: MIX callbacks exceeding the shared budget. DIAG also includes idle callbacks.
-
-Any effective control change resets all timing/level intervals, audio CPU maxima,
-and the measurement id. It does not reset transports or force re-priming of an
-already playing voice. Each two-second report clears accumulated statistics;
-remaining WARM counts persist. Individual and MIX ALL groups can cover different
-blocks if a voice starts or stops, so their averages should not be added blindly.
-The measured MIX callback is the reference for total cost.
-
-Single-voice 0.2.4 hardware measurements at this geometry gave approximately
-165 us mean / 1019 us steady maximum at pitch 0.5, and 573 us mean / 982 us maximum
-at pitch 2 (callback times). They motivate this dual-voice experiment, but cannot
-establish safe polyphony inside the full Lilla firmware. Simultaneous searches,
-PSRAM/cache behavior and other audio work must be measured together.
-
-## Overlap experiment (0.4.0)
-
-At window 882, the selected overlap lengths are 88, 220, 441 and 661 samples;
-the synthesis hops are 794, 662, 441 and 221 samples respectively. Percentages
-are rounded down to whole samples. Pitch remains 0.5..2 from From/To. Step rotation
-increases/decreases overlap without wrapping; its pushbutton is unused.
-Serial remains output-only and reports the overlap in WSOLA and BENCH lines.
-
-At 75 percent several tails are accumulated and normalized sample by sample.
-Correlation uses the normalized pending tail. At 10/25 percent the middle of
-each grain is unblended. Window/search remain fixed at 20 ms and +/-10 ms.
-The 50-percent audio path is preserved for comparison; larger buffers increase
-RAM use for all settings. Earlier hardware timings describe only the old 50-percent
-configuration and must not be applied to the new overlap settings.
-
-Compare both voices at pitch 2 for each overlap; watch TIME MIX maxima, late and
-missed, including WARM after changes. At 75 percent two generations per voice
-can fall in one callback. Check transients, low notes, level stability and encoder
-changes during playback. Host tests cannot establish hardware CPU headroom or sound quality.
+283739101236e5ebba9e0c3b307b56c8177b23e9. MIDI transport and bounded receive approach
+follow WHOLE_LILLA without importing its patch/player/loop dependencies.
+WSOLA is implemented here without an external processing library. Teensy Audio,
+Arduino MIDI, SerialFlash and Adafruit libraries retain their own licenses.
