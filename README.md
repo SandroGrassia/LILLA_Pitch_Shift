@@ -1,4 +1,4 @@
-# Granular 0.6.3 - four-voice FFT pitch experiment
+# Granular 0.6.7 - six-voice FFT pitch experiment
 
 The active engine is now a basic STFT phase vocoder, replacing WSOLA in the audio
 path. The WSOLA source files, core tests and previous HEX files remain available
@@ -11,7 +11,7 @@ Startup prefers `109.raw`, configured by `ExperimentConfig::SourceFile` in
 Select to choose another RAW from SPI Flash; numeric names sort numerically.
 Files must be headerless mono signed 16-bit little-endian PCM at 44.1 kHz.
 The catalog accepts up to 1024 names shorter than 64 bytes, with even sizes of
-at least 4 bytes. The file is copied to PSRAM and shared by all four voices.
+at least 4 bytes. The file is copied to PSRAM and shared by all six voices.
 Flash is never written; FRAM is unused. This targets R1 with 16 MiB PSRAM.
 
 The display shows selected and loaded filenames and loading/error status.
@@ -28,7 +28,7 @@ Selections are not persisted across reboot.
 - Pitch bend is +/-2 semitones, limited to the supported pitch range at its edges.
 - Every accepted Note On starts a separate player from source sample zero.
   All notes use the same file; there is no source alternation.
-- Maximum four active voices, including anticlick tails. Excess notes are rejected,
+- Maximum six active voices, including anticlick tails. Excess notes are rejected,
   not stolen. Repeated equal notes release oldest first; rejected-note tracking
   prevents a later Note Off from releasing an unrelated retrigger.
 - Velocity scales gain. Velocity-zero Note On is Note Off. CC120/123 release all.
@@ -50,8 +50,8 @@ Shifted components outside the positive Nyquist band are discarded spectrally;
 there is no final upward resampling stage. Spectral leakage and phase-vocoder
 artifacts can still remain: this is not a claim of perfect alias rejection.
 
-The mono mix is sum/4, duplicated to both I2S channels. The fixed headroom avoids
-level changes when voices enter/leave. A solo voice is about 9.54 dB louder than
+The mono mix is sum/6, duplicated to both I2S channels. The fixed headroom avoids
+level changes when voices enter/leave. A solo voice is about 6.02 dB louder than
 in the previous sum/12 WSOLA firmware at the same velocity and master volume.
 
 ## Engine
@@ -63,7 +63,12 @@ between analysis frames estimate instantaneous bin frequencies. Frequencies are
 multiplied by pitch; magnitudes are mapped to nearest destination bins. Collisions
 sum magnitudes and use magnitude-weighted frequency. Output phases accumulate the
 shifted frequencies, then conjugate symmetry produces a real IFFT output.
-At exact unity pitch, analysis phases are preserved directly for reconstruction.
+At unity pitch (note 60 with centered bend), output reads the RAW samples directly,
+retaining velocity, master volume, anticlick and fixed mix headroom. The FFT stays
+warm in the background, so this is an output bypass, not a CPU-saving bypass.
+Leaving/entering direct output uses a 256-sample crossfade. After bend returns to
+center, direct output resumes once the smoothed pitch is within 0.00002 of unity;
+this tolerance accounts for float smoothing settling short of its exact target.
 
 Transient handling uses positive spectral flux: a rise above 35% of the current
 spectral magnitude sum triggers synthesis-phase reset to the mapped analysis phases.
@@ -86,16 +91,25 @@ possible phasiness, softened attacks and artifacts on complex signals. These mus
 be evaluated against WSOLA on the actual source, not inferred from tone tests.
 
 The FFT window spans 23.22 ms. The source is prerecorded, so frames can read ahead
-without waiting for live input. Startup overlap builds over the first 768 output
+without waiting for live input. For transposed notes, startup overlap builds over the first 768 output
 samples (17.41 ms), in addition to the anticlick behavior; short attacks may soften.
 Transport itself advances one source sample per output sample independently of pitch.
 Bend is smoothed per output sample and applied spectrally at frame boundaries.
 
 Production uses the bundled CMSIS-DSP `arm_cfft_f32` and its 1024-point table.
 Host tests use a portable radix-2 FFT with the same forward/inverse normalization.
-All four persistent FFT voice states, window and shared scratch arrays reside in
+All six persistent FFT voice states, window and shared scratch arrays reside in
 internal RAM. Only the source file is in PSRAM. Rendering across voices is serialized;
 shared scratch is not reentrant. No allocation or logging occurs in the audio callback.
+
+Analysis of each prerecorded frame runs 128 samples before its synthesis deadline.
+The analysis magnitudes, phases and unshifted frequencies remain in per-voice RAM;
+mapping and synthesis use the actual pitch at the deadline, so bends received in
+between still take effect. After startup, analysis and synthesis alternate across
+128-sample callbacks without changing the source position or adding output latency.
+The first frame still executes both stages immediately: simultaneous new notes can
+still cause a startup peak. This distributes work; it does not reduce the FFT count.
+Timing groups with no generated hop can now include an analysis stage.
 
 ## Serial reports and performance
 
@@ -109,16 +123,17 @@ shared scratch is not reentrant. No allocation or logging occurs in the audio ca
 - Startup/source errors and rejected notes are reported. The 16 KiB logging ring is
   nonblocking and drops complete lines if full.
 
-The block budget is about 2902.49 us at 44.1 kHz. Four simultaneous voices can require
-four FFT/IFFT pairs in one callback. Four is the configured capacity, not a measured
-real-time guarantee. Test one through four sustained voices and simultaneous attacks
+The block budget is about 2902.49 us at 44.1 kHz. Six simultaneous voices can require
+six FFT/IFFT pairs in the first callback. Subsequent analysis and synthesis stages
+are spread across alternating callbacks. Six is the configured capacity, not a measured
+real-time guarantee. Test one through six sustained voices and simultaneous attacks
 on R1. Keep room below 100% renderer cost for callback overhead. Host timings do not
 predict Teensy performance; CMSIS execution and analog audio have not been bench-tested here.
 
 ## Build and tests
 
 Build: `C:/Users/Utente/.platformio/penv/Scripts/platformio.exe run`.
-Firmware: `.pio/build/teensy41/firmware.hex`, exported as `Granular_v0_6_3.hex`.
+Firmware: `.pio/build/teensy41/firmware.hex`, exported as `Granular_v0_6_7.hex`.
 No upload is performed. Load with Teensy Loader to test the actual board.
 
 ```powershell
@@ -131,11 +146,16 @@ g++ -std=c++20 -O2 -Wall -Wextra -Werror -static -I tests/stubs -I include src/F
 g++ -std=c++20 -O2 -Wall -Wextra -Werror -static -I tests/midi_stubs -I include -I C:/Users/Utente/.platformio/packages/framework-arduinoteensy/libraries/MIDI/src src/MidiInput.cpp tests/midi_input_test.cpp -o .pio/midi_input_test.exe
 ./.pio/midi_input_test.exe
 python tests/encoder_test.py
+python tests/scheduling_test.py
 ```
 
 Tests check tone transposition at 0.25..4, neutral reconstruction, wrapping, fixed
-tempo, out-of-band rejection, bend, clean restart, four-slot allocation, repeated
+tempo, out-of-band rejection, bend, clean restart, six-slot allocation, repeated
 notes, exact mixing of independent FFT cores, dropped output allocation and headroom.
+The scheduling regression uses the committed 0.6.3 core (882abb2) as an independent
+reference: six interleaved voices match exactly across attacks, loops and bends.
+It also checks alternating stage execution, direct RAW output and return from bend.
+It requires local Git history containing that commit and a host g++ compiler.
 The mixer clock/UART are mocked. The old standalone WSOLA tests can still be built
 with `src/WsolaCore.cpp src/WsolaAntialias.cpp`; they no longer exercise the live mixer.
 
@@ -145,3 +165,33 @@ recording, FRAM access or configuration persistence. The ILI9341 display setup
 and text-clearing pattern are adapted from WHOLE_LILLA, keeping the FFT engine.
 Display SPI1: CS38, DC29, RST30, MOSI26, SCK27; rotation 1. Select uses MCP chip 3
 pins b5/b4. Display and encoder behavior still require verification on R1.
+
+## Startup investigation (0.6.6 diagnostic)
+
+The six-voice 0.6.5 build was reported unresponsive with `109.raw` loaded and
+Ready on screen, even before playing notes. The cause is not yet established.
+`Granular_v0_6_6_diagnostic.hex` follows a full clean build and adds visible
+Starting MIDI / Starting audio / Ready - loop running stages and BOOT serial
+messages. It prints Teensy CrashReport when available after a fault/reboot.
+First-note breadcrumbs identify MIDI entry/exit, source pointer/count, forward
+FFT stages (100..102) and inverse FFT stages (200..201). This is a diagnostic
+build, not a verified fix. Voice capacity and DSP processing are unchanged.
+
+## Phase-update optimization (0.6.7)
+
+Resolve the phase-lock anchors before advancing phases. Only phases actually
+referenced by the output are advanced; independent phases that locking would
+immediately overwrite are not computed. All referenced phases are still evaluated
+before synthesis history is changed, preserving traversal independence. FFT size,
+overlap, transient detection, six voices and direct unity output remain unchanged.
+Host regression matches the pre-optimization output sample for sample with six
+voices and changing pitches. CPU savings must be measured on R1; no percentage
+improvement is claimed from host tests.
+
+PLAYERS now also prints `callback_pct[avg/max]`, covering the measured audio callback
+including renders, reference metering, mixing and output delivery. As before,
+interval statistics only include callbacks with active voices; the final mix
+statistics bookkeeping after the timer read is excluded. Compare this maximum
+against 100% when evaluating the actual six-voice margin.
+The working 0.6.6 startup diagnostics and crash breadcrumbs are retained. Firmware
+is rebuilt from clean objects. The previous startup failure's cause remains unproven.

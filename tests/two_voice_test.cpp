@@ -110,27 +110,27 @@ int main()
             assert(std::abs(static_cast<int>(output) - value) < 4);
         }
     }
-    FftPitchCore four_cores[GranularAudio::VoiceCount];
-    FftPitchCore four_references[GranularAudio::VoiceCount];
-    GranularAudio four(four_cores);
+    FftPitchCore six_cores[GranularAudio::VoiceCount];
+    FftPitchCore six_references[GranularAudio::VoiceCount];
+    GranularAudio six(six_cores);
     for (unsigned voice = 0; voice < GranularAudio::VoiceCount; ++voice)
     {
-        four_cores[voice].StartNote(source.data(), source.size(), 0.5f + voice * 0.5f, 0.25f);
-        four_references[voice].StartNote(source.data(), source.size(), 0.5f + voice * 0.5f, 0.25f);
+        six_cores[voice].StartNote(source.data(), source.size(), 0.5f + voice * 0.5f, 0.25f);
+        six_references[voice].StartNote(source.data(), source.size(), 0.5f + voice * 0.5f, 0.25f);
     }
-    four.SetReady();
+    six.SetReady();
     for (unsigned block = 0; block < 100; ++block)
     {
-        four.update();
+        six.update();
         for (unsigned i = 0; i < AUDIO_BLOCK_SAMPLES; ++i)
         {
             int32_t sum = 0;
-            for (auto &core : four_references)
+            for (auto &core : six_references)
             {
                 sum += core.Render();
             }
             assert(AudioStream::transmitted.data[i] == sum / static_cast<int32_t>(GranularAudio::VoiceCount));
         }
     }
-    std::puts("PASS: two/four FFT voices, independent pitches, exact mix, coincident frames, stop, stats, allocation failure and full-scale headroom. Host clock is mocked.");
+    std::puts("PASS: two/six FFT voices, independent pitches, exact mix, coincident frames, stop, stats, allocation failure and full-scale headroom. Host clock is mocked.");
 }

@@ -19,13 +19,13 @@ int main()
         assert(voices.NoteOn(60, 127, selected) == NoteVoices::Result::Started);
         assert(selected == i);
     }
-    assert(voices.HeldCount() == 4);
+    assert(voices.HeldCount() == GranularAudio::VoiceCount);
     assert(voices.NoteOn(60, 127, selected) == NoteVoices::Result::Full);
     for (uint32_t block = 0; block < 300; ++block)
     {
         audio.update();
     }
-    // Four voices sharing one source, each at 25%, fixed gain 1/4.
+    // Six voices sharing one source, each at 25%, fixed gain 1/6.
     for (int16_t sample : AudioStream::transmitted.data)
     {
         assert(std::abs(sample - 3000) <= 2);
@@ -39,7 +39,7 @@ int main()
     assert(report.voice == 0 && !report.parameters_changed);
     assert(report.timings.transient.blocks == 260);
     assert(report.timings.read.blocks + report.timings.generate.blocks == 40);
-    assert(voices.HeldCount() == 3 && audio.core[0].IsActive());
+    assert(voices.HeldCount() == GranularAudio::VoiceCount - 1 && audio.core[0].IsActive());
     assert(voices.NoteOn(61, 127, selected) == NoteVoices::Result::Full);
     // A rejected retrigger may not acquire a freed voice before its older NoteOff arrives.
     for (uint32_t i = 0; i < 3; ++i)
@@ -100,5 +100,5 @@ int main()
     }
     voices.ClearRejected();
     assert(voices.HeldCount() == 0);
-    std::puts("PASS: 4 FFT voices sharing a source, FIFO repeated notes, capacity/rejected ownership, tails, restart, per-note measurements, pitch bend, volume and all-notes-off. Host timing is mocked.");
+    std::puts("PASS: 6 FFT voices sharing a source, FIFO repeated notes, capacity/rejected ownership, tails, restart, per-note measurements, pitch bend, volume and all-notes-off. Host timing is mocked.");
 }

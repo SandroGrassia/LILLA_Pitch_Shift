@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #ifdef __IMXRT1062__
+#include <Arduino.h>
 #include <arm_math.h>
 #include <arm_const_structs.h>
 #endif
@@ -22,6 +23,8 @@ float FftPitchCore::advanced_phase[FftPitchCore::Bins] = {};
 uint16_t FftPitchCore::dominant_source[FftPitchCore::Bins] = {};
 uint16_t FftPitchCore::peaks[FftPitchCore::Bins] = {};
 uint16_t FftPitchCore::peak_owner[FftPitchCore::Bins] = {};
+uint16_t FftPitchCore::phase_anchor[FftPitchCore::Bins] = {};
+bool FftPitchCore::advance_needed[FftPitchCore::Bins] = {};
 
 FftPitchCore::FftPitchCore()
 {
@@ -52,6 +55,7 @@ void FftPitchCore::StartNote(const int16_t *samples, uint32_t count, float pitch
     initialized = false;
     transport = 0;
     generated = 0;
+    analyzed = 0;
     transient_resets = 0;
     transient_holdoff = 0;
     running = true;
@@ -63,6 +67,7 @@ void FftPitchCore::SetRunning(bool value) { running = value; }
 bool FftPitchCore::IsActive() const { return running || gate > 0.0f; }
 uint32_t FftPitchCore::Transport() const { return transport; }
 uint32_t FftPitchCore::GeneratedHops() const { return generated; }
+uint32_t FftPitchCore::AnalyzedFrames() const { return analyzed; }
 float FftPitchCore::Pitch() const { return pitch_now; }
 uint32_t FftPitchCore::TransientResets() const { return transient_resets; }
 
@@ -134,10 +139,17 @@ void FftPitchCore::Transform(bool inverse)
 #endif
 }
 
-void FftPitchCore::Generate()
+void FftPitchCore::Analyze(uint32_t position)
 {
-    ++generated;
-    uint32_t position = transport;
+    ++analyzed;
+#ifdef __IMXRT1062__
+    if (first_frame)
+    {
+        CrashReport.breadcrumb(3, 100);
+        CrashReport.breadcrumb(4, reinterpret_cast<uint32_t>(source));
+        CrashReport.breadcrumb(5, source_count);
+    }
+#endif
     float frame_energy = 0.0f;
     for (uint32_t i = 0; i < Size; ++i)
     {
@@ -149,10 +161,19 @@ void FftPitchCore::Generate()
             position = 0;
         }
     }
+#ifdef __IMXRT1062__
+    if (first_frame)
+    {
+        CrashReport.breadcrumb(3, 101);
+    }
+#endif
     Transform(false);
-    std::fill_n(magnitude, Bins, 0.0f);
-    std::fill_n(frequency_sum, Bins, 0.0f);
-    std::fill_n(strongest, Bins, 0.0f);
+#ifdef __IMXRT1062__
+    if (first_frame)
+    {
+        CrashReport.breadcrumb(3, 102);
+    }
+#endif
     float positive_flux = 0.0f;
     float spectral_sum = 0.0f;
     for (uint32_t bin = 0; bin < Bins; ++bin)
@@ -166,10 +187,39 @@ void FftPitchCore::Generate()
         const float phase = std::atan2(imag, real);
         const float expected = Tau * bin * Hop / Size;
         const float deviation = first_frame ? 0.0f : WrapPhase(phase - previous_phase[bin] - expected);
-        const float frequency = pitch_now == 1.0f ? static_cast<float>(bin) : (bin + deviation * (Size / (Tau * Hop))) * pitch_now;
+        analysis_frequency[bin] = bin + deviation * (Size / (Tau * Hop));
         previous_phase[bin] = phase;
+    }
+    if (transient_holdoff > 0)
+    {
+        --transient_holdoff;
+    }
+    frame_transient = !first_frame && transient_holdoff == 0 && frame_energy > Size * 64.0f * 64.0f && positive_flux > 0.35f * spectral_sum;
+    if (frame_transient)
+    {
+        transient_holdoff = 4;
+        ++transient_resets;
+    }
+    analysis_ready = true;
+}
+
+void FftPitchCore::Generate()
+{
+    ++generated;
+    if (!analysis_ready)
+    {
+        Analyze(transport); // First frame starts immediately; no extra attack latency.
+    }
+    const bool transient = frame_transient;
+    std::fill_n(magnitude, Bins, 0.0f);
+    std::fill_n(frequency_sum, Bins, 0.0f);
+    std::fill_n(strongest, Bins, 0.0f);
+    for (uint32_t bin = 0; bin < Bins; ++bin)
+    {
+        const float amplitude = previous_magnitude[bin];
+        const float phase = previous_phase[bin];
+        const float frequency = pitch_now == 1.0f ? static_cast<float>(bin) : analysis_frequency[bin] * pitch_now;
         const uint32_t destination = static_cast<uint32_t>(bin * pitch_now + 0.5f);
-        // Spectral band limiting: never fold shifted components above Nyquist back into the output.
         if (destination >= Bins || frequency < 0.0f || frequency > Size / 2)
         {
             continue;
@@ -182,18 +232,6 @@ void FftPitchCore::Generate()
             initial_phase[destination] = phase;
             dominant_source[destination] = static_cast<uint16_t>(bin);
         }
-    }
-    // Positive spectral flux detects new attacks, including changes in spectral shape.
-    // A windowed RMS floor rejects silence; four hops suppress repeated resets of one attack.
-    if (transient_holdoff > 0)
-    {
-        --transient_holdoff;
-    }
-    const bool transient = !first_frame && transient_holdoff == 0 && frame_energy > Size * 64.0f * 64.0f && positive_flux > 0.35f * spectral_sum;
-    if (transient)
-    {
-        transient_holdoff = 4;
-        ++transient_resets;
     }
     // Find peaks in the ANALYSIS spectrum: shifted bins have artificial gaps at pitch > 1.
     // Ignore peaks more than 60 dB below the largest analysis magnitude.
@@ -221,13 +259,41 @@ void FftPitchCore::Generate()
             peak_owner[bin] = peaks[nearest];
         }
     }
-    // Advance all phases before locking so no bin depends on traversal order.
+    // Resolve locking first: most bin phases would otherwise be advanced and discarded.
+    const bool reset_phase = first_frame || transient || pitch_now == 1.0f;
+    std::fill_n(advance_needed, Bins, false);
     for (uint32_t bin = 0; bin < Bins; ++bin)
     {
-        if (magnitude[bin] > 0.0f)
+        if (magnitude[bin] == 0.0f)
         {
-            const float frequency = frequency_sum[bin] / magnitude[bin];
-            advanced_phase[bin] = first_frame || transient || pitch_now == 1.0f ? initial_phase[bin] : WrapPhase(synthesis_phase[bin] + Tau * frequency * Hop / Size);
+            continue;
+        }
+        phase_anchor[bin] = Bins;
+        if (peak_count > 0 && !reset_phase)
+        {
+            const uint32_t peak = peak_owner[dominant_source[bin]];
+            const uint32_t anchor = static_cast<uint32_t>(peak * pitch_now + 0.5f);
+            if (anchor < Bins && magnitude[anchor] > 0.0f && dominant_source[anchor] == peak)
+            {
+                phase_anchor[bin] = static_cast<uint16_t>(anchor);
+            }
+        }
+        advance_needed[phase_anchor[bin] < Bins ? phase_anchor[bin] : bin] = true;
+    }
+    // Keep a snapshot of all referenced phases before writing synthesis history.
+    for (uint32_t bin = 0; bin < Bins; ++bin)
+    {
+        if (advance_needed[bin])
+        {
+            if (reset_phase)
+            {
+                advanced_phase[bin] = initial_phase[bin];
+            }
+            else
+            {
+                const float frequency = frequency_sum[bin] / magnitude[bin];
+                advanced_phase[bin] = WrapPhase(synthesis_phase[bin] + Tau * frequency * Hop / Size);
+            }
         }
     }
     std::fill_n(fft, 2 * Size, 0.0f);
@@ -237,16 +303,14 @@ void FftPitchCore::Generate()
         {
             continue;
         }
-        synthesis_phase[bin] = advanced_phase[bin];
-        if (peak_count > 0 && !first_frame && !transient && pitch_now != 1.0f)
+        if (phase_anchor[bin] < Bins)
         {
             const uint32_t peak = peak_owner[dominant_source[bin]];
-            const uint32_t anchor = static_cast<uint32_t>(peak * pitch_now + 0.5f);
-            // A removed or collision-displaced peak cannot anchor this region.
-            if (anchor < Bins && magnitude[anchor] > 0.0f && dominant_source[anchor] == peak)
-            {
-                synthesis_phase[bin] = WrapPhase(advanced_phase[anchor] + initial_phase[bin] - previous_phase[peak]);
-            }
+            synthesis_phase[bin] = WrapPhase(advanced_phase[phase_anchor[bin]] + initial_phase[bin] - previous_phase[peak]);
+        }
+        else
+        {
+            synthesis_phase[bin] = advanced_phase[bin];
         }
         const float real = magnitude[bin] * std::cos(synthesis_phase[bin]);
         const float imag = magnitude[bin] * std::sin(synthesis_phase[bin]);
@@ -258,12 +322,25 @@ void FftPitchCore::Generate()
             fft[2 * (Size - bin) + 1] = -imag;
         }
     }
+#ifdef __IMXRT1062__
+    if (first_frame)
+    {
+        CrashReport.breadcrumb(3, 200);
+    }
+#endif
     Transform(true);
+#ifdef __IMXRT1062__
+    if (first_frame)
+    {
+        CrashReport.breadcrumb(3, 201);
+    }
+#endif
     for (uint32_t i = 0; i < Size; ++i)
     {
         accumulation[(head + i) & (Size - 1)] += fft[2 * i] * window[i] * (2.0f / 3.0f);
     }
     first_frame = false;
+    analysis_ready = false;
 }
 
 int16_t FftPitchCore::Render()
@@ -280,6 +357,8 @@ int16_t FftPitchCore::Render()
         std::fill_n(synthesis_phase, Bins, 0.0f);
         std::fill_n(accumulation, Size, 0.0f);
         first_frame = true;
+        analysis_ready = false;
+        direct_mix = pitch_target == 1.0f ? 1.0f : 0.0f;
         head = 0;
         transport = 0;
         until_frame = 0;
@@ -293,9 +372,19 @@ int16_t FftPitchCore::Render()
         Generate();
         until_frame = Hop;
     }
+    else if (until_frame == Hop / 2)
+    {
+        // Read-only source lookahead: analyze next frame one 128-sample block early.
+        // Mapping still uses the actual pitch at synthesis time, including intervening bend.
+        Analyze((transport + Hop / 2) % source_count);
+    }
     --until_frame;
     gate = running ? std::min(1.0f, gate + 1.0f / 221.0f) : std::max(0.0f, gate - 1.0f / 221.0f);
-    const float value = accumulation[head] * gate * volume_now;
+    // Keep FFT history warm for bend; unity output comes directly from the RAW source.
+    const bool direct = pitch_target == 1.0f && std::abs(pitch_now - 1.0f) < 0.00002f;
+    direct_mix = direct ? std::min(1.0f, direct_mix + 1.0f / 256.0f) : std::max(0.0f, direct_mix - 1.0f / 256.0f);
+    const float sample = direct_mix == 1.0f ? source[transport] : accumulation[head] + direct_mix * (source[transport] - accumulation[head]);
+    const float value = sample * gate * volume_now;
     accumulation[head] = 0.0f;
     head = (head + 1) & (Size - 1);
     if (++transport == source_count)

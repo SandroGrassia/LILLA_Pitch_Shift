@@ -18,6 +18,7 @@ public:
     bool IsActive() const;
     uint32_t Transport() const;
     uint32_t GeneratedHops() const;
+    uint32_t AnalyzedFrames() const;
     float Pitch() const;
     uint32_t TransientResets() const;
     void ReadReferenceBlock(int16_t *destination, uint32_t first, uint32_t count) const;
@@ -30,6 +31,7 @@ private:
     uint32_t head = 0;
     uint32_t until_frame = 0;
     uint32_t generated = 0;
+    uint32_t analyzed = 0;
     uint32_t transient_resets = 0;
     uint32_t transient_holdoff = 0;
     float pitch_target = 1.0f;
@@ -40,6 +42,10 @@ private:
     bool running = false;
     bool initialized = false;
     bool first_frame = true;
+    bool analysis_ready = false;
+    bool frame_transient = false;
+    float direct_mix = 0.0f;
+    float analysis_frequency[Bins] = {};
     float previous_phase[Bins] = {};
     float previous_magnitude[Bins] = {};
     float synthesis_phase[Bins] = {};
@@ -55,7 +61,10 @@ private:
     static uint16_t dominant_source[Bins];
     static uint16_t peaks[Bins];
     static uint16_t peak_owner[Bins];
+    static uint16_t phase_anchor[Bins];
+    static bool advance_needed[Bins];
     static void Transform(bool inverse);
     static float WrapPhase(float phase);
+    void Analyze(uint32_t position);
     void Generate();
 };

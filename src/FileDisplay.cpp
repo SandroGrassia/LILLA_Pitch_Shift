@@ -15,7 +15,7 @@ void FileDisplay::Begin()
     tft.setTextColor(ILI9341_WHITE);
     tft.setTextSize(2);
     tft.setCursor(8, 12);
-    tft.print("FFT - 4 VOICES");
+    tft.print("FFT6 0.6.7");
     tft.setTextSize(1);
     tft.setCursor(8, 42);
     tft.print("SELECT: choose RAW file");
