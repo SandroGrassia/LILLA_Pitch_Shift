@@ -7,11 +7,12 @@ class WsolaCore
 {
 public:
     static constexpr uint32_t MaxWindow = 4410;
-    static constexpr uint32_t MaxHop = MaxWindow / 2;
+    static constexpr uint32_t MaxHop = MaxWindow * 9 / 10;
     static constexpr uint32_t MaxSearch = 882;
     void Attach(const int16_t *samples, uint32_t count);
     void SetPitch(float value);
     void SetWindow(uint32_t samples);
+    void SetOverlap(uint32_t percent); // Select 10, 25, 50 or 75 percent overlap; changes use the geometry fade.
     void SetSearch(uint32_t samples);
     void SetVolume(float value);
     void SetRunning(bool value);
@@ -30,6 +31,9 @@ private:
     uint32_t source_count = 0;
     uint32_t transport = 0;
     uint32_t requested_window = 882;
+    uint32_t requested_overlap = 50; // Requested overlap percentage.
+    uint32_t window = 882; // Active source fragment length.
+    uint32_t overlap = 441; // Active correlation and crossfade length.
     uint32_t hop = 441;
     uint32_t search_radius = 441;
     float pitch_target = 1.0f;
@@ -43,8 +47,10 @@ private:
     float read_position = 0.0f;
     uint32_t current = 0;
     int16_t blocks[2][MaxHop] = {};
-    int16_t tail[MaxHop] = {};
+    int16_t tail[MaxWindow] = {};
     int16_t search[MaxWindow + 2 * MaxSearch] = {};
+    float accumulated[MaxWindow] = {}; // Pending weighted samples for non-50-percent overlap.
+    float weights[MaxWindow] = {}; // Pending normalization weights.
     uint32_t generated_hops = 0;
     float last_correlation = 1.0f;
     int32_t last_offset = 0;
@@ -53,4 +59,5 @@ private:
     float Score(uint32_t offset, uint32_t stride) const;
     void Generate(uint32_t destination);
     void Prime();
+    void MixFragment(uint32_t destination, uint32_t best); // Normalize and emit one hop, retaining all overlapping tails.
 };

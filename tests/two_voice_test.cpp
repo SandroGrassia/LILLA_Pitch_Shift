@@ -50,6 +50,25 @@ int main()
     assert(audio.TakeTimings(GranularAudio::Mix).generate.blocks == 0);
     assert(audio.TakeLevels(GranularAudio::Mix).samples == 310 * AUDIO_BLOCK_SAMPLES);
     assert(audio.TakeLevels(GranularAudio::Mix).samples == 0);
+    // Exercise live common overlap changes through the actual dual-voice wrapper.
+    for (uint32_t percent : {75u, 25u, 10u, 50u})
+    {
+        for (unsigned voice = 0; voice < 2; ++voice)
+        {
+            audio.core[voice].SetOverlap(percent);
+            reference[voice].SetOverlap(percent);
+        }
+        for (unsigned block = 0; block < 30; ++block)
+        {
+            audio.update();
+            for (unsigned i = 0; i < AUDIO_BLOCK_SAMPLES; ++i)
+            {
+                const int32_t first_sample = reference[0].Render();
+                const int32_t second_sample = reference[1].Render();
+                assert(AudioStream::transmitted.data[i] == (first_sample + second_sample) / 2);
+            }
+        }
+    }
     // Stop only the first voice and sweep the second: compare the actual mixer sample by sample.
     audio.core[0].SetRunning(false);
     reference[0].SetRunning(false);

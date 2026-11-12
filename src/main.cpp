@@ -20,6 +20,8 @@ HardwareControls controls;
 constexpr char filename[] = "Giotto.raw";
 constexpr const char *scope_names[] = {"P1", "P2", "MIX"};
 int pitch_cents[GranularAudio::VoiceCount] = {};
+constexpr uint32_t overlaps[] = {10, 25, 50, 75}; // Step selects a common overlap for both voices.
+int overlap_id = 2; // Start with the original 50-percent geometry.
 int volume_percent = 25;
 bool running[GranularAudio::VoiceCount] = {};
 bool ready = false;
@@ -69,6 +71,7 @@ void ApplyControls()
     for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
     {
         player.core[voice].SetPitch(pitches[voice]);
+        player.core[voice].SetOverlap(overlaps[overlap_id]);
         player.core[voice].SetVolume(volume_percent / 100.0f);
         player.core[voice].SetRunning(running[voice]);
     }
@@ -80,7 +83,7 @@ void ApplyControls()
     ++measurement_id;
     last_diagnostics = millis();
     char message[180];
-    snprintf(message, sizeof(message), "WSOLA P1=%s pitch=%.4f (%d cents) P2=%s pitch=%.4f (%d cents) window=20 ms search=+/-10 ms overlap=50%% volume=%d%% mix_gain=0.5", running[0] ? "PLAY" : "STOP", pitches[0], pitch_cents[0], running[1] ? "PLAY" : "STOP", pitches[1], pitch_cents[1], volume_percent);
+    snprintf(message, sizeof(message), "WSOLA P1=%s pitch=%.4f (%d cents) P2=%s pitch=%.4f (%d cents) window=20 ms search=+/-10 ms overlap=%u%% volume=%d%% mix_gain=0.5", running[0] ? "PLAY" : "STOP", pitches[0], pitch_cents[0], running[1] ? "PLAY" : "STOP", pitches[1], pitch_cents[1], static_cast<unsigned>(overlaps[overlap_id]), volume_percent);
     PrintLine(message);
 }
 
@@ -145,7 +148,8 @@ bool LoadSource()
     SerialFlashFile file = SerialFlash.open(filename);
     if (!file)
     {
-        PrintLine("ERROR: Rithm_01.raw not found in Flash; playback disabled.");
+        snprintf(message, sizeof(message), "ERROR: %s not found in Flash; playback disabled.", filename);
+        PrintLine(message);
         return false;
     }
     const uint32_t bytes = file.size();
@@ -198,7 +202,7 @@ void setup()
     {
         yield();
     }
-    PrintLine("Granular 0.3.0 - two independent WSOLA players - tempo 1");
+    PrintLine("Granular 0.4.0 - two independent WSOLA players - tempo 1");
     AudioMemory(12);
     if (!controls.Begin())
     {
@@ -217,7 +221,7 @@ void setup()
     if (ready)
     {
         ApplyControls();
-        PrintLine("From: P1 pitch / press=play-stop; To: P2 pitch / press=play-stop; LineOutVol: master volume; Step: unused.");
+        PrintLine("From: P1 pitch / press=play-stop; To: P2 pitch / press=play-stop; LineOutVol: master volume; Step: overlap 10/25/50/75 percent (both players).");
     }
 }
 
@@ -230,7 +234,12 @@ void loop()
     }
     controls.Poll();
     bool changed = false;
-    controls.TakeRotation(HardwareControls::Step);
+    const int next_overlap = constrain(overlap_id + controls.TakeRotation(HardwareControls::Step), 0, 3);
+    if (next_overlap != overlap_id)
+    {
+        overlap_id = next_overlap;
+        changed = true;
+    }
     controls.TakeStepPress();
     const int deltas[] = {controls.TakeRotation(HardwareControls::From), controls.TakeRotation(HardwareControls::To)};
     const bool presses[] = {controls.TakeFromPress(), controls.TakeToPress()};
@@ -289,7 +298,7 @@ void loop()
         AudioInterrupts();
 
         char message[230];
-        snprintf(message, sizeof(message), "BENCH id=%lu P1_play=%u P1_pitch=%.4f P2_play=%u P2_pitch=%.4f window_ms=20 search_ms=10 volume=%d mix_gain=0.5 block=%u budget_us=%.2f MHz=%.0f", static_cast<unsigned long>(measurement_id), running[0] ? 1u : 0u, exp2f(pitch_cents[0] / 1200.0f), running[1] ? 1u : 0u, exp2f(pitch_cents[1] / 1200.0f), volume_percent, AUDIO_BLOCK_SAMPLES, AUDIO_BLOCK_SAMPLES * 1000000.0 / AUDIO_SAMPLE_RATE_EXACT, F_CPU_ACTUAL / 1000000.0);
+        snprintf(message, sizeof(message), "BENCH id=%lu P1_play=%u P1_pitch=%.4f P2_play=%u P2_pitch=%.4f window_ms=20 search_ms=10 overlap=%u volume=%d mix_gain=0.5 block=%u budget_us=%.2f MHz=%.0f", static_cast<unsigned long>(measurement_id), running[0] ? 1u : 0u, exp2f(pitch_cents[0] / 1200.0f), running[1] ? 1u : 0u, exp2f(pitch_cents[1] / 1200.0f), static_cast<unsigned>(overlaps[overlap_id]), volume_percent, AUDIO_BLOCK_SAMPLES, AUDIO_BLOCK_SAMPLES * 1000000.0 / AUDIO_SAMPLE_RATE_EXACT, F_CPU_ACTUAL / 1000000.0);
         PrintLine(message);
         PrintTimings(GranularAudio::Mix, timings[GranularAudio::Mix]);
         snprintf(message, sizeof(message), "DIAG render_max=%.1f us audio_cpu_max=%.1f%% pool_max=%u missed=%lu late=%lu", maximum / (F_CPU_ACTUAL / 1000000.0f), cpu_max, pool_max, static_cast<unsigned long>(missed), static_cast<unsigned long>(levels[GranularAudio::Mix].over_budget));
