@@ -1,0 +1,285 @@
+"""Exercise the production Delay page and controls when opened from Direct Sampler."""
+from pathlib import Path
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+
+root = Path(__file__).resolve().parents[2]
+main = (root / 'src/main.cpp').read_text(encoding='utf-8')
+display = (root / 'lib/DisplayDelay/DisplayDelay.cpp').read_text(encoding='utf-8')
+header = (root / 'lib/DisplayDelay/DisplayDelay.h').read_text(encoding='utf-8')
+header = re.sub(r'^#(?:include|pragma).*$', '', header, flags=re.M)
+
+def method(source, signature):
+    return re.search(r'^(?:FLASHMEM )?' + re.escape(signature) + r'[^\n]*\n\{.*?^\}', source, re.M | re.S).group(0) + '\n'
+
+start = main.index('    if (Lilla_state == DELAY_SETTINGS', main.index('#pragma region Delay'))
+end = main.index('    // Navigation remains available', start)
+controls = 'void Step_controls()\n{\n' + main[start:end] + '}\n'
+start = main.index('    // Panic\n')
+end = main.index('    // Pre-listen volume', start)
+panic = 'void Step_panic()\n{\n' + main[start:end] + '}\n'
+start = main.index('            case SwToolsDelay:', main.index('#pragma region Direct Sampler')) if '#pragma region Direct Sampler' in main else main.index('            case SwToolsDelay:', main.index('    if (Lilla_state == DIRECT_SAMPLING)'))
+end = main.index('            break;', start)
+entry = 'void Enter_from_sampler()\n' + main[main.index('            {', start):end] + '\n'
+start = main.index('                case DIRECT_SAMPLING:', main.index('    // Navigation remains available'))
+end = main.index('                    break;', start)
+back = 'void Return_to_sampler()\n{\n' + main[main.index('\n', start) + 1:end] + '}\n'
+
+prefix = r'''
+#include <cassert>
+#include <cstdio>
+#include <cstdint>
+#include <cstring>
+#include <set>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <iostream>
+#define FLASHMEM
+#define bitRead(value, bit) (((value) >> (bit)) & 1)
+enum State { PERFORMANCE, DIRECT_SAMPLING, LIVE_SAMPLING, MIDI_LOOP, DELAY_SETTINGS };
+State Lilla_state = PERFORMANCE, Lilla_state_0 = PERFORMANCE;
+PRODUCTION_DELAY_ENUM
+enum Item { DELAY_THRESHOLD, FEEDBACK_CUTOFF, LOOP_GAIN, SAMPLES, SAMPLES_LR, MODULATION_SOURCE, MODULATION_FREQUENCY, MODULATION_DEPTH, MODULATION_PHASE_LR, INSTRUMENT_ROUTE };
+enum Control { EN_PB_LineOutVol, EN_PB_Select, EN_PB_Value };
+constexpr int INSTRUMENTS = 8, TRACKS = 2, PATCH_VOLUME_MAX = 100;
+constexpr int PLAYERS = 16, AUDIO_BLOCK_SAMPLES = 128, DELAY_CACHE_CHANNEL_SAMPLES = 256;
+int16_t DELAY_fifo_L[DELAY_CACHE_CHANNEL_SAMPLES], DELAY_fifo_R[DELAY_CACHE_CHANNEL_SAMPLES];
+void delay(int) {}
+struct ControlState
+{
+    bool Is_running() const { return true; }
+    void Stop() {}
+    void Start() {}
+} Midi_reader, Trigger;
+constexpr uint16_t ILI9341_BLACK = 0, ILI9341_WHITE = 1, ILI9341_RED = 2, TEXT_COLOR = 3, ILI9341_YELLOW = 4, ILI9341_ORANGE = 5;
+int PB_Sound[INSTRUMENTS] = {10,11,12,13,14,15,16,17};
+bool LOOP_track_run[TRACKS] = {true, true};
+int volume_patch = 10, Patch_id = 0, result = 0, recording = 0, DS_local_pointer = 0;
+DELAY_element_name DELAY_local_pointer = value_DELAY_Feedback;
+int edits = 0, pointer_moves = 0, pointer_sets = 0, clears = 0, feedback_draws = 0, stops = 0, gains = 0;
+bool rotate_value = false, rotate_volume = false;
+std::set<int> pressed;
+struct LillaCompressor { static constexpr int THRESHOLD_OFF = -2; };
+struct DelayData { int loop_gain = 7; int lpf_cutoff = 39; int compressor_threshold = -6; int instrument_route = 3; } Delay_data, Delay_values;
+struct Manager
+{
+    int route = 0;
+    int Get_value(int) { return route; }
+    void Silence_feedback() { Delay_values.loop_gain = 0; gains += 2; }
+    void Restore_feedback() { Delay_values.loop_gain = Delay_data.loop_gain; gains += 2; }
+} Delay_manager;
+bool Read_pushbutton(int id) { return pressed.erase(id) != 0; }
+bool Read_encoder(int, int &value, int, int, int)
+{
+    if (!rotate_volume)
+    {
+        return false;
+    }
+    ++value;
+    return true;
+}
+int Read_encoder_simple(int) { return rotate_value ? 1 : 0; }
+bool D_Read_value(int)
+{
+    if (rotate_value)
+    {
+        ++edits;
+        return true;
+    }
+    return false;
+}
+void D_Set_value(int item, int value)
+{
+    ++edits;
+    if (item == INSTRUMENT_ROUTE)
+    {
+        Delay_manager.route = value;
+    }
+}
+void AudioNoInterrupts() {}
+void AudioInterrupts() {}
+int Delay_feedback(int v) { return v; }
+int Patch_volume_gain(int v) { return v; }
+struct Gain { bool Is_silent() const { return true; } } D_gain_L_feedback, D_gain_R_n;
+struct Voice
+{
+    void Panic_stop() { ++stops; }
+    bool isPlaying() const { return false; }
+} Player[PLAYERS];
+struct Players
+{
+    void Update_all_Preset_volume(int, int) { ++edits; }
+    void Broadcast_volume() {}
+    void Stop_all_players() { ++stops; }
+    void Reset_booked_and_restart_player() {}
+    void Reset_players_to_restart() {}
+} Players_Manager;
+struct LEDs { void Request_all_LED_switch_off() {} } Loop_led_set;
+struct Pointer
+{
+    void Move_pointer(int) { ++pointer_moves; }
+    void Set_pointer_to_Feedback() { ++pointer_sets; }
+    DELAY_element_name Get_element_name() { return DELAY_local_pointer; }
+} Pointer_Delay;
+void Clear_UI_events() { ++clears; pressed.clear(); rotate_value = rotate_volume = false; }
+std::vector<std::string> labels;
+std::string popup;
+struct TFT
+{
+    void fillScreen(int) { labels.clear(); popup.clear(); }
+    void setCursor(int, int) {}
+    void setTextColor(int) {}
+    void print(const char *text) { labels.emplace_back(text); }
+    void print(int value) { labels.emplace_back(std::to_string(value)); }
+    void print(float value, int decimals)
+    {
+        char text[32];
+        snprintf(text, sizeof(text), "%.*f", decimals, value);
+        labels.emplace_back(text);
+    }
+} tft;
+int clear_col = -1, clear_row = -1, clear_chars = -1;
+void Cancel_text_reset_cursor(int col, int row, int chars)
+{
+    clear_col = col;
+    clear_row = row;
+    clear_chars = chars;
+}
+float frame_col, frame_row;
+int frame_chars;
+void Frame_by_col_row(float col, float row, int chars, bool)
+{
+    frame_col = col;
+    frame_row = row;
+    frame_chars = chars;
+}
+int display_coordinate_x(float v) { return v; }
+int display_coordinate_y(float v) { return v * 2; }
+void Backgorund_red(int, int, int) {}
+void Show_popup_text(const char *text, int, int) { popup = text; }
+struct Common
+{
+    void P_Patch_volume_value(bool) {}
+    void Show_all_effects() {}
+} Display_Common;
+struct Sampler
+{
+    void DS_page_upper() {}
+    void DS_page_lower(int) {}
+    void DS_menu() {}
+    void DS_bar(int, int) {}
+} Display_Sampler;
+struct SamplerPointer
+{
+    void Set_pointer_to_first_menu_element() {}
+    int Get_pointer() { return 0; }
+} Pointer_Sampler;
+void DS_define_menu() {}
+'''
+shared_delay = (root / 'lib/SharedDelay/SharedDelay.h').read_text(encoding='utf-8')
+prefix = prefix.replace('PRODUCTION_DELAY_ENUM', re.search(r'enum DELAY_element_name\s*\{.*?};', shared_delay, re.S).group(0) + '\n' + re.search(r'static constexpr int DELAY_element_names = \d+;', shared_delay).group(0))
+
+elements = (root / 'lib/SharedElements/SharedElements.h').read_text(encoding='utf-8')
+prefix += re.search(r'static constexpr int LPF_MAX = \d+;', elements).group(0) + '\n'
+prefix += re.search(r'constexpr int lowpass_value\[.*?};', elements, re.S).group(0) + '\n'
+
+stubs = r'''
+DisplayDelay Display_Delay;
+
+void DisplayDelay::D_feedback() { ++feedback_draws; }
+void DisplayDelay::D_delay_time() {}
+void DisplayDelay::D_delay_time_LR() {}
+void DisplayDelay::D_modulation_source() {}
+void DisplayDelay::D_modulation_frequency() {}
+void DisplayDelay::D_modulation_depth() {}
+void DisplayDelay::D_modulation_phase_LR() {}
+'''
+production = method(display, 'void DisplayDelay::DELAY_show_pointer_frame(') + method(display, 'void DisplayDelay::D_feedback_compressor(void)') + method(display, 'void DisplayDelay::D_sounds(void)') + method(display, 'void DisplayDelay::D_feedback_lpf(void)') + method(display, 'void DisplayDelay::D_show_page()') + method(display, 'void DisplayDelay::D_disabled(void)') + method(main, 'void Golive_DELAY_SETTINGS(void)') + entry + controls + panic + back
+checks = r'''
+int main()
+{
+    Lilla_state = DIRECT_SAMPLING;
+    Enter_from_sampler();
+    assert(Lilla_state == DELAY_SETTINGS && Lilla_state_0 == DIRECT_SAMPLING);
+    assert(popup == "DELAY IS DISABLED WHILE SAMPLING");
+    assert(std::find(labels.begin(), labels.end(), "DIRECT SAMPLER DELAY") != labels.end());
+    assert(pointer_sets == 0);
+    const int feedback_before = feedback_draws;
+    for (int item = 0; item < DELAY_element_names; ++item)
+    {
+        DELAY_local_pointer = static_cast<DELAY_element_name>(item);
+        rotate_value = rotate_volume = true;
+        pressed.insert(EN_PB_Value);
+        pressed.insert(PB_Sound, PB_Sound + INSTRUMENTS);
+        Step_controls();
+        assert(edits == 0 && pointer_moves == 0 && volume_patch == 10 && Delay_manager.route == 0);
+    }
+    pressed.insert(EN_PB_LineOutVol);
+    Step_panic();
+    assert(stops == PLAYERS && gains == 4 && Delay_data.loop_gain == 7 && Delay_values.loop_gain == 7);
+    assert(feedback_draws == feedback_before);
+    Return_to_sampler();
+    assert(Lilla_state == DIRECT_SAMPLING && pressed.empty() && !rotate_value && !rotate_volume);
+    for (State origin : {PERFORMANCE, LIVE_SAMPLING, MIDI_LOOP})
+    {
+        Lilla_state_0 = origin;
+        Golive_DELAY_SETTINGS();
+        assert(popup.empty());
+        const int previous_edits = edits;
+        DELAY_local_pointer = value_DELAY_Feedback;
+        rotate_volume = true;
+        pressed.insert(PB_Sound[0]);
+        Step_controls();
+        assert(edits > previous_edits);
+        pressed.insert(EN_PB_LineOutVol);
+        Step_panic();
+        assert(Delay_data.loop_gain == 7 && Delay_values.loop_gain == 7);
+    }
+    assert(pointer_sets == 3);
+    const float expected_frames[DELAY_element_names][3] = {{13, 7.5f, 3}, {9, 8.5f, 7}, {11, 9.5f, 6}, {10, 10.5f, 6}, {20, 11.5f, 7}, {41, 7.5f, 6}, {44, 8.5f, 7}, {40, 9.5f, 6}, {44, 10.5f, 6}};
+    for (int item = 0; item < DELAY_element_names; ++item)
+    {
+        Display_Delay.DELAY_show_pointer_frame(static_cast<DELAY_element_name>(item), true);
+        assert(frame_col == expected_frames[item][0] && frame_row == expected_frames[item][1] && frame_chars == expected_frames[item][2]);
+    }
+    assert(std::find(labels.begin(), labels.end(), "ECHO LPF") != labels.end());
+    assert(std::find(labels.begin(), labels.end(), "COMPRESSOR") != labels.end());
+    Lilla_state_0 = LIVE_SAMPLING;
+    labels.clear();
+    Display_Delay.D_sounds();
+    assert(labels.size() == 1 && labels[0] == "LIVE SAMPLER");
+    for (bool enabled : {false, true})
+    {
+        Delay_data.compressor_threshold = enabled ? -6 : LillaCompressor::THRESHOLD_OFF;
+        labels.clear();
+        Display_Delay.D_feedback_compressor();
+        assert(clear_col == 11 && clear_row == 19 && clear_chars == 6);
+        assert(labels[0] == (enabled ? "-6" : "OFF"));
+        assert(enabled ? labels.size() == 2 && labels[1] == "dB" : labels.size() == 1);
+    }
+    for (int cutoff = 0; cutoff <= LPF_MAX; ++cutoff)
+    {
+        Delay_data.lpf_cutoff = cutoff;
+        labels.clear();
+        Display_Delay.D_feedback_lpf();
+        assert(clear_col == 9 && clear_row == 17 && clear_chars == 7);
+        assert(labels.size() == 2 && labels[0].size() + labels[1].size() <= 7);
+        assert(labels[0] == std::to_string(lowpass_value[cutoff]));
+        assert(labels[1] == "Hz");
+    }
+    std::cout << "PASS: persistent disabled Delay page, locked controls and routing, Panic silences feedback without drawing disabled controls, Sampler return, other modes editable\n";
+}
+'''
+compiler = shutil.which('g++') or r'C:\msys64\ucrt64\bin\g++.exe'
+with tempfile.TemporaryDirectory(prefix='lilla-delay-sampling-') as directory:
+    cpp = Path(directory) / 'delay_sampling.cpp'
+    exe = Path(directory) / ('delay_sampling.exe' if os.name == 'nt' else 'delay_sampling')
+    cpp.write_text(prefix + header + stubs + production + checks, encoding='utf-8', newline='\r\n')
+    subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror', str(cpp), '-o', str(exe)], check=True)
+    environment = os.environ.copy()
+    environment['PATH'] = str(Path(compiler).parent) + os.pathsep + environment.get('PATH', '')
+    subprocess.run([str(exe)], check=True, env=environment)

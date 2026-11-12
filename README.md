@@ -1,216 +1,195 @@
-# Granular 0.4.0 - WSOLA experiment
+<p align="center">
+	<img width="500" alt="LILLA Audio Sampler" src="doc/assets/images/logo_0.jpg">
+</p>
 
-Standalone PlatformIO firmware for the existing Lilla hardware. The active engine
-uses waveform-similarity overlap-add (WSOLA) followed by resampling, replacing the
-uniformly scheduled granular engine from version 0.1.2. The previous GranularCore
-and its tests remain in the repository as a baseline; they are not connected to audio.
+# LILLA Audio Sampler 2026
 
-## Controls
+This repository contains the firmware project for the LILLA Audio Sampler, a Teensy 4.1 based hardware sampler with up to 16 playback voices, designed and assembled in Italy.
 
-| Encoder | Rotation | Pushbutton |
-| --- | --- | --- |
-| Step | Common overlap: 10, 25, 50, 75 percent | Unused |
-| From | Player 1 pitch 0.5 to 2, in 10-cent steps | Player 1 play/stop |
-| To | Player 2 pitch 0.5 to 2, in 10-cent steps | Player 2 play/stop |
-| LineOutVol | Master volume: 0 to 100 percent | Unused |
+The codebase targets a Teensy 4.1 running at 600 MHz and is organized as a standalone PlatformIO project with custom audio, display, storage, MIDI, and user-interface modules.
 
-Both players start stopped, with pitch 1 and master volume 25 percent.
-Window is fixed at 20 ms (882 samples), search at +/-10 ms (441 samples).
-Overlap starts at 50 percent. Step selects 10, 25, 50 or 75 percent for both voices.
-Changes fade out, rebuild at the current transport and fade back in; they do not restart the source.
-The original complementary-ramp path is retained at 50 percent. Other settings use
-normalized weighted overlap-add; 75 percent retains contributions from up to four grains.
-Each voice has its own transport, pitch smoothing, start/stop fade and WSOLA state.
-Both share a single read-only source allocation in PSRAM. Controls for one voice
-never restart or reposition the other voice. Restart after a completed stop begins
-at sample zero; a press during the stop fade reverses the fade without restarting.
+<p align="center">
+    <img width="1000" alt="LILLA Audio Sampler in blue" src="doc/assets/images/lilla_blue_1.jpg">
+</p>
 
-The mono mix is (player1 + player2) / 2, duplicated to left and right outputs.
-This fixed headroom prevents sum overflow even for coincident full-scale voices.
-A solo voice is therefore 6 dB quieter than in 0.2.4 at the same volume setting;
-the factor does not change when the other voice starts or stops.
+Read the illustrated [User Guide](User%20Guide.md) for connections, controls and operating procedures. The printable English edition is [User Guide.pdf](User%20Guide.pdf).
 
-Window duration refers to the intermediate WSOLA stream, before resampling. At
-pitch p its output duration is approximately window/p. It is therefore a different
-parameter from the fixed output-grain duration of the previous engine.
+See the [Firmware Architecture](FIRMWARE_ARCHITECTURE.md) for the audio engine, execution model, memory layout and maintenance guidance.
 
-## Signal path
+## New in firmware 7.3.0
 
-Giotto.raw is copied from SPI Flash to PSRAM at startup. It must already exist under
-that exact name and contain headerless mono signed 16-bit little-endian PCM at
-44.1 kHz. Flash is read only. No source recording is included in this repository.
-Missing PSRAM/file, invalid byte count, or allocation failure disables playback
-and reports the cause to Serial.
+**Four layers per MIDI Loop track.** Build an arrangement with up to **16 independent layers** across the four tracks, with **1,000 NoteOn/NoteOff events per layer**. Add a new part while existing layers keep playing; LEVEL, SHIFT and TRANSP remain common to the track.
 
-WSOLA uses a synthesis hop H equal to the window minus the integer overlap length. Each next fragment
-is selected near the position where the original-speed transport predicts it is
-needed. At constant pitch p this gives an analysis hop of approximately H/p. Its
-leading overlap is aligned with the pending mixed tail and combined using linear ramps. The resulting
-stream is resampled with linear interpolation at rate p.
+After the master length has been recorded, REC arms the next free layer. Recording starts at the first NoteOn and closes at the next master restart. Press REC again to discard the new layer, or let the 20-second no-note timeout cancel it. Existing layers are preserved.
 
-Candidate fragments are ranked by mean-removed normalized cross-correlation with
-the overlap tail. A small distance penalty favors positions near the nominal
-transport when matches are similar. The search scans every eight source samples,
-then refines near the best position at one-sample resolution. Correlation samples
-are decimated for bounded work: approximately 128 samples in the coarse pass and
-256 in the fine pass, except for shorter windows. Only one contiguous source
-region is copied from PSRAM per search; candidate comparisons use internal RAM.
-Silence/constant overlaps favor the nominal position. At pitch 1 the nominal
-position is used directly and reproduces the source apart from gain/rounding.
+Download [Lilla_v7_3_0.hex](https://github.com/SandroGrassia/Lilla_Audio_Sampler/releases/download/v7.3.0/Lilla_v7_3_0.hex). See the [7.3.0 release notes](docs/release-notes-7.3.0.md) and the updated [MIDI Loop instructions](User%20Guide.md#midi-loop). **Saved MIDI loops from earlier firmware are not compatible with 7.3.0.** Selective deletion of completed layers is not yet available.
 
-The nominal timeline is anchored to the output transport, which advances by one
-source sample per output sample. Selected offsets are local and do not accumulate
-into tempo drift. Two buffered hops provide interpolation across hop boundaries.
-For varying pitch, the next hop's lookahead uses the current smoothed pitch; this
-is a bounded local approximation, not a guarantee of exact transient positioning.
+## SD folder layout
 
-Pitch and gain are smoothed per sample with a 256-sample time constant. Start/stop
-uses approximately 5 ms fades. A window or overlap change fades out, rebuilds the WSOLA state
-at the current transport, and fades in. Changing the search radius takes effect
-when another hop is generated. Restart after a completed stop begins at sample zero.
+See [SD card formats and files](SD_FILES.md) for compatible filesystems, audio formats and each folder's purpose.
 
-## Serial diagnostics
-
-Output only; no terminal commands are accepted. Every two seconds:
-
-- BENCH: both players' play/pitch settings, window/search geometry, selected overlap, volume and block budget.
-- TIME MIX: measured combined rendering time and complete audio callback time.
-- TIME P1 / P2: rendering time for each active voice, before reference metering.
-- DIAG: maximum callback time, maximum whole-audio CPU use, audio-pool peak, missed allocations and callbacks over budget (late).
-- LEVEL MIX: actual mixed output RMS in dBFS and PCM peak.
-- LEVEL P1 / P2: source/output RMS, peak, latest correlation and offset, before the fixed mix gain.
-
-Voice output levels include master volume but precede the half-gain mix. At 25 percent
-volume, a preserved voice is approximately 12 dB below its source before mixing,
-and approximately 18 dB below when heard alone after mixing. Reference metering
-follows the nominal transport; it is approximate around startup and transients.
-Correlation is the latest overlap estimate, not an average; -1 also identifies
-silence or an overlap with negligible variance.
-
-Logs use a nonblocking 4096-byte queue, drained as USB accepts data. Lines are
-dropped if the queue is full. No terminal input is used. Controls are scanned at
-up to 2 kHz with a 25 ms button debounce.
-
-## Hardware
-
-Teensy 4.1 at 600 MHz; Audio Board Rev D using standard I2S and SGTL5000 control.
-Both output channels carry the same mono signal. Line-out level is 13 and headphone
-level is 0.8, matching the earlier prototype. Flash uses SPI CS 6. Controls use
-SPI1: MOSI 26, SCK 27, MISO 39, CS 37. Display CS 38 stays high.
-
-| Control | MCP23S17 chip | DT | CLK | Active button |
-| --- | --- | --- | --- | --- |
-| Step | 3 | a3 | a4 | unused (a2) |
-| From | 3 | a6 | a7 | a5 |
-| To | 3 | a1 | a0 | b6 |
-| LineOutVol | 4 | a2 | a1 | none |
-
-The pinned Teensyduino 1.62 core detects the installed PSRAM automatically, including
-two 8 MiB chips (16 MiB total) or two ISSI 16 MiB chips. The source must fit the
-available pool and is allocated once for both voices. FRAM is not used.
-No effects, MIDI, display UI, recording or Flash writes are used.
-
-## Build and tests
-
-```powershell
-pio run
-pio device monitor --baud 115200
-g++ -std=c++20 -O2 -Wall -Wextra -Werror -I include src/WsolaCore.cpp tests/wsola_test.cpp -o .pio/wsola_test.exe
-./.pio/wsola_test.exe
-g++ -std=c++20 -O2 -Wall -Wextra -Werror -I include src/WsolaCore.cpp tests/overlap_test.cpp -o .pio/overlap_test.exe
-./.pio/overlap_test.exe
-python tests/encoder_test.py
-g++ -std=c++20 -O2 -Wall -Wextra -Werror -I tests/stubs -I include src/WsolaCore.cpp src/GranularAudio.cpp tests/two_voice_test.cpp -o .pio/two_voice_test.exe
-./.pio/two_voice_test.exe
+```text
+microSD root/
+  AUDIO_FILES/          Source audio and converted RAW files for SD playback
+  UPLOAD_AUDIO_FILES/   Source audio for import into Flash
+  EXPORTED_AUDIO_FILES/ Sampler WAV exports
+  DATA_BACKUPS/         Numbered configuration and recording backups
+  RESTORE_FROM_BACKUP/  Contents of the selected backup to restore
+  LILLA_PRIVATE/        Firmware-managed metadata (Hidden/System)
+    .lilla-index        SD audio catalog
+    .lilla-sources/     Saved Sound source references
+    MIDI_LOOPS/         Saved MIDI loops
+    PATCHES/            Patch parameter copies
 ```
 
-If pio is absent from PATH, use the installed executable at
-C:/Users/Utente/.platformio/penv/Scripts/platformio.exe.
+Keep playback audio in `/AUDIO_FILES` and its catalog and saved Sound references in `/LILLA_PRIVATE`. Place Flash import sources in `/UPLOAD_AUDIO_FILES`. To restore a backup, copy its contents directly into `/RESTORE_FROM_BACKUP`. See the [User Guide](User%20Guide.md#sd-folder-layout) for migration and backup instructions.
 
-Firmware: .pio/build/teensy41/firmware.hex, also exported as Granular_v0_4_0.hex.
-No upload is performed during development. Load the HEX with Teensy Loader for
-testing; Granular_v0_1_2.hex provides the previous listening baseline.
+## SD audio library (introduced in 7.2.0)
 
-Host tests verify unity reconstruction from the first samples, window transitions,
-source wrapping, continuous pitch changes, transport, stop/restart and pitch/RMS
-at 67 Hz and 997 Hz for ratios 0.25, 0.5, 1, 1.3, 2 and 4. These tones are not
-chosen to align with the window. At 67 Hz and pitch 0.5, search +/-10 ms restores
-RMS to about 2121 versus 1521 with search off (12000 peak input, volume 25 percent).
-This demonstrates the alignment effect on a tone, not quality on complex music.
-The two-voice test exercises the actual audio wrapper with a mocked AudioStream:
-sample-exact mixing against independent cores, coincident hop counts, independent
-stop/pitch, statistics reset, allocation failure and full-scale headroom. Its clock
-is mocked; it cannot validate physical timing or encoder wiring.
+Earlier firmware versions let you build patches from the samples you had imported into LILLA's 64 MB Flash memory. Firmware 7.2.0 opens up a much larger library: browse and audition your prepared audio collection on an SD card, choose the sounds or portions you want, and use them in your patches without having to import them into Flash.
 
-## Listening pass and limitations
+You can still keep your favourite samples in the internal Flash library, within its 64 MB capacity, and choose from both libraries when creating patches.
 
-First test From and To independently, then both players at pitch 2 for at least
-10 seconds, preferably a full source loop. Repeat with different start times,
-both buttons pressed together, and continuous independent pitch changes.
-Check TIME MIX maxima, audio_cpu_max, late and missed. Starting both together is
-useful but does not guarantee sample-synchronous starts because of button scanning
-and debounce; MIX hmax=2 confirms two generations occurred within one callback.
-Actual two-voice CPU headroom still requires physical Teensy measurements.
+See the [User Guide](User%20Guide.md#importing-audio) to get started, or read the [7.2.0 release notes](docs/release-notes-7.2.0.md) for details.
 
-This implementation has no transient detector, phase-vocoder stage, formant
-preservation, or automatic gain compensation. Linear resampling has no dedicated
-anti-alias filter for upward transposition; bright material can still alias.
-WSOLA cannot align every component of polyphonic or percussive material at once.
-The cyclic source wrap has no separate endpoint crossfade. Large pitch changes
-can reveal the buffered overlap and local alignment approximation.
+## What This Project Does
 
-## Provenance
+LILLA is a polyphonic, multitimbral, multi-MIDI audio sampler designed to work with imported audio, self-recorded audio, and live input.
 
-Lilla hardware mapping and encoder basis: Sandro Grassia's firmware, source commit
-283739101236e5ebba9e0c3b307b56c8177b23e9. The committed granular baseline is b3e1811.
-WSOLA is implemented here without importing an external processing library.
-Algorithm references: https://www.isca-archive.org/eurospeech_1993/roelands93_eurospeech.html
-and https://www.surina.net/article/time-and-pitch-scaling.html.
-Teensy Audio, SerialFlash and Adafruit libraries retain their own licenses.
+| Mode | Features |
+| --- | --- |
+| Performance | Up to 16 playback voices and 200 patches, each with up to eight sounds, individual MIDI channels and keyboard ranges. |
+| Sampler | Mono/stereo recording into Flash, conversion into playable sounds and WAV export to microSD. |
+| Live Sampler | Circular PSRAM recording with approximately 40 seconds in mono or 20 seconds in stereo, adjustable feedback and capture of selected regions into patches. |
+| MIDI Loop | Four tracks with four independent layers each, 1,000 events per layer, played through the current patch and stored on microSD. |
 
-## Processing-time measurements (0.3.0)
+Sound shaping includes sample trimming, forward/reverse and loop playback, envelopes, instrument filters and modulation, a common low-pass filter, stereo delay, bit reduction and downsampling. Separate main and pre-listening routes support auditioning and performance.
 
-The shared callback budget is 128 samples at 44.1 kHz, approximately 2902.49 us.
-Hardware cycle-counter readings are converted to microseconds at the actual CPU clock.
+## Operating Modes
 
-- engine_us[min/avg/max]: rendering 128 samples; MIX sums both measured render intervals in that same callback, including an idle renderer if present.
-- callback_us[avg/max]: MIX only; actual elapsed time from entry through allocation, both renderers, reference metering, mixing, output delivery and per-voice timing statistics. Final MIX timing bookkeeping is excluded.
-- WARM: first 260 active blocks after a control change, tracked separately per voice and for MIX (approximately 755 ms).
-- READ: steady blocks with no new WSOLA hop in that scope.
-- GEN: steady blocks with at least one new hop; MIX includes either or both voices generating.
-- ALL: READ and GEN combined; excludes WARM and fully stopped scopes.
-- n: measured blocks; hops: total generated hops; hmax: most hops in one block. MIX hmax=2 identifies coincident work from both voices at the permitted steady pitches.
-- late: MIX callbacks exceeding the shared budget. DIAG also includes idle callbacks.
+The **Modes** selector chooses Performance, Sampler, Live Sampler or MIDI Loop. Each mode offers a different way to use the same sound engine: play prepared patches, record a take, explore incoming audio or build a repeating MIDI arrangement.
 
-Any effective control change resets all timing/level intervals, audio CPU maxima,
-and the measurement id. It does not reset transports or force re-priming of an
-already playing voice. Each two-second report clears accumulated statistics;
-remaining WARM counts persist. Individual and MIX ALL groups can cover different
-blocks if a voice starts or stops, so their averages should not be added blindly.
-The measured MIX callback is the reference for total cost.
+### Performance
 
-Single-voice 0.2.4 hardware measurements at this geometry gave approximately
-165 us mean / 1019 us steady maximum at pitch 0.5, and 573 us mean / 982 us maximum
-at pitch 2 (callback times). They motivate this dual-voice experiment, but cannot
-establish safe polyphony inside the full Lilla firmware. Simultaneous searches,
-PSRAM/cache behavior and other audio work must be measured together.
+Performance is the main page for playing and organizing patches. Each patch contains up to eight sound slots with their own source, MIDI channel, root key, keyboard range, gain and pan. Assign overlapping ranges to build layers, separate ranges to create keyboard splits, or different MIDI channels to play several parts from a controller or sequencer. Up to 16 playback voices are shared between the active sounds, including layers and release tails.
 
-## Overlap experiment (0.4.0)
+The root key establishes the reference pitch of each sound. The keyboard range determines which notes trigger it, while precedence controls voice allocation and TONE provides pitch-dependent timbre correction. Patch volume, the common low-pass cutoff, resolution and downsampling are available for shaping the performance as a whole.
 
-At window 882, the selected overlap lengths are 88, 220, 441 and 661 samples;
-the synthesis hops are 794, 662, 441 and 221 samples respectively. Percentages
-are rounded down to whole samples. Pitch remains 0.5..2 from From/To. Step rotation
-increases/decreases overlap without wrapping; its pushbutton is unused.
-Serial remains output-only and reports the overlap in WSOLA and BENCH lines.
+Press **S1-S8** to edit an active sound. Sound Edit provides source selection, waveform trimming, pitch, gain, pan, ADSR envelope and playback direction. One-shot modes suit hits and natural decays; forward, reverse and alternating loops extend a selected region into a sustained sound. Noclick provides boundary smoothing where supported. Auto Tune analyses the selected region and adjusts its pitch toward a chromatic note; the result can then be refined by ear.
 
-At 75 percent several tails are accumulated and normalized sample by sample.
-Correlation uses the normalized pending tail. At 10/25 percent the middle of
-each grain is unblended. Window/search remain fixed at 20 ms and +/-10 ms.
-The 50-percent audio path is preserved for comparison; larger buffers increase
-RAM use for all settings. Earlier hardware timings describe only the old 50-percent
-configuration and must not be applied to the new overlap settings.
+The instrument VCF adds low-pass, high-pass, band-pass or notch filtering, resonance and modulation. Save the patch to retain sound edits, or clone it and develop a variation without replacing the original. See [Performance](User%20Guide.md#performance) and [Editing a sound](User%20Guide.md#editing-a-sound) for the complete workflow.
 
-Compare both voices at pitch 2 for each overlap; watch TIME MIX maxima, late and
-missed, including WARM after changes. At 75 percent two generations per voice
-can fall in one callback. Check transients, low notes, level stability and encoder
-changes during playback. Host tests cannot establish hardware CPU headroom or sound quality.
+### Sampler
+
+Sampler records the line input as a mono or stereo take in Flash. Use **PAUSE+REC** to monitor the source and set the input level, start the take with **MONO_REC** or **STEREO_REC**, then press **STOP** to finish. The resulting recording can be auditioned and used as material for a playable sound.
+
+**MAKE_RAW** converts recording material into the source format used by patches. **EXPORT_WAV_TO_SD** writes a 16-bit, 44.1 kHz WAV to microSD for editing, sharing or archiving on a computer. This makes Sampler useful for recording an instrument, voice, percussion hit or complete phrase before deciding how to map it to the keyboard.
+
+Recordings occupy persistent Flash storage, while WAV exports are written to `/EXPORTED_AUDIO_FILES`. Keep an external copy before replacing the audio library or performing destructive storage operations. See [Recording with Sampler](User%20Guide.md#recording-with-sampler).
+
+### Live Sampler
+
+Live Sampler records continuously into a circular PSRAM buffer: approximately **40 seconds in mono** or **20 seconds in stereo**. As recording proceeds, new material replaces the oldest audio. It is intended for playing and transforming an incoming source, finding useful moments in an ongoing recording, and turning those moments into new patch sounds.
+
+The waveform view provides a window into the buffer. **From** sets the playback start, **To** adjusts the selected region, and **Step** changes the editing increment. The displayed window can be shortened to inspect a transient or expanded for a wider view of the recording. Playback modes let you audition a region once or repeat it as a loop.
+
+Start-point behavior determines the relationship between playback and recording. **SYNC** starts playback close to the current write position; relative offsets move that start ahead of or behind it. **FIXED** anchors it to a location in the circular buffer. While recording, FWD playback continues across buffer wraps in both SYNC and FIXED, allowing held notes to continue beyond one buffer length. During the first fill, playback still stops with a fade if it reaches material that has not yet been recorded. After recording stops, normal one-shot FWD behavior resumes.
+
+**Feedback** mixes the returning playback signal with the new input before recording, so earlier material can be recaptured and progressively transformed. Its level controls how strongly previous passes contribute to the next one.
+
+A stereo-linked recording compressor controls the combined input and feedback level. Select **FEEDBACK COMPRESSOR**, then turn Value to choose a threshold from -24 to -3 dB or OFF.
+
+To keep a region, stop recording, choose a loop mode, refine its boundaries and press **S1-S8** to select the destination slot. A MIDI key sets the captured sound's root key. Stereo captures can use adjacent slots for their left and right channels. Return to Performance to review the new patch and save it, which writes the captured audio to Flash. The live buffer itself is temporary and does not survive power-off. See [Live Sampler](User%20Guide.md#live-sampler).
+
+### MIDI Loop
+
+MIDI Loop records note events into **four tracks with four layers each**, with up to **1,000 events per layer** and a maximum original loop duration of **120 seconds**. It plays the events through the current patch, so changing the patch's sounds, filters or keyboard mapping can change the arrangement without recording the notes again.
+
+Layer 0 of Track 1 establishes the duration. Press **Rec 1**, play the first phrase, and press Rec 1 again to close it. During playback, any track's REC button arms its next free layer, numbered 0 to 3. The first NoteOn starts recording; the next master restart closes the new layer and switches off its REC LED. Pressing REC again while armed or recording cancels only the new layer. If no note arrives within 20 seconds, it is cancelled automatically. Four occupied layers produce an `ALL LAYERS USED` notice without replacing anything.
+
+Tracks can be started or stopped individually. **LEVEL**, **SHIFT** and **TRANSP** affect every layer in the track. The Tempo control changes the timing of the MIDI sequence, while the Loop control selects saved loops and controls group playback. Tempo changes affect event timing rather than time-stretching sample audio.
+
+Save all tracks and layers to microSD in `/LILLA_PRIVATE/MIDI_LOOPS`. Firmware 7.3.0 uses a new loop format and does not load earlier loop files. Preserve the patch and audio sources alongside loop files when archiving a complete session. See [MIDI Loop](User%20Guide.md#midi-loop).
+
+## Audio Files and Storage
+
+- Internal audio format: signed 16-bit PCM at 44.1 kHz.
+- Import from microSD: mono RAW; mono/stereo WAV (PCM 8/16/24/32-bit or float 32/64-bit, 8-192 kHz); 16-bit PCM AIFF at 44.1 kHz; and MP3. WAV and MP3 are converted to mono 16-bit at 44.1 kHz. See [MP3 import](docs/mp3-import.md) for supported rates and implementation details.
+- Flash imports preserve complete files, within Flash capacity. The playable region can move along the full file and is limited by the per-source PSRAM capacity.
+- Flash stores imported audio and Sampler recordings; PSRAM provides live recording and playback caches; FRAM stores patch and configuration data.
+- Configuration and recording backup/restore are available through microSD. A complete archive also requires separate copies of the imported audio library and MIDI-loop files; see [Backup and restore](User%20Guide.md#backup-and-restore).
+
+## Hardware Summary
+
+The firmware is written for a hardware platform built around:
+
+- Teensy 4.1
+- Teensy Audio Adaptor Rev D
+- 64 MB SPI Flash memory (SPI)
+- 32 MB total PSRAM (Quad-SPI)
+- 128KB FRAM (I2C)
+- ILI9341 display
+
+## Connections and Buttons
+
+| Connection | Specification |
+| --- | --- |
+| Line in | 3.5 mm jack; stereo line / stereo dynamic microphone input. |
+| Line out | 3.5 mm jack; stereo line output, 3.1 Vpp. |
+| Phones line | 3.5 mm jack; main stereo headphone output. |
+| Phones pre-listen | 3.5 mm jack; stereo pre-listening headphone output. |
+| MIDI IN / OUT | 3.5 mm jacks. |
+| Gate IN / OUT | 3.5 mm jacks, +5 V. |
+| USB-C | +5 V DC power and programming. |
+| microSD | Audio import/export, backups and MIDI-loop storage. |
+
+Dedicated buttons provide firmware upload mode and power on/off.
+
+MIDI OUT and Gate IN/OUT are physically available and accessible through classes included in the codebase, but no user-facing features currently use them. They are available for future development.
+
+## Repository Layout
+
+- [src](src): application entry point and firmware sources
+- [include](include): global headers and shared declarations
+- [lib](lib): custom modules for audio, display, control, storage, and routing
+- [doc/assets/images](doc/assets/images): images used by the README and User Guide
+- [docs](docs): technical notes and implementation details
+- [User Guide.md](User%20Guide.md): illustrated operating guide
+- [FIRMWARE_ARCHITECTURE.md](FIRMWARE_ARCHITECTURE.md): technical architecture and maintenance guide
+- [platformio.ini](platformio.ini): PlatformIO build configuration
+
+## Firmware download
+
+Firmware **7.3.0 (2 November 2026)**: download [Lilla_v7_3_0.hex](https://github.com/SandroGrassia/Lilla_Audio_Sampler/releases/download/v7.3.0/Lilla_v7_3_0.hex) from [release v7.3.0](https://github.com/SandroGrassia/Lilla_Audio_Sampler/releases/tag/v7.3.0). See the [7.3.0 release notes](docs/release-notes-7.3.0.md) for changes and the [User Guide](User%20Guide.md) for upload instructions.
+
+## Build
+
+Build the Teensy 4.1 firmware with PlatformIO:
+
+```sh
+pio run -e teensy41
+```
+
+The project targets Teensy 4.1 at 600 MHz. Building does not upload firmware to the instrument.
+
+## Links
+
+- [www.lillasampler.it](https://www.lillasampler.it/)
+- [Facebook page](https://www.facebook.com/Lilla.audio.sampler)
+- [Tindie product page](https://www.tindie.com/products/lillasampler/lilla-audio-sampler-2/)
+
+## Acknowledgements
+
+Special thanks to:
+
+- **François Best**, for guidance on using the MIDI.h library within a class.
+- **Giuliano Cardinali**, for valuable suggestions on hardware and software design and implementation.
+- **Andreas Huelsmann**, for suggestions on MIDI Loop functionality and for beta testing it.
+- **Stefano Spada**, for contributing to the development of advanced features and improving usability.
+- **Thomas Spada**, for helping define the core features and improve usability.
+- **Andrea Lombardini**, for the C++ lessons.
+
+
+## License
+
+This repository includes a [LICENSE](LICENSE) file. See it for the applicable terms.

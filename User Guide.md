@@ -1,0 +1,1253 @@
+# LILLA User Guide
+
+For **LILLA Audio Sampler 2026 | PCB2026_R1 | firmware 7.3.0**
+
+Guide edition: **2 November 2026**
+
+Printable edition: [User Guide PDF for firmware 7.3.0](User%20Guide.pdf).
+
+<img src="doc/assets/images/lilla_blue_1.jpg" alt="LILLA Audio Sampler in blue" width="100%">
+
+LILLA brings sample playback, line-input recording, live sampling and MIDI looping into one instrument. This guide takes you from your first playable patch to creating your own sounds and preserving a complete session.
+
+Start with **Getting started** if you want to play immediately. Read **Files, sounds and patches** before building a library: understanding what each Save operation preserves will make the rest of the instrument easier to use.
+
+**How to read this guide:** bold names such as **Select** refer to physical controls; `UPPERCASE` text refers to screen labels or messages. Tools > Setup means set the Tools selector to **Setup** then press **Tools** button. A numbered procedure describes the order of operations. Photographs illustrate the page layout; the accompanying instructions describe the repository firmware, including changes made after a photograph was taken.
+
+Procedures have been reviewed against the firmware and supplied display photographs. A complete walkthrough on the physical instrument remains to be performed.
+
+## Contents
+
+- [Getting started](#getting-started)
+- [I/O connections and buttons](#io-connections-and-buttons)
+- [Controls and navigation](#controls-and-navigation)
+- [Files, sounds and patches](#files-sounds-and-patches)
+- [Performance](#performance)
+- [Editing a sound](#editing-a-sound)
+- [Importing audio](#importing-audio)
+- [Recording with Sampler](#recording-with-sampler)
+- [Live Sampler](#live-sampler)
+- [MIDI Loop](#midi-loop)
+- [Mixer, delay and filters](#mixer-delay-and-filters)
+- [Setup and MIDI controls](#setup-and-midi-controls)
+- [Backup and restore](#backup-and-restore)
+- [Updating the firmware on Windows](#updating-the-firmware-on-windows)
+- [Updating the firmware on Mac](#updating-the-firmware-on-mac)
+- [Troubleshooting](#troubleshooting)
+- [Practical projects](#practical-projects)
+- [Quick reference](#quick-reference)
+- [Glossary](#glossary)
+
+**Popular workflows:** [Keyboard split](#build-a-keyboard-split) | [Auto Tune](#tune-a-sound-and-use-auto-tune) | [Capture a live loop](#capture-a-live-loop-into-a-patch) | [Complete archive](#plan-a-complete-archive)
+
+## Getting started
+
+LILLA is a polyphonic, multitimbral hardware sampler with up to 16 playback voices. A performance patch can contain up to eight sounds, with individual MIDI channels and keyboard ranges. You can play imported audio, record the line input, work with a temporary live buffer, and record four-track MIDI loops.
+
+### Choose the right mode
+
+| You want to... | Choose | What you work with |
+| --- | --- | --- |
+| Play a keyboard split, layered instrument or multitimbral setup | **Performance** | A patch with up to eight sound slots. |
+| Record a take, keep it in recording memory, or export a WAV | **Sampler** | A mono or stereo audio recording in Flash. |
+| Explore incoming audio and capture a selected fragment | **Live Sampler** | A temporary circular audio buffer. |
+| Record and replay phrases played on your MIDI controller | **MIDI Loop** | Four MIDI tracks, each with four independent layers, using the current patch. |
+
+Use Sampler for a take you intend to audition, convert or export. Use Live Sampler when the interesting sound is something you want to find inside an ongoing stream of audio.
+
+### Connect and play
+
+1. Connect a MIDI controller to LILLA's MIDI input.
+2. Connect the stereo line output to your mixer, amplifier or audio interface. Start with low listening levels.
+3. Connect a good-quality 5 V power supply, power on LILLA and wait for startup to finish.
+4. Set the Modes selector to **Performance**.
+5. Turn **Select** to highlight the patch number, then turn **Value** to choose an existing patch.
+6. Set your controller to the MIDI channel shown for a sound in the patch.
+7. Play notes within that sound's `FROM K` and `TO K` range.
+8. Raise **Line Out Vol** gradually.
+
+**What you should see:** the Performance page shows a patch number and its active sound rows. The MIDI channel and keyboard range on each row determine which notes can trigger that sound. An eight-slot patch does not have to use every slot.
+
+**What you should hear:** a sound when you play a note inside an active row's range on its assigned MIDI channel. If you hear nothing, start with the channel and range before changing the sample or its envelope.
+
+> **Power supply quality matters.** Use a good-quality 5 V power supply. A cheap mobile-phone charger is often not ideal for audio use and can introduce hiss or other noise at the outputs. If you hear background noise, try a better-quality 5 V supply before changing sound settings.
+
+### Your first edit
+
+1. Press **S1** if Sound 1 is active, or press another active sound's button.
+2. Turn **Select** to highlight `GAIN`, then turn **Value** a small amount.
+3. Play a few notes and listen to the change.
+4. Select `RETURN` and press **Select**.
+5. In Performance, choose `SAVE` when it is available.
+
+This introduces the normal editing cycle: **open a sound -> adjust it -> return to Performance -> save the patch**. Returning from a page keeps your working edits, but does not replace the Save step.
+
+### Finish a session
+
+Before switching off, save edited patches, save any MIDI loop you want to keep, and complete any pending Live Sampler capture saves. Wait until writing or export operations finish. The live buffer itself does not survive power-off.
+
+If there is no suitable audio loaded, follow [Importing audio](#importing-audio). Importing replaces the Flash audio library and deletes existing recordings, so back up your work first.
+
+## I/O connections and buttons
+
+| Connection or button | Connector | Description |
+| --- | --- | --- |
+| Line in | 3.5 mm jack | Stereo line input / stereo dynamic microphone input. |
+| Line out | 3.5 mm jack | Stereo line output, 3.1 Vpp. |
+| Phones line | 3.5 mm jack | Main headphone output. |
+| Phones pre-listen | 3.5 mm jack | Pre-listening headphone output. |
+| MIDI IN | 3.5 mm jack | MIDI input. |
+| MIDI OUT | 3.5 mm jack | MIDI output. |
+| Gate IN | 3.5 mm jack | Gate input, +5 V. |
+| Gate OUT | 3.5 mm jack | Gate output, +5 V. |
+| USB-C | USB-C | +5 V DC power and programming. |
+| Firmware_upload mode button | Button | Enter firmware upload mode. |
+| On/off button | Button | Switch the instrument on or off. |
+
+**Future development:** MIDI OUT, Gate IN and Gate OUT are physically available and accessible through classes already included in the firmware codebase. No user-facing features currently use these connections; they are available for future development.
+
+## Controls and navigation
+
+<img src="doc/assets/images/top.jpg" alt="LILLA top panel showing the display, encoders, mode selectors and sound buttons" width="100%">
+
+*Top panel overview: physical controls and their positions.*
+
+The white selection frame identifies the field or command that will respond to the navigation controls. In the supplied photographs, labels are generally cyan, editable values and commands yellow, and page headings red.
+
+**Turning and pressing an encoder are separate actions.** For example, turning **Value** edits a highlighted parameter, while pressing **Value** can reset or toggle that parameter on particular pages.
+
+The same controls perform different tasks depending on the active page. Follow the highlighted field and the options currently visible on the screen.
+
+| Control | Main use |
+| --- | --- |
+| Modes selector | Choose Sampler, Live Sampler, Performance or MIDI Loop. |
+| Tools selector | Choose Mixer, Delay, Setup or Test. |
+| Tools button | Open the selected tool; the Tools LED indicates tool access. |
+| Select, turn | Move the highlight between fields and menu items. |
+| Select, press | Execute a menu command, confirm a choice, or enter/leave a group of fields. |
+| Value, turn | Change the highlighted parameter. |
+| S1-S8 | Open active sounds in Performance; S1 opens a mono or left-channel recording and S2 the right channel in Sampler; capture into sound slots in Live Sampler. |
+| From / To | Adjust sample boundaries in Sound Edit; adjust the live playback region in Live Sampler. |
+| Step | Change editing increments; its push function depends on the page. |
+| Line Out Vol | Adjust patch playback volume on performance-related pages. |
+| Pre Listen Vol | Adjust pre-listening level. |
+| Resolution / Downsampling | Change playback character through bit reduction and sample repetition. |
+| Cutoff | Adjust the common low-pass filter; press to return it to its maximum cutoff. |
+| Tuning Tone | Enable the tuning reference; turn to adjust its level when enabled. |
+| Loop / Tempo | Select and control MIDI loops and their playback timing. |
+| Track 1-4 / Rec 1-4 | Control individual MIDI-loop tracks and their recording. |
+
+To open a tool, set the Tools selector to the required position and press **Tools**. Test opens the MIDI monitor. Use the **Tools** button to return from a tool where supported, or select the required operating mode.
+
+In confirmation dialogs, turn **Select** to choose an option and press it to confirm. Read the dialog before confirming: save, discard, erase and restore have different consequences.
+
+Menus are dynamic. A command may be hidden when the current state does not allow it, for example when there is no recording to export. A saved, unmodified patch may show fewer commands than a patch with pending edits.
+
+### Three navigation patterns
+
+**Menu commands:** turn Select until the frame surrounds the command, then press Select. If a confirmation appears, select the required answer and press Select again.
+
+**Parameter editing:** turn Select until the parameter is highlighted, then turn Value. Listen while you adjust; many changes are immediately audible.
+
+**Tables of sounds or sources:** first select the row or source, then press Select to enter its editable fields. Press Select again to leave that group where the page supports this pattern.
+
+### Useful shortcuts
+
+| Where | Action | Result |
+| --- | --- | --- |
+| Performance | Press an active S1-S8 button | Open that sound's editor. |
+| Sound Edit from Performance | Press the same sound button again | Open its VCF page. |
+| Sound Edit from Sampler | Press S1, or S2 for stereo | Select the recording channel; the same button keeps that channel in Sound Edit. |
+| Performance, `TONE` selected and not OFF | Press Value | Toggle antialiasing; `A` indicates enabled. Save the patch to retain it. |
+| Sound Edit, `PITCH` selected | Press Value | Reset the pitch adjustment. |
+| Sound Edit, `PITCH` selected | Press Select | Run Auto Tune on the selected audio region. |
+| Sound Edit | Press From | Move the region's start to the beginning of the source. |
+| Sound Edit | Press To | Toggle the boundary/slice editing behavior. |
+| Sound Edit | Press Step | Select the region-relative trim step. |
+| Performance or Sound Edit, `PAN` selected | Press Value | Centre the pan. |
+| Live Sampler | Press Step | Toggle the start-point lock behavior. |
+| Common playback controls | Press Cutoff | Restore maximum common low-pass cutoff. |
+| Common playback controls | Press Line Out Vol | Stop active players; also clear delay feedback outside the Direct Sampler delay context. |
+
+Use the last shortcut when you need to stop sounding notes quickly. In MIDI Loop it also stops track playback.
+
+## Files, sounds and patches
+
+| Term | Meaning |
+| --- | --- |
+| Audio file | The source sample used for playback. Imported audio is converted to mono RAW audio in Flash or in the SD library. |
+| Recording | Audio recorded by the Sampler into its Flash recording area; it can be mono or stereo. |
+| Sound | A source file plus playback settings such as trimming, pitch, envelope, pan and gain. |
+| Instrument / sound slot | One of up to eight positions in a patch, with MIDI mapping, root key, keyboard range and filter settings. |
+| Patch | The group of sounds and settings used for a performance. |
+| MIDI loop | Recorded MIDI events, arranged into four tracks with up to four layers each. It does not contain the audio samples played by those events. |
+| Live buffer | Temporary audio held in PSRAM for Live Sampler. |
+
+The firmware provides storage for up to 200 patches and 800 sound records. These are storage capacities; the instrument has up to 16 simultaneous playback voices. Available polyphony also depends on playback workload.
+
+Flash memory holds the imported audio library and Sampler recordings. PSRAM holds live audio. The microSD card also holds indexed audio sources in `/AUDIO_FILES`, and is used for import, WAV export, backups and MIDI-loop files. Selected portions of SD audio files are loaded into PSRAM before playback; playback does not stream audio from the SD card.
+
+### Follow the sound from source to keyboard
+
+A typical setup has three layers:
+
+**Audio file -> Sound settings -> Instrument in a patch**
+
+For example, `piano.wav` is imported as `piano.raw`. A Sound selects that source and defines its trim, envelope and tuning. An instrument slot assigns it a root key, a MIDI channel and a playable keyboard range.
+
+Changing the trim adjusts which part of the source is played. It does not cut the original source file. Dropping an instrument removes its place in the patch; it does not erase the source audio.
+
+An on-screen label such as `SOUND 1` means the first slot of the current patch. It is not the same thing as audio file 1, recording 1 or patch 1.
+
+### What survives power-off?
+
+| Material | How to keep it |
+| --- | --- |
+| Edits to a patch and its sounds | Save from Performance. |
+| A completed Sampler recording | Finish recording with `STOP`; use backup or WAV export for an external copy. |
+| Sampler recording A/B boundaries | Saved automatically while editing; recalled with the recording for keyboard playback and RAW/WAV export. Other recording playback edits remain in the current session. |
+| A Sampler recording converted with `MAKE_RAW` | Keep the generated Flash source and save the patch that uses it. |
+| Audio still in the Live Sampler buffer | Capture the desired region into a sound slot and save the resulting patch. |
+| A newly captured Live Sampler sound | Save its patch so the pending audio is written to Flash. |
+| A MIDI loop | Save it to microSD from MIDI Loop. |
+| A portable copy of your work | Preserve configuration, recording audio, source library and MIDI-loop files as described in Backup and restore. |
+
+### Patch numbers and the temporary session
+
+Normal patches use **IDs 0-199**. **Patch 200** is the temporary sampling workspace; it is not an extra normal patch slot.
+
+The first successful Live Sampler sound capture creates a normal patch using the **first available ID in 0-199**. Later captures can fill its remaining slots. Go to Performance to review and save that patch.
+
+### File names matter
+
+The Sound header displays only the first ten characters of the source basename and omits `.raw`. Two files with similar names may therefore look alike in that small field. Choose short, distinctive beginnings such as `BassDry` and `BassFX`.
+
+LILLA retains a file's identity when the audio is missing. Reimporting the same basename can reconnect sounds that refer to it. Renaming a file creates a different identity; treat library names as part of your project.
+
+The registry for RAW audio files stored in Flash memory holds 260 entries, including the reserved 0.raw fallback. Imported and generated RAW files share the remaining 259 entries; retained names of missing files also occupy entries. Available Flash storage and free registry entries are separate limits. SD audio sources use a separate registry.
+
+## Performance
+
+<img src="doc/assets/images/1.jpg" alt="Performance page showing a seven-sound keyboard mapping" width="55%">
+
+*An example patch spread across seven sound slots. Each row has its own root key, range and gain.*
+
+Performance is the main page for assembling and saving a playable instrument. Read it from top to bottom: patch and volume at the top, common sound-character controls in the middle, then the active instrument rows.
+
+### Choose a patch
+
+Highlight the patch number with **Select** and turn **Value** to browse existing patches.
+
+When the current patch has changes, LILLA asks what to do before switching. You can stay in the current patch, discard its changes, or save them and continue. Use the displayed choices rather than switching away without checking the prompt.
+
+### Map sounds to your controller
+
+1. Highlight a sound row.
+2. Press **Select** to enter its fields.
+3. Turn **Select** to move between fields.
+4. Turn **Value** to edit the selected field.
+5. Press **Select** to leave the row's fields.
+
+| Field | Purpose |
+| --- | --- |
+| `SOUND` | Sound slot in the patch, numbered 1-8. |
+| `TONE` | Pitch-dependent timbre correction: OFF or 3.0-8.0 kHz, in 0.1 kHz steps. |
+| `P` | Playback precedence: gives the sound priority in voice allocation. It does not guarantee unlimited voices. |
+| `MIDI` | Receiving MIDI channel, displayed as 1-16. |
+| `ROOT K` | Reference key used for the sound's pitch mapping. |
+| `FROM K` / `TO K` | Inclusive keyboard range that triggers this sound. |
+| `PAN` | Stereo position; press Value on this field to centre it. |
+| `GAIN` | Sound level. |
+
+In the Instrument area of Performance, turn **Select** through `TONE`, `P`, `MIDI`, `ROOT K`, `FROM K`, `TO K`, `PAN`, `GAIN`. After `GAIN`, the cursor moves to `TONE` of the next active Instrument. Rotation stays inside the Instrument fields. Press **Select** to leave the fields and select the whole current Instrument.
+
+### TONE: consistent timbre when transposing upwards
+
+Raising sample pitch can make a sound excessively bright and introduce aliasing. TONE combines optional anti-alias filtering before resampling with a dedicated low-pass filter (LPF) after resampling, whose cutoff follows the pitch increase. This helps keep the upper notes closer in timbre to the original sample, especially in multisampled instruments. It is independent of the creative VCF and its LFO.
+
+Choose `OFF` to bypass both upward-pitch filters, or select a value from `3.0` to `8.0` kHz. The selected value is the LPF endpoint at +11 semitones relative to the sample playback reference (pitch = 1); it is retained above that interval. The curve starts at 20 kHz at pitch = 1 and descends progressively as pitch rises. At or below pitch = 1, this timbre LPF is bypassed. Lower TONE values darken transposed notes more; higher values preserve more brightness. Changes also affect sounding notes, with smoothing.
+
+To switch antialiasing on or off, select the Instrument's `TONE` field in Performance, choose a cutoff from `3.0` to `8.0` kHz, then press **Value**. The suffix `A` (for example, `5.0A`) means antialiasing is enabled; without `A`, the timbre LPF remains active but antialiasing is off. The filter acts above pitch 1 for base pitches up to and including 2 (+12 semitones, one octave). At pitch 1 it is bypassed. The base pitch includes note transposition and tuning; bend and vibrato do not change eligibility at the upper limit, so an eligible note can remain filtered when bent above 2.
+
+`OFF` clears the antialiasing option. Selecting a cutoff again leaves antialiasing off until you press Value. Existing patches without this option load with antialiasing off. **Save the patch to retain each Instrument's cutoff and antialiasing setting.**
+
+To set TONE, play the same sample across its mapped range, compare `OFF` with an enabled value, and listen for a balanced transition into the higher notes. Keep the common LPF open while comparing, then adjust it and the VCF for your intended sound. Save the patch to keep each Instrument's TONE setting. Existing HIFI levels 1-5 are converted on loading to 5.0, 4.5, 4.2, 4.0 and 3.8 kHz.
+
+When pitch is reduced, anti-imaging remains automatically available independently of TONE, including `OFF`, to reduce resampling images and other audible artifacts. TONE does not disable this protection.
+
+For a keyboard split, put two sounds on the same MIDI channel with separate key ranges. For a layer, give them overlapping ranges. For multitimbral playback, assign different MIDI channels.
+
+### Build a keyboard split
+
+A split lets one part of the keyboard play a bass sound and another play a pad, piano or lead.
+
+1. Start with a patch containing two active sounds. If necessary, open an existing sound and use `CLONE` to add a slot.
+2. Choose the appropriate source and envelope for each sound.
+3. In Performance, give both slots the same MIDI channel.
+4. Set Sound 1's `TO K` to the last key of the lower zone.
+5. Set Sound 2's `FROM K` to the next key above it.
+6. Test the two notes on either side of the split point.
+7. Balance the gains and save the patch.
+
+Ranges are inclusive. If Sound 1 ends on the same key where Sound 2 starts, that key triggers both sounds.
+
+### Build a layer or multitimbral setup
+
+For a **layer**, assign the same MIDI channel and overlapping ranges to two or more slots. Start with lower individual gains, then raise them while listening to the combined sound.
+
+For a **multitimbral setup**, assign different channels to different slots. A sequencer or controller can then address each part separately. A MIDI channel selects which instrument responds; the slot number does not automatically establish that channel.
+
+Each triggered layer uses playback voices. A four-note chord with two layers can require eight voices before release tails are counted.
+
+### Set the root key
+
+The root key is the keyboard reference for the sample. At the root key, the sample plays with the Sound's own pitch adjustment; notes above and below it transpose the source relative to that reference.
+
+For a pitched sample, set the root to the note represented by the recording. For a single-key hit, set `FROM K` and `TO K` to the same trigger note and choose a root appropriate to the playback pitch you want.
+
+Octave labels depend on Setup's `FIRST OCTAVE`. When comparing settings with another device, compare the actual MIDI key as well as its displayed octave name.
+
+### Save or duplicate a patch
+
+Use the commands shown in the Performance menu:
+
+- `SAVE`: store the current patch and edited sounds.
+- `CLONE`: create a copy in another available patch slot.
+- `SAVE_AS_NEW`: store the edited result as a new patch.
+- `EXIT`: discard the current edits through the Performance exit workflow.
+- `DELETE`: delete the patch, after the deletion confirmation.
+
+A sound's `RETURN` command keeps edits in the current session. Save the patch to make those edits persistent.
+
+Use `CLONE` when you want a second patch to develop from an existing one. Use `SAVE_AS_NEW` when you have edited a patch and want to preserve the result under another available patch ID. Read the displayed destination and confirmation before proceeding.
+
+**Before moving into a sampling workflow, save the patch you were editing.** Live Sampler can keep the previous Performance patch in memory, but creating a new captured patch requires that previous patch to have no pending edits.
+
+A green `PATCH UPLOADING` popup indicates that patch audio is being transferred from Flash or SD into PSRAM. With Flash sources, you can start playing immediately: LILLA optimizes playback within the Flash memory's read-speed limits while loading audio into PSRAM in the background. Once loading is complete, active notes automatically switch to PSRAM without restarting playback.
+
+## Editing a sound
+
+<img src="doc/assets/images/2.jpg" alt="Sound Edit page with envelope, playback mode and sample waveform" width="55%">
+
+*The waveform belongs to the selected source. `FROM`, `TO` and `TOT` describe the playable region; `TRIM STEP` controls the editing increment.*
+
+From Performance, press **S1-S8** for an active sound to open Sound Edit. An unused slot displays `SOUND ... IS NOT USED`; pressing it does not create a new sound.
+
+### Browse Flash or SD audio
+
+The FILE field shows the first 10 characters of the source name, without its extension, for both Flash audio and SD audio.
+
+Choose `BROWSE_FLASH` or `BROWSE_SD` in Sound Edit to browse the corresponding library alphabetically; commands appear when that library contains audio. SD browsing uses the index created by the Setup conversion command described under **Importing audio**.
+
+Selecting an SD file loads a window limited by the available per-source PSRAM cache for MIDI audition, without continuous SD reads during notes. Adjust From, To and Step to choose the portion; the display uses `SAVE FROM` and `TO` during preview. Gain, pitch, MIDI channel, resolution, downsampling and LPF remain editable. Pan, envelope, playback mode and Noclick are fixed during preview and become editable after SAVE.
+
+Choose `SAVE` to retain the selected portion and its persistent SD source reference, then save the patch in Performance. No audio is written to Flash by this operation. Keep the RAW files and hidden `/LILLA_PRIVATE/.lilla-sources` directory together: both are needed to reload saved Sounds after startup. `RETURN` without SAVE restores the previous Sound.
+
+`AUDIO FILE UNAVAILABLE` indicates a missing source; audio already cached in PSRAM can continue playing after card removal. If selection fails after removing the card, `INSERT SD` appears and the previous selection is preserved.
+
+### Choose and trim the source
+
+1. Highlight the file field with **Select**.
+2. Turn **Value** to choose an available source. Hold **Select** while turning Value to move 10 files at a time in either direction, in Flash or SD. Browsing stops at the first or last file.
+3. Play the sound from your MIDI controller.
+4. Turn **From** and **To** to adjust the playback region.
+5. Turn **Step** to select a suitable trimming increment: use larger steps to find the region, then smaller steps to refine it.
+
+Changing the source file preserves the trim start and end when they fit the new file; pitch adjustment is reset. If the region extends beyond the new file, LILLA shifts it towards the beginning while keeping its duration. It shortens the region only when the new file is shorter than that region. This applies when browsing Flash and SD sources.
+
+### Work from a rough cut to a precise region
+
+Start with a large trim step to remove long silences or locate a phrase. Reduce the step near the desired attack and endpoint. Play the sample repeatedly as you refine it: the waveform helps locate an event, but listening tells you whether you have removed its attack or left an unwanted tail.
+
+Pressing **From** returns the start to the source beginning. Pressing **To** switches between editing an endpoint and working with a slice. In slice behavior, moving From can move the region while retaining its length; watch the region display as you move it.
+
+For Flash sources, the full imported file remains available. The playable region is limited to the per-source PSRAM capacity. Press **To** to select slice behavior, then turn **From** to move that window along the file without changing its length. You can reach later passages without importing the file again.
+
+A short region is useful for a repeating texture. A longer region may preserve the natural attack and decay of an instrument.
+
+### Shape playback
+
+Use Select to highlight a parameter and Value to change it:
+
+| Parameter | Purpose |
+| --- | --- |
+| Pitch | Tune the sample. |
+| Gain / Pan | Set level and stereo position. |
+| Attack | Set how quickly the sound reaches its initial level. |
+| Decay | Set the transition to the sustain level. |
+| Sustain | Set the held envelope level. |
+| Release | Set the fade after release. |
+| Play mode | Choose playback direction and one-shot or looping behavior. |
+| Noclick | Adjust loop-boundary smoothing where available. |
+
+| Playback mode | How the region is read | Typical use |
+| --- | --- | --- |
+| Once FWD | From start to end once. | Hits, spoken words and natural decays. |
+| Once REV | From end to start once. | Reverse impacts and swells. |
+| Loop FWD | Repeats in the forward direction. | Sustained tones and repeating phrases. |
+| Loop FWD/REV | Alternates direction, beginning forward. | Textures that turn around at the boundaries. |
+| Loop REV/FWD | Alternates direction, beginning in reverse. | A reverse-starting variation of an alternating loop. |
+| Loop REV | Repeats in the reverse direction. | Reversed repeating textures. |
+
+Envelope and note-release behavior still affect what you hear. A looping region can fade away with the envelope; a one-shot source still has a finite end.
+
+**A simple envelope starting point:** use a short attack for percussion, a slower attack for a pad, and a release long enough to avoid an abrupt ending. With a loop, raise sustain to hear the repeated region clearly before shaping decay and release.
+
+For a clean loop, refine its start and end points before increasing Noclick. The available Noclick range depends on the selected region.
+
+### Tune a sound and use Auto Tune
+
+The `PITCH` value shows the playback ratio: **1.000** is the unadjusted source speed. Raising pitch also makes ordinary sample playback faster; lowering it makes playback slower.
+
+1. Select `PITCH`.
+2. Turn **Value** to tune by ear, or press **Value** to reset the adjustment.
+3. Press **Select** to run **Auto Tune** on the chosen region.
+4. Listen to the result at the root key and compare it with your other instruments.
+5. Save the patch if you want to keep the adjustment.
+
+Auto Tune is available for both one-shot and loop playback. It analyses the strongest frequency component and adjusts it toward the nearest chromatic note. A strong harmonic, noisy attack or unpitched sample may not correspond to the musical fundamental you expected. For a clearer result, select a stable pitched portion and check the result by ear.
+
+If an `AUTO-TUNE` error appears, read its reason: an invalid region, unavailable source, no measurable signal or a busy audio operation needs a different response. Auto Tune does not replace choosing the correct root key and keyboard range.
+
+The `MAX PITCH` display describes the available playback ceiling for the current source path. It can change with source caching and playback preparation; do not assume every source has the same transposition ceiling.
+
+### Return, clone or remove a sound
+
+The following commands apply to sounds opened from Performance. For a recording opened from Sampler, the menu provides `RETURN` and `SOLO` or `RESET_SOLO`; see [Edit a recording before conversion or export](#edit-a-recording-before-conversion-or-export).
+
+- `RETURN` keeps the edits and returns to the previous performance page.
+- `CLONE` copies the instrument into a free slot in the current patch, preserving its GAIN. The copy is unmuted and routed only to PRE_LIST; pre-listening is removed from every other source. Adjust the copy's key range, root key or source as needed.
+- `DROP` removes the instrument from the current patch.
+
+Save the patch after finishing. Removing a sound slot is different from deleting its source audio file.
+
+### Pre-listen routing and solo
+
+Use `ONLY_PRE_LISTEN` to unmute the selected Sound, enable its exclusive PRE_LIST (Pre listen) route and disable its LINEOUT route. `TO_LINE_OUT` enables LINEOUT and unmutes the Sound while preserving its PRE_LIST setting. These commands reflect the same routes shown in **Tools > Mixer**.
+
+| Current Sound routes | Available routing commands |
+| --- | --- |
+| PRE_LIST only | `TO_LINE_OUT` |
+| LINEOUT only, or both outputs | `ONLY_PRE_LISTEN` |
+| Neither output | `ONLY_PRE_LISTEN` and `TO_LINE_OUT` |
+
+Moving PRE_LIST to another source disables only the previous source's PRE_LIST route. If that previous Sound had no LINEOUT route, it remains silent on both outputs and both Sound Edit commands become available. Returning to Sound Edit always reflects the current Mixer routing. These routing commands are not offered while editing a Sampler recording.
+
+Choose `SOLO` to audition the selected Sound across the keyboard; the menu changes to `RESET_SOLO`, which restores normal Instrument note mapping. SOLO unmutes the Sound and remains active when opening Mixer from Sound Edit in Performance. Use the menu for SOLO; pressing **Select** or **Value** on GAIN does not toggle it. The waveform area indicates when SOLO is active. SOLO controls note mapping; PRE_LIST and LINEOUT control the audio destinations.
+
+Turn **Select** to reach all enabled menu commands. If a long menu does not fit on one line, the visible commands follow the cursor.
+
+
+## Importing audio
+
+### Prepare an SD audio library
+
+This workflow keeps audio on SD and preserves the existing Flash library and recordings.
+
+1. Put source RAW, WAV, AIFF/AIF or MP3 files directly in `/AUDIO_FILES` at the card root. Use distinct basenames.
+2. Insert the card and open **Tools > Setup**.
+3. Select `READ SD AUDIO FILES`. Read the green confirmation dialog and choose `GO` to begin or `CANCEL` to return. The dialog identifies `/AUDIO_FILES` as the source and confirms that converted audio files are stored on the SD card.
+4. Wait while `FILE IMPORT IN PROGRESS` is displayed. Audio and MIDI pause during conversion; do not power off or remove the card.
+5. Open Sound Edit and choose `BROWSE_SD` to audition and save a portion, then save the patch in Performance.
+
+Converted mono RAW files are stored in `/AUDIO_FILES` at 44.1 kHz, signed 16-bit little-endian PCM. The input format requirements are listed below. Original files are retained and existing destination files are skipped. Files sharing a basename target the same RAW file; use unique names to retain every source. Subdirectories are not processed. RAW files stay unchanged in this visible folder; WAV/AIFF/MP3 sources produce matching `.raw` files beside the originals. If browsing in Sound Edit displays `READ SD AUDIO FILES`, run that command in Setup to prepare the SD catalog. After deleting audio, run `READ SD AUDIO FILES` again to rebuild the SD catalog. Delete the original source too if its RAW must not be recreated.
+
+SD conversion and Flash import both process complete files. Preview is limited by the per-source PSRAM cache capacity. The alphabetical catalog holds up to 4,096 files. Conversion and index errors are reported on Serial. Preserve `/AUDIO_FILES` together with the private SD metadata in a separate computer backup; the normal backup procedure does not archive this SD source library.
+
+### Replace the Flash audio library
+
+> **Import replaces the audio library.** Confirming import erases the previous Flash audio files and Sampler recordings. Create a backup and keep your source audio on your computer before proceeding.
+
+Check both the source report and destination capacity before importing. Confirming the erase warning replaces all existing Flash audio and recordings.
+
+### Prepare the microSD card
+
+Create `/UPLOAD_AUDIO_FILES` at the card's root and put your audio files directly inside it.
+
+| Format | Import requirements |
+| --- | --- |
+| `.raw` | Headerless mono, signed 16-bit little-endian PCM at 44.1 kHz. |
+| `.wav` | PCM 8/16/24/32-bit or float 32/64-bit, 8-192 kHz, mono or stereo; standard and extensible WAV headers. Converted to mono 16-bit at 44.1 kHz. |
+| `.aif` / `.aiff` | Uncompressed AIFF, 16-bit, 44.1 kHz, mono or stereo. |
+| `.mp3` | Mono or stereo at standard MP3 rates from 8 to 48 kHz; converted to 44.1 kHz. |
+
+WAV sample-rate conversion includes antialias filtering and preserves pitch and duration to within one output sample. A RIFF size that exceeds the actual file by exactly four bytes is corrected during reading only if every chunk is complete; original files are unchanged.
+
+Stereo imports are averaged to mono. To keep a stereo source as two independently playable files, prepare separate left and right files with different names before import.
+
+Imported audio is stored as `<basename>.raw`. Use distinct basenames: `piano.wav` and `piano.mp3` both target `piano.raw` and are treated as duplicates.
+
+A simple card layout is:
+
+```text
+microSD root/
+  AUDIO_FILES/          Source audio and converted RAW files for SD playback
+  UPLOAD_AUDIO_FILES/   Source audio for import into Flash
+  EXPORTED_AUDIO_FILES/ Sampler WAV exports
+  DATA_BACKUPS/         Numbered configuration and recording backups
+  RESTORE_FROM_BACKUP/  Contents of the selected backup to restore
+  LILLA_PRIVATE/        Firmware-managed metadata (Hidden/System)
+    .lilla-index        SD audio catalog
+    .lilla-sources/     Saved Sound source references
+    MIDI_LOOPS/         Saved MIDI loops
+    PATCHES/            Patch parameter copies
+```
+
+Put the files directly in that folder. Keep their basenames distinct and no longer than 31 bytes. Plain ASCII names are an easy way to stay within that limit. Names consisting of `LillaR` followed only by digits, such as `LillaR12.raw`, are reserved for recording data and cannot be imported. Names are case-sensitive; `P12.raw` is allowed.
+
+A compressed MP3 may be small on your computer but much larger after conversion. Judge Flash requirements from the import report, which accounts for the decoded audio.
+
+
+### Import the files
+
+1. Insert the prepared microSD card.
+2. Open **Tools > Setup**.
+3. Select `IMPORT AUDIO FILES FROM SD` and press Select. The green dialog identifies WAV/AIFF/MP3/RAW files in `/UPLOAD_AUDIO_FILES` and LILLA's permanent Flash memory. Choose `GO` to continue or `CANCEL` to return.
+4. Review the import report and red erase warning.
+5. Choose `YES` only when you are ready to replace the current library and all Sampler recordings; choose `NO` to cancel.
+6. Wait for copying, memory configuration and restart to complete.
+7. Open Sound Edit and select the imported source you want to use.
+
+Flash import preserves each file's complete decoded mono audio; the former 3 MiB limit no longer applies. The complete library must fit in Flash. Sound Edit limits the playable region to the per-source PSRAM capacity, but you can move that region along the entire imported file. MP3 decoding and rate conversion can take longer than PCM import.
+
+After import, audition a few sources in Sound Edit before rebuilding an entire patch. Confirm the attack, endpoint and pitch, especially for a long or converted source.
+
+**For a stereo instrument:** export left and right as separate mono files, import both, assign them to two sound slots with matching root keys and ranges, then pan them left and right. The standard stereo-file import itself produces a mono source.
+
+The import screen reports invalid files, duplicates and Flash capacity problems. If too little memory remains for sampling, prepare a smaller library or shorter files.
+
+## Recording with Sampler
+
+Sampler records the line input into Flash and lets you audition, convert or export the result.
+
+<img src="doc/assets/images/5.jpg" alt="Sampler in PAUSE+REC with left and right input meters" width="55%">
+
+*The input meters let you set recording gain before starting. Free recording time and free audio-file space are shown separately.*
+
+### Understand the recording stages
+
+**Monitor, record, stop, audition, then convert or export.**
+
+Monitoring in `PAUSE+REC` lets you prepare the source and levels. `MONO_REC` or `STEREO_REC` begins the take. `STOP` ends it. Afterward, `MAKE_RAW` creates a source for a patch, while `EXPORT_WAV_TO_SD` creates a file for use outside LILLA.
+
+Starting a take records audio for 20 ms before accepting the next control action, allowing the initial fade-in to finish. An immediate Stop is processed after this short pause and preserves the take. Stopping or leaving Sampler waits for recording to finish before saving it.
+
+A Flash recording can be played from the keyboard and edited before conversion. Successful RAW conversion or WAV export removes the source recording and frees its recording space. Make a backup first if you need to preserve the full original take.
+
+### Make a recording
+
+1. Connect your audio source to the stereo line input.
+2. Set the Modes selector to **Sampler**.
+3. Select `PAUSE+REC` to monitor the input before recording.
+4. Adjust the displayed line-input gain with Value when the gain field is selected. Watch both level meters and avoid persistent red peaks.
+5. Select `MONO_REC` or `STEREO_REC`.
+6. Start your source and watch the elapsed time and available recording memory.
+7. Select `STOP` when finished.
+8. Select the recording you want to audition and adjust its playback volume as needed.
+
+**Set gain using the loudest part of the source.** A level that looks comfortable during a quiet passage can clip during an accent. Rehearse that loud section in `PAUSE+REC`, then record the take. Reducing playback volume afterward cannot undo distortion recorded at the input.
+
+The memory display distinguishes space available for recordings from space available for RAW files. A recording can fit even when there is insufficient room to convert it to RAW.
+
+### Edit a recording before conversion or export
+
+1. Finish recording with `STOP`, or select an existing completed recording in Sampler.
+2. Press **S1** for a mono recording. For stereo, press **S1** for the left channel or **S2** for the right channel.
+3. In Sound Edit, play the recording from your MIDI keyboard while adjusting its playback settings.
+4. Use **From** and **To** to set the first and last sample, shown as the **A/B** boundaries. Use Step to refine the region.
+5. Adjust pitch, gain, pan, MIDI channel, attack curve, ADSR, playback mode or Noclick as needed.
+6. Select `RETURN` and press Select to return to **SAMPLER**.
+
+The source remains the selected recording in Flash; its audio is not rewritten when you trim or edit it, and the source selector cannot be changed in this editor. Keyboard playback uses the selected region and remains available during editing.
+
+For a stereo recording, every edited playback parameter is automatically copied to the other channel, including A/B, tuning and Auto Tune, gain, pan, MIDI channel, attack curve, ADSR, playback mode and Noclick. Edits from either channel affect both. The original left/right pan positions remain until you edit pan; changing or centring pan applies the same value to both channels.
+
+The Sampler editor offers `RETURN` and `SOLO` or `RESET_SOLO`, with no separate save or discard choice. A/B boundaries are saved automatically and retained for later playback and export, including after selecting another recording or restarting LILLA. Leaving the editor also retains the boundaries. Other playback parameters remain active in the current editing session but are not stored as persistent recording settings.
+
+RAW conversion and WAV export use the saved inclusive A/B region. Stereo exports use a common start and end for both channels, keeping their durations aligned. These operations copy the selected audio region; they do not render the editor's pitch, envelope, gain, pan or other playback effects into the exported audio. To export the full take, restore A/B to the full recording before exporting.
+
+### Make a playable RAW file
+
+1. Select the recording and, if needed, use S1/S2 to edit its A/B region, then `RETURN`.
+2. Choose `MAKE_RAW` and confirm the conversion.
+3. Choose the available output: `MAKE_MONO`, `MAKE_LEFT`, `MAKE_RIGHT` or `MAKE_BOTH`.
+4. Wait for the conversion to finish.
+5. Open Sound Edit and choose the generated RAW source.
+6. Save the patch that uses it.
+
+| Conversion choice | Result |
+| --- | --- |
+| `MAKE_MONO` | Create a mono source from the recording. |
+| `MAKE_LEFT` | Create a source from the stereo recording's left channel. |
+| `MAKE_RIGHT` | Create a source from its right channel. |
+| `MAKE_BOTH` | Create separate left and right sources. |
+
+The available choices depend on the selected recording. For stereo recordings, left and right can become separate RAW sources. `RETURN` exits the conversion choices without deleting the recording. If LILLA reports that it cannot create a RAW file, check free RAW memory and available filenames.
+
+Conversion copies the saved A/B region. After all requested RAW files are created successfully, the original Sampler recording is deleted and its space is freed. A failed conversion retains the recording. Back up the original take before conversion if you want to keep it.
+
+### Export a WAV file
+
+Insert a microSD card, select a recording and choose `EXPORT_WAV_TO_SD`. The exported WAV contains its saved A/B region, preserves the recording's mono or stereo layout and uses 16-bit PCM at 44.1 kHz.
+
+Files are written to `/EXPORTED_AUDIO_FILES`, with names such as `0M.wav` for mono or `0S.wav` for stereo. Wait for the success message before removing the card.
+
+After a successful WAV export, LILLA deletes the original Sampler recording and frees its recording slot and Flash packets. If the export fails, the original recording is retained. To keep the recording in LILLA as well as an external copy, use backup instead.
+
+Sampler supports up to 30 recordings. When every slot is occupied, `PAUSE+REC` is hidden and a temporary notice asks you to delete or export a recording before recording another take.
+
+WAV export is useful when you want to edit a take on a computer, share a recording, or keep an audio copy independent of LILLA's configuration. This command exports Sampler recordings; it is not a general export command for every RAW source in Flash.
+
+`DELETE` deletes the selected recording. Export anything you want to retain first.
+
+## Live Sampler
+
+<img src="doc/assets/images/4.jpg" alt="Live Sampler recording with adjustable feedback compressor and waveform" width="55%">
+
+*The revised layout groups input gain, feedback and its compressor above the playback controls.*
+
+Live Sampler records into a circular PSRAM buffer. It offers approximately 40 seconds in mono or 20 seconds in stereo. As recording continues, new audio replaces older buffer content.
+
+The live buffer is temporary and is lost at power-off. Use the capture-to-patch workflow below to preserve a selected loop.
+
+### Record and explore
+
+1. Set the Modes selector to **Live Sampler**.
+2. Choose `MONO/STEREO` before recording. Changing this setting clears the buffer.
+3. Select `CAPTURE` to start recording the input into the live buffer.
+4. Select `STOP` to freeze recording and work with the recorded audio. During recording, `STOP+REVERSE` also stops recording, selects **Once REV**, and fixes the start point at the last recorded sample.
+5. Choose a playback mode and play from your MIDI controller.
+6. Turn From to adjust the region's start and To to adjust its length.
+7. Turn Step to change the editing increment.
+
+### Read and navigate the live waveform
+
+| Field | Meaning |
+| --- | --- |
+| `BUFFER` | Total live recording capacity for the selected mono/stereo layout. |
+| `LINE IN GAIN` | Gain applied to the incoming recording signal. |
+| `PLAY MODE` | Direction and looping behavior. Live capture into a sound requires a loop mode. |
+| `FEEDBACK` | Amount of previous material fed back into the circular buffer during live recording. |
+| `WINDOW` | Amount of audio time visible in the waveform view. |
+| `CHANNEL` | LEFT or RIGHT for stereo playback/editing; MONO is displayed but cannot be selected or changed in mono. |
+| `START POINT` | Start-position behavior and its displayed position or relationship to recording. |
+| `LOOP` | Duration of the selected repeating region; minimum 120 ms. |
+| `STEP` | Increment used to move the region controls. |
+| `FEEDBACK COMPRESSOR` | Compression threshold from -24 to -3 dB, or OFF. |
+
+A smaller Window helps inspect a transient or a short loop. It does not automatically shorten the selected audio. Use **To** to adjust the loop length, and **From** to move its start.
+
+Start with modest feedback and adjust while listening. Feedback changes the recorded material, so compare the result before increasing it further.
+
+Pressing Step switches the live start-point lock behavior. **FIXED** holds a location in the circular buffer. The unlocked behavior follows the recording position, and the page can show **SYNC**, **BEHIND** or another relative position according to the offset.
+
+Press **From** to reset only the Start Point: **FIXED 0.00** with the lock enabled, or **SYNC** with the lock disabled. This does not change the selected channel.
+
+For your first capture, stop recording and work on a fixed region. Once you are comfortable finding and trimming material, experiment with a moving start point while recording. As the buffer wraps, old material is replaced.
+
+`DELETE` clears the recorded buffer. Changing mono/stereo also resets it, so choose the layout before recording material you want to keep.
+
+### Forward playback while recording
+
+**Once FWD** can continue around the circular buffer while a note is held; the selected loop length does not act as an end point. Note-off and the sound envelope still control the voice. This applies to **SYNC**, relative start positions and **FIXED**, in mono and stereo. With a completely recorded buffer, stopping recording does not impose the loop end point on a held forward voice.
+
+During the first fill, playback can start only when enough source audio has been recorded. With the lock disabled and **SYNC** selected, notes at the original pitch or below can start as soon as enough samples are available; notes above the original pitch must wait until the buffer has completed its first pass. At the original pitch, playback can use the latest complete 128-sample block. Reaching audio that has not yet been recorded still fades and stops the voice.
+
+Once the buffer is full, forward playback uses short fade-out/fade-in transitions and adjusts its read position to reduce clicks and roughness when playback meets the recording area. Above the original pitch, playback can jump ahead of the recorder. Below the original pitch, it anticipates the next overlap, fades the current safe block, then restarts farther back with a fade-in. Pitch changes are deferred until the paired fade-in has completed. These transitions may briefly alter the playback position; they are part of keeping live playback smooth.
+
+### Loop modes and recording
+
+**LOOP FWD** and **LOOP FWD-REV** are available only when recording is stopped. If you turn the playback-mode control beyond REV while recording, the four-second message `STOP RECORDING FOR LOOP MODES` appears and REV remains selected. Stop recording to select a loop mode. The minimum loop length is **120 ms**.
+
+If you resume recording from either loop mode, playback switches to **Once FWD**. Active loop voices request a restart immediately after the last recorded sample, using the forward playback safety rules; the selected start point A is preserved. The slow-playback protection can move the actual read position farther back when needed.
+
+### Stereo recording compressor
+
+On the Live Sampler page, turn **Select** to highlight `FEEDBACK COMPRESSOR`, then turn **Value** to choose a threshold from **-24 to -3 dB**, in 1 dB steps. **OFF** is the position beyond -3 dB. A lower threshold makes compression act earlier; OFF disables gain reduction. All sound buttons, **S1-S8**, remain available for capture into the corresponding patch slots.
+
+The compressor acts on the sum of line input and feedback before writing to the live buffer. Left and right share the same gain reduction, including when recording a mono mix. Once fully enabled it limits sample peaks to approximately -1 dBFS, without boosting quiet signals. It operates only during live recording and does not process material already recorded. It cannot repair clipping that has already occurred at the input or elsewhere in the feedback path.
+
+Threshold changes are smoothed over approximately 50 ms. Start with -6 dB and adjust while listening to the incoming audio and feedback.
+
+A 32-sample lookahead adds approximately 0.73 ms to the recording path, including when the compressor is off. Switching uses a gradual 10 ms transition between equally delayed signals, so the recording timeline does not jump. Gain recovery takes approximately 100 ms per time constant. Strong compression can still change the sound and feedback behavior. During bypass or the transition to/from bypass, full peak protection is not guaranteed.
+
+### Capture a live loop into a patch
+
+1. Save any pending edits to the performance patch before starting this workflow.
+2. Record some live audio, then select `STOP`.
+3. Select a **loop** playback mode and refine the region.
+4. Press the desired **S1-S8** slot button.
+5. If replacing an occupied capture slot, answer `REPLACE CAPTURE?` before continuing.
+6. When prompted, play a MIDI key to set the captured sound's root key, or choose Cancel.
+7. Capture more regions into other slots if desired.
+8. Switch to Performance, review the newly created patch and choose `SAVE`.
+9. Wait for pending audio writes to complete before powering off.
+
+The first capture uses the first free normal patch ID in **0-199**. Patch **200** remains the temporary sampling workspace.
+
+Each captured sound initially plays on the key used for the root-key prompt: its lower and upper key limits are set to that same key. Expand the keyboard range in Performance if you want to play it melodically.
+
+**Stereo slot allocation:** select a slot with its following slot free, such as S1 with S2 free, to capture left and right separately. The two sounds are panned left and right. Replacing an existing capture pair can reuse that pair. If a second slot is not available, including a new capture on S8, the selected region is captured as a mono mix of the two channels into one slot.
+
+The selected region must fit the capture cache, and free patch, sound and file resources must be available. The live buffer can be longer than one captured sound; shorten the selected loop if it exceeds the capture limit.
+
+Captured audio initially remains in PSRAM. Saving the patch writes its pending captured audio as RAW files to Flash. Wait for saving to finish; a failed save must be retried before powering off.
+
+### If the previous patch has unsaved edits
+
+The message:
+
+> OPEN PERFORMANCE<br>
+> AND SAVE THE PREVIOUS PATCH
+
+refers to the Performance patch you were using before entering Live Sampler.
+
+1. Stop live recording if it is still running.
+2. Return to Performance and complete any exit confirmation.
+3. Save the previous patch.
+4. Return to Live Sampler.
+5. Select the desired region and press the sound-slot button again.
+
+You are not being asked to save patch 200. The warning protects edits to the previous normal patch before a new captured patch is created.
+
+### Capture messages
+
+| Message | Next action |
+| --- | --- |
+| `NO RECORDED AUDIO` | Record some input before playing or capturing it. |
+| `STOP REC AND SELECT LOOP MODE` | Stop recording and select a looping playback mode before capturing a sound. |
+| `STOP RECORDING FOR LOOP MODES` | Stop recording before selecting LOOP FWD or LOOP FWD-REV. |
+| `LOOP TOO LONG FOR CACHE` | Shorten the selected region. |
+| `NO FREE PATCH` | Free a normal patch slot after preserving anything you need. |
+| `NO FREE SOUND / CACHE / FILE` | Save pending work and review available sound, audio-cache and file resources. |
+| `CAPTURE CACHE UNAVAILABLE` | The required audio memory could not be acquired; preserve pending work before retrying. |
+| `SAVE BUSY - TRY AGAIN` | Let audio activity settle and retry Save. |
+| `RAW SAVE FAILED - RETRY` | Retry saving and keep the instrument powered while captured audio remains pending. |
+
+## MIDI Loop
+
+MIDI Loop records NoteOn and NoteOff events into **four tracks**, each with up to **four independent layers**, and plays them through the current patch. Track 1 is the master. Its first layer, **layer 0**, establishes the duration shared by all tracks and layers.
+
+A layer is one recorded part within a track. Layers are numbered **0, 1, 2 and 3** and keep their own NoteOn/NoteOff events. Adding a layer preserves the parts already recorded. Level, shift and transposition apply to the whole track.
+
+### Record your first loop
+
+1. Insert a microSD card for saving loops.
+2. Choose a patch and check that your controller plays the intended sounds.
+3. Set the Modes selector to **MIDI Loop**. Select `NEW` if you want to start a fresh arrangement.
+4. Press **Rec 1** to arm layer 0 of the master. The REC LED lights; timing starts with your first NoteOn, not with the button press.
+5. Play your phrase, then press **Rec 1** again to close it and establish the loop duration.
+6. Listen to the repeating master track, then add parts as described below.
+7. Use the menu to save the arrangement.
+
+Only layer 0 of the master is completed by pressing REC a second time. For every other layer, a second REC press **cancels** the new part.
+
+The master can define an original loop duration of up to **120 seconds**. It closes automatically at this duration or when its layer reaches the event limit. Tempo adjustment can extend playback beyond the original 120-second duration.
+
+### Add layers to any track
+
+1. Keep group playback running. The master layer must already exist.
+2. Press the REC button of the track you want to add to: **Rec 1, Rec 2, Rec 3 or Rec 4**.
+3. The first free layer is armed and the REC LED lights. The display identifies the track and recording layer: for example, `1-R1` means Track 1, layer 1.
+4. Start playing when ready. **Recording begins with the first NoteOn.** Master restarts while waiting for that note do not close the layer.
+5. Continue playing until the **next return of the master to the beginning**. Recording then closes automatically, the REC LED switches off, and the new layer joins playback.
+6. Repeat to add more parts, up to four layers on each track.
+
+For example, if the master lasts 8 seconds and your first note arrives at second 3, the new layer records the remaining 5 seconds of that cycle. Its notes keep their positions within the master loop. This timing follows Tempo changes as well.
+
+Existing layers continue playing while you record a new one. Two layers can contain the same note without a NoteOff in one layer releasing the other's note. All parts still share LILLA's playback voices.
+
+If you record onto an individually stopped track while group playback is running, completing the new layer resumes the track's layers at the current master position.
+
+### Cancel a new layer and understand the limits
+
+- **Press the same REC button again** while a new layer is waiting or recording to discard only that layer and switch off its LED. Previously recorded layers are kept. The exception is master layer 0: its second REC press completes the master instead.
+- If no NoteOn arrives within approximately **20 seconds**, the armed layer is cancelled and its LED switches off. This also applies to the first master layer.
+- Each layer holds up to **1,000 events**. NoteOn and NoteOff count separately, so a complete note normally uses two events. Reaching the limit closes and keeps the layer automatically.
+- When all four layers of a track are occupied, REC shows `ALL LAYERS USED`. It does not replace any layer.
+- Selective deletion of an already completed layer is **not yet available**. Use `NEW` to start a fresh arrangement, saving your current loop first if you want to keep it.
+
+The recorded events trigger the patch's current sounds. Changing a source, keyboard range or MIDI assignment can therefore change how an existing loop sounds. Preserve the patch and audio library alongside the loop when you want to reproduce the arrangement later.
+
+### Play and edit
+
+- At the first MIDI Loop entry after startup, the lowest saved loop ID is selected, with playback stopped. If no loops exist, the first free ID is displayed.
+- Turn **Loop** to browse saved loops. After NEW, browsing starts from the displayed free ID.
+- Press Loop to stop or restart the group of tracks. With an existing master, recording additional layers requires group playback to be running. For an empty new loop, Rec 1 can start the master from STOP.
+- Press a **Track** encoder to stop or start all layers of that individual track together.
+- Turn **Tempo** to change playback timing; press it to reset the timing adjustment.
+- Use Select to choose the track parameter row, then turn each Track encoder to change that track's level, pitch or time shift.
+
+### Understand the track controls
+
+| Row | What it changes | Starting point |
+| --- | --- | --- |
+| `LEVEL` | Playback level of all layers in the track. | 1.0 for an unadjusted level. |
+| `SHIFT` | Timing offset of all layers within the loop. | 0.00 seconds for no shift. |
+| `TRANSP` | Note transposition of all layers in the track. | 0 keys for the original notes. |
+
+Use a small Shift to move a part ahead of or behind the other tracks. Listen at the loop boundary as well as in the middle of the phrase. Use Transposition to try a different pitch for a part, then return it to zero to compare with the original.
+
+Turning Tempo changes the timing of the MIDI sequence. It does not rewrite a sample's waveform or automatically time-stretch a recorded audio phrase.
+
+Recorded NoteOff events release their notes at the stored positions. If a layer has notes left open, they receive a release immediately before that layer's first event on the next pass, which may occur after the master has returned to zero. Release follows the sound's ADSR settings rather than cutting the sound instantly. Closing a recording does not send a general NoteOff to notes still held on your MIDI controller.
+
+### Save loops
+
+Use `SAVE` to update a saved loop and `SAVE_AS_NEW` to keep another version. Both preserve all tracks and their layers. `NEW` starts a new loop; `DELETE` removes a saved loop.
+
+**Firmware 7.3.0 uses a new layered loop format. MIDI loop files saved by earlier firmware cannot be loaded, and older firmware cannot read the new files.** Keep older loop files separately if you need to return to an earlier firmware version.
+
+Loop files are stored in `/LILLA_PRIVATE/MIDI_LOOPS`. Keep a copy of this folder when archiving your work. Loop files contain MIDI data, so preserve the required patch and source audio as well.
+
+## Mixer, delay and filters
+
+### Mixer
+
+<img src="doc/assets/images/7.jpg" alt="Mixer page with sound sources, line input and separate output routes" width="55%">
+
+*The highlighted column is the selected source. LINEOUT and PRE_LIST select the main and pre-listening routes independently.*
+
+Open **Tools > Mixer** to adjust the eight Sound sources and `L_IN`. Turn Select to choose a source column, then press it to enter the fields. Turn Select through `MUTE`, `GAIN`, `PAN`, `LINEOUT` and `PRE_LIST`; press Select to return to source selection. MUTE and GAIN have separate selection frames.
+
+| Field | Value control |
+| --- | --- |
+| `MUTE` | Click to toggle; turn right to mute, left to unmute. |
+| `GAIN` | Turn to adjust level. L_IN adjusts the line-input level. |
+| `PAN` | Turn to adjust stereo position; click to return to centre. Not available for L_IN. |
+| `LINEOUT` | Click to toggle; turn right to enable, left to disable. |
+| `PRE_LIST` | Click to toggle; turn right to enable, left to disable. |
+
+PRE_LIST may be active on one source or on none, including L_IN among the nine choices. Enabling it on another source disables the previous selection without enabling LINEOUT on that previous source. LINEOUT remains independently selectable. PAN edits, including a return to centre, update sounding notes with a short smooth transition.
+
+A Sound in SOLO cannot be muted in Mixer. The temporary Sampler patch's Sound sources also cannot be muted; entering Mixer clears any inherited mute on these sources. These restrictions apply to both clicks and rotation. L_IN remains independently mutable.
+
+Use the separate LINEOUT and PRE_LIST routes to decide what your audience hears and what you hear while monitoring. If a source is silent, check its mute/gain and output route as well as the patch volume.
+
+### Delay
+
+<img src="doc/assets/images/8.jpg" alt="Delay page with sound routing, feedback, time and stereo modulation" width="55%">
+
+*The ROUTING row selects which sound slots feed the delay. Echo and compressor controls occupy the left column; modulation controls are grouped on the right. The example values are not recommended defaults.*
+
+Open **Tools > Delay** to adjust echo repeats, echo low-pass filtering, stereo compression, echo time, the left/right time relationship and modulation. The left column is ordered **ECHO REPEATS**, **ECHO LPF**, **COMPRESSOR**, **ECHO TIME**, **ECHO TIME DELTA L/R**. When opened from Live Sampler, enabled routing is labeled **LIVE SAMPLER**.
+
+Select `COMPRESSOR`, then turn **Value** to choose a threshold from **-24 to -3 dB** in 1 dB steps, or **OFF** beyond -3 dB. A lower threshold makes compression intervene earlier. The compressor controls peaks in the sum of routed audio and feedback before that sum is written into the delay buffers. Both channels share the same attenuation to preserve stereo balance. **Save the patch to retain the threshold.**
+
+Once fully enabled, the compressor limits sample peaks to approximately -1 dBFS without boosting low-level signals. Its 32-sample lookahead adds about 0.73 ms to the configured delay, including in OFF. Threshold changes are smoothed over approximately 50 ms, bypass transitions take approximately 10 ms, and gain recovery uses a 100 ms time constant. Compression can change the sound of accumulating echoes; it cannot undo clipping earlier in the signal path. OFF disables compression, not the echo effect.
+
+`ECHO TIME DELTA L/R`: turn Value clockwise to delay the right channel, or counterclockwise to delay the left channel. The offset reaches 10 ms in either direction when the base delay permits it. At the maximum displayed echo time of 2.0 seconds, the base is 1990 ms, leaving room for the full 10 ms stereo offset.
+
+`ECHO LPF` darkens successive repeats. Its frequency is displayed in integer Hz, from 40Hz to 20000Hz, and is saved with the patch.
+
+Start with low feedback, then increase it while listening. Check the instrument's delay routing if you hear no delayed signal. Save the patch to retain its delay settings.
+
+For a first delay sound, route one instrument, use a modest feedback level and choose a clearly audible delay time. Play short notes with gaps between them so you can hear the repeats. Then adjust the left/right time difference for stereo separation.
+
+Modulation varies the delay over time. Introduce depth gradually, then adjust its rate and left/right phase while listening. Higher feedback lets repeats accumulate, so reduce it if the delayed signal overwhelms the dry sound.
+
+### Filters and sound character
+
+<img src="doc/assets/images/3.jpg" alt="Instrument VCF page with low-pass filtering and LFO modulation" width="55%">
+
+*The individual VCF shapes one instrument. The common LPF cutoff remains visible above it.*
+
+To reach the VCF from Performance, press the active sound's button to open Sound Edit, then press the same sound button again. Use Select to highlight a filter parameter and Value to edit it.
+
+| Filter type | Audible effect |
+| --- | --- |
+| Lowpass | Reduces frequencies above the cutoff; useful for darkening a bright source. |
+| Highpass | Reduces low frequencies; useful for thinning a sound or removing low-end weight. |
+| Bandpass | Emphasizes a region between low and high frequencies. |
+| Notch | Removes a band of frequencies. |
+| None | Disables the instrument filter. |
+
+Resonance emphasizes the filter's response around its characteristic frequency. Begin with a moderate setting, then listen while moving the cutoff. The modulation source and depth determine whether and how that setting moves over time; the frequency/time field follows the selected modulation type.
+
+
+
+The common **Cutoff** control changes the low-pass filter, using the same 40 frequency settings as the echo filter, displayed in integer Hz from 40Hz to 20000Hz. Press it to restore maximum cutoff. **Resolution** and **Downsampling** add digital coloration.
+
+The instrument VCF page provides filter type, `TUNED LPF`, resonance and modulation settings. Select `NONE` with Value to bypass the filter. `TUNED LPF` uses 40 frequency settings from 40 to 20000 Hz and displays `Hz x pitch`: the selected frequency is scaled with playback pitch. Adjust these while playing the selected sound so you can hear how they interact with its sample and envelope.
+
+CUTOFF changes also reach notes already playing, with or without LFO, through a short transition of about 29 ms. TONE is a separate pitch-dependent timbre correction; it does not lock pitch bend, resolution or downsampling.
+
+## Setup and MIDI controls
+
+<img src="doc/assets/images/9.jpg" alt="Setup page with tuning conventions, MIDI assignment and storage operations" width="55%">
+
+*Setup combines global playing preferences with audio-library and backup operations.*
+
+Open **Tools > Setup** for these entries, in display order:
+
+- `READ SD AUDIO FILES`: prepare mono RAW files in `/AUDIO_FILES` from `/AUDIO_FILES`, keeping originals and skipping existing destination files.
+- `IMPORT AUDIO FILES FROM SD`: replace the Flash audio library using files in `/UPLOAD_AUDIO_FILES`.
+- `KEYBOARD STEP`: pitch mapping increments of one semitone, half a semitone, quarter or eighth of a semitone.
+- `FIRST OCTAVE`: the octave-number convention used for note display.
+- `CONTROL CHANGE ASSIGNMENT`: MIDI CC assignments for gains of Sound 1-8 and the low-pass cutoff.
+- `CONFIGURATION BACKUP`: save configuration and recording audio in a new numbered backup folder.
+- `RESTORE CONFIGURATION FROM BACKUP`: restore the backup placed directly in `/RESTORE_FROM_BACKUP`.
+- `FACTORY RESET`: delete patches and recordings while keeping imported audio files.
+
+Confirmation dialogs identify the relevant folders and explain what will be kept, replaced or excluded. Green dialogs introduce conversion, import and backup; red dialogs warn before destructive operations. Turn Select to choose an action and press it to confirm. `CANCEL`/`GO` is used for conversion, import (including the final Flash erase warning), backup and restore; factory reset uses `NO`/`YES`.
+
+### Pitch steps and note names
+
+With `KEYBOARD STEP` at one semitone, adjacent MIDI notes use the normal chromatic pitch spacing. Smaller steps spread a smaller pitch interval over each keyboard step, allowing half-, quarter- or eighth-semitone playing. Return to one semitone when checking a conventional keyboard mapping.
+
+`FIRST OCTAVE` changes the octave numbering used in the display. It helps match your controller's naming convention; it should not be used as a substitute for setting the instrument's root key.
+
+### Assign a controller knob
+
+<img src="doc/assets/images/10.jpg" alt="Control Change Assignment page for eight sound gains and LPF cutoff" width="55%">
+
+*Each destination can have a CC assignment. A dash means no assignment.*
+
+1. Open `CONTROL CHANGE ASSIGNMENT`.
+2. Select the gain destination or LPF cutoff.
+3. Set the desired CC number.
+4. Set your MIDI controller's knob or slider to transmit that CC.
+5. For a sound gain, use the MIDI channel assigned to that sound.
+6. Return and test the control while playing.
+
+Use a dash to leave a destination unassigned. Check both the controller number and the transmitting channel if moving the external control has no effect.
+
+### Check incoming MIDI
+
+<img src="doc/assets/images/11.jpg" alt="MIDI monitor displaying a NoteOn message, channel, note and velocity" width="55%">
+
+*This example confirms reception of a NoteOn on channel 1. The note name follows the current octave-display convention.*
+
+Open **Tools > Test** to monitor incoming MIDI message types. This is useful when checking whether the controller is sending notes, pitch bend, aftertouch or control changes.
+
+If the monitor receives notes but Performance is silent, the connection is working: check channel mapping, key ranges and audio routing next. If no message appears, check the controller output, cable and selected connection before editing the patch.
+
+## Backup and restore
+
+### SD folder layout
+
+```text
+microSD root/
+  AUDIO_FILES/          Source audio and converted RAW files for SD playback
+  UPLOAD_AUDIO_FILES/   Source audio for import into Flash
+  EXPORTED_AUDIO_FILES/ Sampler WAV exports
+  DATA_BACKUPS/         Numbered configuration and recording backups
+  RESTORE_FROM_BACKUP/  Contents of the selected backup to restore
+  LILLA_PRIVATE/        Firmware-managed metadata (Hidden/System)
+    .lilla-index        SD audio catalog
+    .lilla-sources/     Saved Sound source references
+    MIDI_LOOPS/         Saved MIDI loops
+    PATCHES/            Patch parameter copies
+```
+
+Prepare the input folders and `/RESTORE_FROM_BACKUP` as needed. The firmware creates output folders when saving or converting. Keep `/AUDIO_FILES` together with the hidden catalog and source-reference metadata in `/LILLA_PRIVATE` when copying the library.
+
+For an SD card using an older layout, rename `/EXTERNAL_AUDIO` to `/AUDIO_FILES`, `/FLASH_AUDIO` to `/UPLOAD_AUDIO_FILES`, `/LILLAWAV_EXPORT` to `/EXPORTED_AUDIO_FILES`, and `/LILLABACKUP` to `/DATA_BACKUPS`. Move the audio from `/LILLA_AUDIO` into visible `/AUDIO_FILES`, and its `.lilla-index` and `.lilla-sources` metadata directly into hidden `/LILLA_PRIVATE`. Move `/LILLALOOP` and `/LILLAPATCH` into `/LILLA_PRIVATE` as `MIDI_LOOPS` and `PATCHES`. File contents and formats do not change. If the card has a `/RESTORE` folder, rename it to `/RESTORE_FROM_BACKUP`. The unused `/LILLASOUND` folder is no longer used. These older layouts require manual migration. Recent `/LILLA_HIDDEN`, `/SD_AUDIO_FILES` and `/FLASH_AUDIO_FILES` layouts are migrated automatically when the destinations are absent, without overwriting existing folders.
+
+### Plan a complete archive
+
+A configuration backup is one part of preserving a session. Keep the matching audio library and MIDI-loop files with it so the saved settings have the material they need.
+
+| Item | Numbered configuration/recording backup | Additional action |
+| --- | --- | --- |
+| Saved patches, sounds and configuration | Included. | Save current edits before backing up. |
+| File-name associations | Included. | Keep corresponding audio basenames unchanged. |
+| Sampler recording audio | Included. | WAV export is also useful for computer access. |
+| Sampler recording A/B boundaries | Included in current backups. | Older backups without trim metadata restore the full recording region. |
+| Imported RAW library | Not included. | Retain the original import library separately. |
+| SD source library | Not included in the normal backup. | Copy `/AUDIO_FILES` and its catalog and source references in `/LILLA_PRIVATE` to your computer. |
+| RAW files generated from recordings or live captures | Not included as a complete RAW-library archive. | Keep an independent recoverable audio copy; saving to Flash alone is not an external backup. |
+| MIDI-loop directory | Not included. | Copy `/LILLA_PRIVATE/MIDI_LOOPS` from the card. |
+| Temporary live buffer | Not included. | Capture and save useful material before power-off. |
+
+For a Live Sampler capture, this firmware's Sampler WAV-export command does not provide a general RAW-library export. Do not assume that a numbered backup alone can restore every captured RAW source after that source is erased.
+
+### Create a backup
+
+1. Save your current patch edits.
+2. Insert a microSD card with sufficient free space.
+3. Open Tools > Setup.
+4. Select `CONFIGURATION BACKUP`. Read the green dialog: configuration and recording audio are included; audio libraries and MIDI loops are excluded. Choose `GO` to save or `CANCEL` to return.
+5. Wait for the backup success message.
+6. Copy the backup folder to your computer for safekeeping.
+
+Backups are created in numbered directories such as `/DATA_BACKUPS/000001`. They contain configuration and Sampler recording audio. Previous numbered backups are kept.
+
+Keep your imported source library separately. The backup operation does not copy the entire imported RAW library, the temporary live buffer or the MIDI-loop directory. Copy `/LILLA_PRIVATE/MIDI_LOOPS` separately and retain your import files. Save live captures into a patch before archiving their settings, and account for the RAW-audio limitation described above.
+
+### Restore a backup
+
+Choose GO only after preparing the intended backup in the card's `/RESTORE_FROM_BACKUP` folder.
+
+1. On your computer, choose the numbered backup you want to restore.
+2. Copy **the contents** of that directory into `/RESTORE_FROM_BACKUP` on the card, keeping its configuration and recording files together.
+3. Check that `/RESTORE_FROM_BACKUP/LILLA_CONFIG.fram` exists. Leaving it only inside `000001`, for example, is not enough.
+4. Insert the card and open Tools > Setup.
+5. Select `RESTORE CONFIGURATION FROM BACKUP`. Read the instructions and warning, then choose `GO` to restore or `CANCEL` to return.
+6. Wait for restoration and any requested restart to finish.
+7. Check the restored patches and recordings, and that their imported source files are available.
+
+The restore location should look like this:
+
+```text
+microSD root/
+  RESTORE_FROM_BACKUP/
+    LILLA_CONFIG.fram
+    REC_*.raw           Matching recording files from the same backup
+```
+
+`REC_*.raw` represents the actual recording filenames. Copy these files together with the configuration; do not mix files from different numbered backups.
+
+Restoration replaces configuration and restores recording audio; audio-library files already in Flash are kept. Back up the current state before restoring a different one. Keep the original backup intact: invalid or missing recording audio can prevent a recording from being recovered.
+
+### Factory reset
+
+Factory reset is a destructive configuration operation. Its red confirmation dialog offers NO and YES.
+
+`FACTORY RESET` deletes patches, sounds and recordings; imported audio files are kept. Make a backup before choosing `YES`. Choose `NO` to cancel. Wait for the reset and restart to complete.
+
+## Updating the firmware on Windows
+
+The firmware is the program that runs LILLA. To load a compiled firmware on Windows 10 or 11, use **Teensy Loader (`teensy.exe`)**. It is a standalone application: download it and run it without an installer. **Teensyduino** is the Arduino development add-on; you do not need it, Arduino IDE or PlatformIO to upload the supplied HEX file. See the [PJRC download page](https://www.pjrc.com/teensy/td_download.html) for the distinction between development tools and the standalone loader.
+
+### What you need
+
+- Your LILLA instrument, which uses a Teensy 4.1.
+- A Windows 10 or 11 computer.
+- A USB **data** cable matching the computer and LILLA's USB-C connector. A charging-only cable cannot transfer firmware.
+- The LILLA firmware file, for example `Lilla_v7_3_0.hex`.
+- Teensy Loader, downloaded from PJRC.
+
+### Download the firmware
+
+1. Open the [main branch of the LILLA GitHub repository](https://github.com/SandroGrassia/Lilla_Audio_Sampler/tree/main). Confirm that the branch selector shows **main**.
+2. In the project's top-level file list, open the published `.hex` file for your instrument, for example `Lilla_v7_3_0.hex`. This is the compiled firmware; **Code > Download ZIP** downloads the project sources instead.
+3. On the HEX file page, click **Download raw file**. Download firmware only from **main**. The **develop** branch contains work in progress and may contain faulty or untested builds.
+4. Save the file in a folder you can find easily, such as `Downloads/LILLA`. Check that its name ends in `.hex`, not `.html` or `.txt`.
+
+The version numbers in `Lilla_v7_3_0.hex` identify the firmware version and revision. Keep the downloaded copy if you want to retain that exact build. If no HEX file is available on **main**, wait for the maintainer to publish it; do not substitute a file from **develop**.
+
+### Download Teensy Loader
+
+Open the [official PJRC Windows loader page](https://www.pjrc.com/teensy/loader_win10.html) and click **Teensy Loader Program**. Save `teensy.exe` and double-click it. The small Teensy Loader window should appear. You can keep the executable in the same folder as the HEX file. PJRC's [first-use instructions](https://www.pjrc.com/teensy/first_use.html) explain that programming mode uses the USB drivers built into Windows; no separate programming driver is required.
+
+### Prepare LILLA
+
+Save your current patch and any MIDI loops, and complete pending recording or export operations. Use [Backup and restore](#backup-and-restore) to preserve your work before changing firmware. Check any compatibility or migration instructions supplied with the new version.
+
+Lower your amplifier or mixer level, then connect LILLA's USB-C connector to the computer with the data cable. Keep power and USB connected throughout programming.
+
+> **Upgrading from firmware older than 7.2.5:** the internal recording area uses new file names. Before using Sampler recordings with this firmware, recreate the Flash audio and recording area through audio import. Import erases the previous Flash audio and recordings; export any recordings you want to keep and retain your source audio files. Deleting individual recordings does not recreate the recording area.
+
+### Upload and restart
+
+1. In Teensy Loader, leave **Automatic Mode** off for this manual procedure.
+2. Choose **File > Open HEX File** and select the downloaded `Lilla_v7_3_0.hex`. Confirm the filename shown in the loader.
+3. Briefly press and release LILLA's **Firmware_upload mode** button. This is the programming button, not the On/off button. The instrument's current program stops and the loader should detect the Teensy.
+4. Choose **Operations > Program**. Wait for **Download Complete** before disconnecting anything.
+5. Choose **Operations > Reboot**. LILLA should restart.
+6. Check the firmware version on LILLA's welcome screen. The welcome screen should show version 7.3.0. Load a familiar patch and check playback at a low listening level.
+
+The manual controls above follow the [PJRC Windows loader instructions](https://www.pjrc.com/teensy/loader_win10.html). Updating firmware programs the Teensy's internal program memory; importing audio from the SD card is a separate operation.
+
+### If the upload does not start
+
+| Symptom | What to check |
+| --- | --- |
+| The loader does not detect LILLA | **Check that the USB cable supports data: a charge-only cable can power LILLA but cannot upload firmware.** Try a known data cable, press and release Firmware_upload mode, then try another computer USB port. |
+| The HEX file cannot be opened | Download the raw `.hex` file again. Check that you did not save the GitHub web page or a source archive. |
+| Programming finishes but LILLA does not start | Choose Operations > Reboot after Download Complete. If necessary, reconnect and repeat with the correct LILLA firmware. |
+| The welcome screen shows the old version | Check which HEX file is open in the loader and repeat Program, followed by Reboot. |
+
+## Updating the firmware on Mac
+
+On macOS, use the standalone **Teensy Loader** application and the published LILLA `.hex` file. Arduino IDE, PlatformIO and the Teensyduino development add-on are not required to upload a compiled firmware. PJRC lists the standalone loader on its [download page](https://www.pjrc.com/teensy/td_download.html).
+
+### What you need on Mac
+
+- Your LILLA instrument, which uses a Teensy 4.1.
+- A Mac compatible with the current Teensy Loader download.
+- A USB **data** cable matching the Mac and LILLA's USB-C connector. If an adapter is necessary, it must support USB data.
+- The published LILLA HEX file and the macOS Teensy Loader application.
+
+### Download the firmware on Mac
+
+1. In your browser, open the [main branch of the LILLA GitHub repository](https://github.com/SandroGrassia/Lilla_Audio_Sampler/tree/main). Confirm that the branch selector shows **main**.
+2. Open the published `.hex` file in the project's top-level file list, for example `Lilla_v7_3_0.hex`.
+3. Click **Download raw file** and save it in a convenient folder, such as `Downloads/LILLA`.
+4. In Finder, confirm that the downloaded file ends in `.hex`. A GitHub web page or **Code > Download ZIP** source archive cannot be loaded as firmware.
+
+Use firmware from **main** only. Files on **develop** are work in progress and may be faulty or untested. If main has no HEX file, wait for the maintainer to publish it. Keep the downloaded copy to preserve that exact build.
+
+### Download and open Teensy Loader on Mac
+
+1. Open the [official PJRC Mac loader page](https://www.pjrc.com/teensy/loader_mac.html) and download **Teensy Loader Disk Image**.
+2. In Finder, open the downloaded `.dmg`. It contains the Teensy Loader application.
+3. Copy the application to **Applications** for convenient reuse, then open it. Confirm **Open** if macOS asks about the downloaded application.
+
+If macOS blocks an unverified application, first check that it came from the official PJRC download. After attempting to open it, use **Apple menu > System Settings > Privacy & Security > Open Anyway**, then confirm **Open**, if that option is available. Follow [Apple's instructions for opening downloaded apps](https://support.apple.com/en-us/102445); do not disable macOS security globally. If the loader reports an unsupported system, obtain a compatible version from PJRC.
+
+### Prepare LILLA on Mac
+
+Save your patch and MIDI loops, finish pending recording or export operations, and make a backup using [Backup and restore](#backup-and-restore). Read any compatibility or migration instructions accompanying the firmware.
+
+Lower the listening level. Connect LILLA's USB-C connector to the Mac with the data cable, and keep power and USB connected throughout programming. Allow the USB accessory connection if your Mac asks for permission.
+
+### Upload and restart on Mac
+
+1. Leave Teensy Loader's **Automatic Mode** off.
+2. Choose **File > Open HEX File** and select the downloaded LILLA HEX file.
+3. Briefly press and release LILLA's **Firmware_upload mode** button, rather than On/off. The loader should detect the Teensy.
+4. Choose **Operations > Program** and wait for **Download Complete**.
+5. Choose **Operations > Reboot** to restart LILLA.
+6. Check the version on the welcome screen and test a familiar patch at a low listening level. For this release, the welcome screen should show version 7.3.0.
+
+These controls are described in the [PJRC Mac loader instructions](https://www.pjrc.com/teensy/loader_mac.html).
+
+### If the Mac cannot upload
+
+| Symptom | What to check |
+| --- | --- |
+| Teensy Loader will not open | Check the download source, macOS permission prompt and the loader's system requirements. |
+| LILLA is not detected | **Use a USB data cable: charge-only cables cannot upload firmware, even when LILLA receives power.** Reconnect USB, allow the accessory if prompted, briefly press Firmware_upload mode, and try another port or adapter. |
+| The HEX cannot be opened | Download the raw HEX from main again and check its extension in Finder. |
+| Programming completes but LILLA does not restart | Choose Operations > Reboot after Download Complete. |
+
+## Troubleshooting
+
+### Hiss or background noise at the audio outputs
+
+**First check the power supply. Use a good-quality 5 V supply.** An inexpensive mobile-phone charger is often not the ideal supply for audio equipment and can introduce noise. Try a better-quality 5 V supply with the same audio connections and listening level, then compare the result.
+
+### Diagnose silence in a useful order
+
+1. **MIDI:** does Tools > Test show incoming notes?
+2. **Mapping:** is an active sound assigned to that channel and note range?
+3. **Source:** is the expected audio source present and is the region valid?
+4. **Envelope and level:** are gain and sustain sufficient, and is attack unusually long?
+5. **Routing:** is the source unmuted and routed to the output you are using?
+6. **Output:** are patch volume, external mixer level and the physical connection correct?
+
+Change one thing at a time and retest with the same note. This makes it easier to identify the actual cause.
+
+| Problem | What to check |
+| --- | --- |
+| No sound from the controller | MIDI connection, instrument MIDI channel, keyboard range, source availability, gain, patch volume and Mixer output routing. |
+| A slot will not open for editing | The slot may be unused. Edit an active slot or clone an existing instrument into a free one. |
+| Sample sounds too high or too low | Root key, sound pitch, controller pitch bend and Setup key step. |
+| Hiss or background noise at the outputs | Try a good-quality 5 V power supply. A cheap mobile-phone charger can introduce audio noise. |
+| Audio clips or distorts | Reduce recording input gain or playback gain. Check Mixer levels, resolution and downsampling. |
+| Clicks at a loop boundary | Refine From/To and adjust Noclick where available. |
+| Fewer notes play than expected | LILLA has up to 16 voices; layers consume multiple voices and heavier playback can reduce availability. Review precedence and arrangement density. |
+| SD import cannot find files | Check the card and the exact `/UPLOAD_AUDIO_FILES` folder at its root. |
+| Import rejects a WAV or AIFF | Use uncompressed 16-bit PCM at 44.1 kHz with one or two channels. |
+| Import reports duplicate files | Give each source a distinct basename, including files in different formats. |
+| An imported sample ends early | Check the Sound Edit trim region. Flash retains the complete imported file; move the playable window to reach later passages. Files imported with older firmware may need to be re-imported from their complete originals. |
+| RAW conversion fails | Check free RAW-file memory and available filenames. |
+| WAV export fails | Check that the SD card is present, writable and has free space. |
+| Live audio disappears | The live buffer is temporary. Capture the desired loop into a patch and save it before power-off. |
+| Live Sampler asks to open Performance and save | The previous normal patch has unsaved edits. Return to Performance, save it, then retry capture. |
+| Live capture is refused | Stop recording, select loop mode, shorten the region if necessary, and save existing patch changes. |
+| A new MIDI layer disappears after pressing REC again | Except for master layer 0, a second REC press cancels the new layer. Let the master restart close it automatically. |
+| REC does not add another layer | Enable group playback and check for a free layer. Each track has four slots; a full track shows ALL LAYERS USED. |
+| An older MIDI loop cannot be loaded | Firmware 7.3.0 uses a new layered format and cannot load earlier loop files. |
+| Restore cannot find the backup | Place `LILLA_CONFIG.fram` and its matching recording files directly in `/RESTORE_FROM_BACKUP`. |
+| Restored patch cannot play its source | Restore or re-import the required source library; configuration backup does not include all imported audio. |
+
+## Practical projects
+
+### Make a playable instrument from a recorded note
+
+**You need:** a source connected to line input and a MIDI controller.
+
+1. In Sampler, use `PAUSE+REC` to set the input level.
+2. Record a clean sustained note in mono, including its attack and decay.
+3. Stop, press S1 to audition from the keyboard, trim A/B and select `RETURN`. Make a backup now if you want to retain the full original recording.
+4. Use `MAKE_RAW` to create a playable source from the selected region; successful conversion removes the recording.
+5. In Performance, clone a patch you can use as a starting point.
+6. Open an active sound and choose the new source.
+7. Trim unwanted silence, choose a playback mode and adjust the envelope.
+8. Set the root key to match the recorded note, then set the keyboard range.
+9. Play above and below the root to check the result.
+10. Save the patch. Keep the backup made before conversion if you need the original recording; a converted take is no longer available for Sampler WAV export.
+
+**Try next:** clone the sound into another slot, choose a different region of the same source and give the two slots separate keyboard zones.
+
+### Turn live audio into a small playable kit
+
+**You need:** several short events in the Live Sampler buffer and a previously saved Performance patch.
+
+1. Record the source in Live Sampler, then stop.
+2. Select loop mode and find the first useful event with From, To and Window.
+3. Press S1 and play the desired trigger key when prompted.
+4. Move the region to a second event.
+5. Press another free slot and choose another trigger key.
+6. Repeat for the remaining events, allowing pairs of slots for stereo captures.
+7. Switch to Performance and check the trigger-key assignments.
+8. Open each sound to choose its final one-shot or loop mode and envelope.
+9. Save the patch and wait for its audio to be written to Flash.
+
+**Result:** a normal patch whose slots contain different captured regions. The original live buffer remains a temporary workspace.
+
+### Build a layered texture and animate it
+
+1. Start from a saved patch and clone a sound into a free slot.
+2. Give both slots the same MIDI channel and overlapping key ranges.
+3. Use different trim regions or pitch adjustments for the two layers.
+4. Reduce their individual gains before listening to the combination.
+5. Open a layer's VCF and add a slow modulation with modest depth.
+6. Route one or both layers to Delay and add a small amount of feedback.
+7. Play sustained notes and listen to the release tails.
+8. Save the patch when the balance works.
+
+**Try next:** record a short phrase on MIDI Loop Track 1, add a contrasting part on Track 2, and experiment with a small timing Shift on the second track.
+
+## Quick reference
+
+| Task | Starting point |
+| --- | --- |
+| Play an existing patch | Performance > patch field > Value. |
+| Edit a sound | Performance > S1-S8 for an active slot. |
+| Add another instrument using an existing sound | Sound Edit > CLONE, then edit the new slot. |
+| Keep sound edits after power-off | Return to Performance > SAVE. |
+| Import computer audio | SD `/UPLOAD_AUDIO_FILES` > Tools > Setup > import. |
+| Record line input | Sampler > PAUSE+REC > MONO_REC or STEREO_REC > STOP. |
+| Edit a recording while playing it from the keyboard | Sampler > completed recording > S1 (mono/left) or S2 (stereo right) > Sound Edit > RETURN. |
+| Keep recording trim points for playback and export | Adjust A/B in Sampler Sound Edit; saved automatically, with stereo channels linked. |
+| Turn a recording into a source | Sampler > MAKE_RAW. |
+| Export a recording | Sampler > EXPORT_WAV_TO_SD > SD `/EXPORTED_AUDIO_FILES`. |
+| Record temporary live audio | Live Sampler > CAPTURE > STOP. |
+| Preserve a live loop | Stop live recording > loop mode > S1-S8 > set root key > save patch. |
+| Record the master layer | MIDI Loop > NEW > Rec 1 > play > Rec 1 again. |
+| Add a MIDI layer | During loop playback, press the track's REC > play > let the master restart close the layer. Press REC again to cancel it. |
+| Back up configuration and recordings | Tools > Setup > CONFIGURATION BACKUP. |
+| Restore a numbered backup | Copy its contents to SD `/RESTORE_FROM_BACKUP` > Tools > Setup > RESTORE CONFIGURATION FROM BACKUP. |
+
+## Glossary
+
+| Term | In this guide |
+| --- | --- |
+| ADSR | Attack, decay, sustain and release: the stages that shape a sound's level over time. |
+| Basename | A file name without its extension, such as `BassDry` in `BassDry.wav`. |
+| Capture | On the Live Sampler menu, record into the live buffer; with S1-S8, copy a selected region into a patch sound. |
+| Circular buffer | Recording memory that wraps around and overwrites older material. |
+| Flash | Persistent audio storage inside LILLA. |
+| FRAM | Persistent storage used for configuration and patch/sound metadata. |
+| LFO | Low-frequency oscillator used to vary a parameter over time. |
+| LPF | Low-pass filter, which reduces higher frequencies. |
+| MIDI CC | A MIDI Control Change message used to control an assigned parameter. |
+| Mono | One audio channel. |
+| Noclick | Boundary smoothing used to reduce discontinuities in suitable loop regions. |
+| PCM | Uncompressed digital sample data. |
+| Polyphony | The number of simultaneous playback voices; layers and release tails use voices too. |
+| PSRAM | Working audio memory; its contents are lost at power-off. |
+| RAW | Audio sample data without a WAV or AIFF container header. |
+| Root key | The reference MIDI key for a sound's pitch mapping. |
+| Stereo | Two audio channels, left and right. |
+| VCF | The instrument filter, with cutoff, resonance and modulation controls. |
+
+---
+
+*LILLA User Guide - English edition - 2 November 2026*
+
+*Guide images: [doc/assets/images](doc/assets/images/). Preserve this relative folder path when sharing the illustrated guide.*
