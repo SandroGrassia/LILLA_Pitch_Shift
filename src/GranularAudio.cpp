@@ -1,7 +1,7 @@
 #include "GranularAudio.h"
 #include <cstring>
 
-GranularAudio::GranularAudio(WsolaCore *voices) : AudioStream(0, nullptr), core(voices)
+GranularAudio::GranularAudio(FftPitchCore *voices) : AudioStream(0, nullptr), core(voices)
 {
     ResetMeasurement();
 }

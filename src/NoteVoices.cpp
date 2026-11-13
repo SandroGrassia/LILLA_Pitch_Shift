@@ -7,10 +7,9 @@ NoteVoices::NoteVoices(GranularAudio &audio) : audio(audio)
 {
 }
 
-void NoteVoices::SetSources(Source first, Source second)
+void NoteVoices::SetSource(Source value)
 {
-    sources[0] = first;
-    sources[1] = second;
+    source = value;
 }
 
 float NoteVoices::TargetPitch(uint8_t key) const
@@ -21,7 +20,7 @@ float NoteVoices::TargetPitch(uint8_t key) const
 
 NoteVoices::Result NoteVoices::NoteOn(uint8_t key, uint8_t velocity, uint32_t &voice)
 {
-    // The WSOLA core supports 0.25..4. Reject unmapped keys instead of silently mapping them to the same pitch.
+    // The FFT core supports 0.25..4. Reject unmapped keys instead of silently mapping them to the same pitch.
     if (key < ExperimentConfig::RootNote - 24 || key > ExperimentConfig::RootNote + 24)
     {
         ++rejected[key];
@@ -37,12 +36,8 @@ NoteVoices::Result NoteVoices::NoteOn(uint8_t key, uint8_t velocity, uint32_t &v
         if (!notes[voice].held && !audio.core[voice].IsActive())
         {
             Note &note = notes[voice];
-            note = {true, key, velocity, next_source, ++next_order, revision};
-            const Source &source = sources[next_source];
-            next_source ^= 1u;
+            note = {true, key, velocity, ++next_order, revision};
             audio.ResetVoiceMeasurement(voice);
-            audio.core[voice].SetWindow(window);
-            audio.core[voice].SetOverlap(overlap);
             audio.core[voice].StartNote(source.samples, source.count, TargetPitch(key), volume * (velocity / 127.0f) / 100.0f);
             return Result::Started;
         }
@@ -111,35 +106,17 @@ void NoteVoices::PitchBend(int value)
     }
 }
 
-void NoteVoices::SetParameters(uint32_t next_window, uint32_t next_overlap, int volume_percent)
+void NoteVoices::SetVolume(int volume_percent)
 {
-    if (window == next_window && overlap == next_overlap && volume == volume_percent)
+    if (volume == volume_percent)
     {
         return;
     }
-    window = next_window;
-    overlap = next_overlap;
     volume = volume_percent;
     ++revision;
     for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
     {
-        audio.core[voice].SetWindow(window);
-        audio.core[voice].SetOverlap(overlap);
         audio.core[voice].SetVolume(volume * (notes[voice].velocity / 127.0f) / 100.0f);
-    }
-}
-
-void NoteVoices::SetAntialias(bool enabled)
-{
-    if (antialias_enabled == enabled)
-    {
-        return;
-    }
-    antialias_enabled = enabled;
-    ++revision;
-    for (uint32_t voice = 0; voice < GranularAudio::VoiceCount; ++voice)
-    {
-        audio.core[voice].SetAntialias(enabled);
     }
 }
 

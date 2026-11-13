@@ -5,7 +5,7 @@
 class HardwareControls
 {
 public:
-    enum Control { Step, From, To, Volume, Count };
+    enum Control { Step, From, To, Volume, Select, Count };
     bool Begin();
     void Poll();
     int TakeRotation(Control control);

@@ -9,8 +9,8 @@ struct Pins
     uint8_t dt;
     uint8_t clk;
 };
-// Lilla UserInterface.h IDs: Step=13, From=12, To=14, LineOutVol=15.
-constexpr Pins pins[HardwareControls::Count] = {{0, 3, 4}, {0, 6, 7}, {0, 1, 0}, {1, 2, 1}};
+// Lilla UserInterface.h IDs: Step=13, From=12, To=14, LineOutVol=15, Select=11 (chip 3 b5/b4).
+constexpr Pins pins[HardwareControls::Count] = {{0, 3, 4}, {0, 6, 7}, {0, 1, 0}, {1, 2, 1}, {0, 13, 12}};
 constexpr uint8_t button_pins[] = {2, 5, 14}; // Step=a2, From=a5, To=b6 on chip 3.
 struct Transition
 {

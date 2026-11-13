@@ -11,9 +11,9 @@ int main()
     {
         source[i] = static_cast<int16_t>(25000 * std::sin(i * 0.19));
     }
-    WsolaCore audio_cores[GranularAudio::VoiceCount];
+    FftPitchCore audio_cores[GranularAudio::VoiceCount];
     GranularAudio audio(audio_cores);
-    WsolaCore reference[2];
+    FftPitchCore reference[2];
     audio.update();
     for (int16_t value : AudioStream::transmitted.data)
     {
@@ -52,25 +52,6 @@ int main()
     assert(audio.TakeTimings(GranularAudio::Mix).generate.blocks == 0);
     assert(audio.TakeLevels(GranularAudio::Mix).samples == 310 * AUDIO_BLOCK_SAMPLES);
     assert(audio.TakeLevels(GranularAudio::Mix).samples == 0);
-    // Exercise live common overlap changes through the actual dual-voice wrapper.
-    for (uint32_t percent : {75u, 25u, 10u, 50u})
-    {
-        for (unsigned voice = 0; voice < 2; ++voice)
-        {
-            audio.core[voice].SetOverlap(percent);
-            reference[voice].SetOverlap(percent);
-        }
-        for (unsigned block = 0; block < 30; ++block)
-        {
-            audio.update();
-            for (unsigned i = 0; i < AUDIO_BLOCK_SAMPLES; ++i)
-            {
-                const int32_t first_sample = reference[0].Render();
-                const int32_t second_sample = reference[1].Render();
-                assert(AudioStream::transmitted.data[i] == (first_sample + second_sample) / static_cast<int32_t>(GranularAudio::VoiceCount));
-            }
-        }
-    }
     // Stop only the first voice and sweep the second: compare the actual mixer sample by sample.
     audio.core[0].SetRunning(false);
     reference[0].SetRunning(false);
@@ -111,7 +92,7 @@ int main()
     for (int16_t value : {int16_t(32767), int16_t(-32768)})
     {
         std::vector<int16_t> full_scale(1009, value);
-        WsolaCore loud_cores[GranularAudio::VoiceCount];
+        FftPitchCore loud_cores[GranularAudio::VoiceCount];
         GranularAudio loud(loud_cores);
         for (auto &core : loud_cores)
         {
@@ -129,5 +110,27 @@ int main()
             assert(std::abs(static_cast<int>(output) - value) < 4);
         }
     }
-    std::puts("PASS: dual rendering and mix, coincident generation counts, independent stop/pitch, stats reset, allocation failure, full-scale headroom. Host clock is mocked; no hardware timing validation.");
+    FftPitchCore six_cores[GranularAudio::VoiceCount];
+    FftPitchCore six_references[GranularAudio::VoiceCount];
+    GranularAudio six(six_cores);
+    for (unsigned voice = 0; voice < GranularAudio::VoiceCount; ++voice)
+    {
+        six_cores[voice].StartNote(source.data(), source.size(), 0.5f + voice * 0.5f, 0.25f);
+        six_references[voice].StartNote(source.data(), source.size(), 0.5f + voice * 0.5f, 0.25f);
+    }
+    six.SetReady();
+    for (unsigned block = 0; block < 100; ++block)
+    {
+        six.update();
+        for (unsigned i = 0; i < AUDIO_BLOCK_SAMPLES; ++i)
+        {
+            int32_t sum = 0;
+            for (auto &core : six_references)
+            {
+                sum += core.Render();
+            }
+            assert(AudioStream::transmitted.data[i] == sum / static_cast<int32_t>(GranularAudio::VoiceCount));
+        }
+    }
+    std::puts("PASS: two/six FFT voices, independent pitches, exact mix, coincident frames, stop, stats, allocation failure and full-scale headroom. Host clock is mocked.");
 }
