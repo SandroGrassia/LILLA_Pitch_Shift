@@ -15,10 +15,10 @@ void FileDisplay::Begin()
     tft.setTextColor(ILI9341_WHITE);
     tft.setTextSize(2);
     tft.setCursor(8, 12);
-    tft.print("FFT6 0.6.7");
+    tft.print("FFT6 0.6.8");
     tft.setTextSize(1);
     tft.setCursor(8, 42);
-    tft.print("SELECT: choose RAW file");
+    tft.print("Encoder VALUE: choose RAW file");
 }
 
 void FileDisplay::Show(const char *selected, const char *loaded, const char *status)

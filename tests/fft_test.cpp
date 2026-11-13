@@ -14,7 +14,7 @@ int main()
         {
             source[i] = static_cast<int16_t>(10000.0 * std::sin(i * 6.283185307179586 * frequency / 44100.0));
         }
-        for (float pitch : {0.25f, 0.5f, 1.0f, 1.3f, 2.0f, 4.0f})
+        for (float pitch : {0.25f, 0.5f, 1.0f, 1.3f, 1.5f, 2.0f, 3.0f, 4.0f})
         {
             FftPitchCore core;
             core.StartNote(source.data(), source.size(), pitch, 1.0f);

@@ -15,16 +15,9 @@ constexpr float Tau = 6.2831853071795864769f;
 bool FftPitchCore::tables_ready = false;
 float FftPitchCore::window[FftPitchCore::Size] = {};
 alignas(32) float FftPitchCore::fft[2 * FftPitchCore::Size] = {};
-float FftPitchCore::magnitude[FftPitchCore::Bins] = {};
-float FftPitchCore::frequency_sum[FftPitchCore::Bins] = {};
-float FftPitchCore::strongest[FftPitchCore::Bins] = {};
-float FftPitchCore::initial_phase[FftPitchCore::Bins] = {};
 float FftPitchCore::advanced_phase[FftPitchCore::Bins] = {};
-uint16_t FftPitchCore::dominant_source[FftPitchCore::Bins] = {};
 uint16_t FftPitchCore::peaks[FftPitchCore::Bins] = {};
 uint16_t FftPitchCore::peak_owner[FftPitchCore::Bins] = {};
-uint16_t FftPitchCore::phase_anchor[FftPitchCore::Bins] = {};
-bool FftPitchCore::advance_needed[FftPitchCore::Bins] = {};
 
 FftPitchCore::FftPitchCore()
 {
@@ -210,29 +203,6 @@ void FftPitchCore::Generate()
     {
         Analyze(transport); // First frame starts immediately; no extra attack latency.
     }
-    const bool transient = frame_transient;
-    std::fill_n(magnitude, Bins, 0.0f);
-    std::fill_n(frequency_sum, Bins, 0.0f);
-    std::fill_n(strongest, Bins, 0.0f);
-    for (uint32_t bin = 0; bin < Bins; ++bin)
-    {
-        const float amplitude = previous_magnitude[bin];
-        const float phase = previous_phase[bin];
-        const float frequency = pitch_now == 1.0f ? static_cast<float>(bin) : analysis_frequency[bin] * pitch_now;
-        const uint32_t destination = static_cast<uint32_t>(bin * pitch_now + 0.5f);
-        if (destination >= Bins || frequency < 0.0f || frequency > Size / 2)
-        {
-            continue;
-        }
-        magnitude[destination] += amplitude;
-        frequency_sum[destination] += amplitude * frequency;
-        if (amplitude > strongest[destination])
-        {
-            strongest[destination] = amplitude;
-            initial_phase[destination] = phase;
-            dominant_source[destination] = static_cast<uint16_t>(bin);
-        }
-    }
     // Find peaks in the ANALYSIS spectrum: shifted bins have artificial gaps at pitch > 1.
     // Ignore peaks more than 60 dB below the largest analysis magnitude.
     const float peak_floor = *std::max_element(previous_magnitude, previous_magnitude + Bins) * 0.001f;
@@ -259,68 +229,58 @@ void FftPitchCore::Generate()
             peak_owner[bin] = peaks[nearest];
         }
     }
-    // Resolve locking first: most bin phases would otherwise be advanced and discarded.
-    const bool reset_phase = first_frame || transient || pitch_now == 1.0f;
-    std::fill_n(advance_needed, Bins, false);
-    for (uint32_t bin = 0; bin < Bins; ++bin)
+    // Shift each peak region rigidly: preserve local lobe width instead of dilating it.
+    // Phase history is indexed by source bin, independent of destination collisions.
+    const bool reset_phase = first_frame || frame_transient || pitch_now == 1.0f;
+    for (uint32_t index = 0; index < peak_count; ++index)
     {
-        if (magnitude[bin] == 0.0f)
-        {
-            continue;
-        }
-        phase_anchor[bin] = Bins;
-        if (peak_count > 0 && !reset_phase)
-        {
-            const uint32_t peak = peak_owner[dominant_source[bin]];
-            const uint32_t anchor = static_cast<uint32_t>(peak * pitch_now + 0.5f);
-            if (anchor < Bins && magnitude[anchor] > 0.0f && dominant_source[anchor] == peak)
-            {
-                phase_anchor[bin] = static_cast<uint16_t>(anchor);
-            }
-        }
-        advance_needed[phase_anchor[bin] < Bins ? phase_anchor[bin] : bin] = true;
-    }
-    // Keep a snapshot of all referenced phases before writing synthesis history.
-    for (uint32_t bin = 0; bin < Bins; ++bin)
-    {
-        if (advance_needed[bin])
-        {
-            if (reset_phase)
-            {
-                advanced_phase[bin] = initial_phase[bin];
-            }
-            else
-            {
-                const float frequency = frequency_sum[bin] / magnitude[bin];
-                advanced_phase[bin] = WrapPhase(synthesis_phase[bin] + Tau * frequency * Hop / Size);
-            }
-        }
+        const uint32_t peak = peaks[index];
+        const float shift = (pitch_now - 1.0f) * analysis_frequency[peak];
+        advanced_phase[peak] = reset_phase ? WrapPhase(previous_phase[peak] + 0.5f * Tau * shift) : WrapPhase(synthesis_phase[peak] + Tau * analysis_frequency[peak] * pitch_now * Hop / Size);
     }
     std::fill_n(fft, 2 * Size, 0.0f);
     for (uint32_t bin = 0; bin < Bins; ++bin)
     {
-        if (magnitude[bin] == 0.0f)
+        if (peak_count == 0)
         {
+            synthesis_phase[bin] = previous_phase[bin];
             continue;
         }
-        if (phase_anchor[bin] < Bins)
+        const uint32_t peak = peak_owner[bin];
+        const float shift = (pitch_now - 1.0f) * analysis_frequency[peak];
+        const float shifted_peak = analysis_frequency[peak] * pitch_now;
+        const float phase = WrapPhase(advanced_phase[peak] + previous_phase[bin] - previous_phase[peak]);
+        synthesis_phase[bin] = phase;
+        if (shifted_peak < 0.0f || shifted_peak > Size / 2)
         {
-            const uint32_t peak = peak_owner[dominant_source[bin]];
-            synthesis_phase[bin] = WrapPhase(advanced_phase[phase_anchor[bin]] + initial_phase[bin] - previous_phase[peak]);
+            continue; // Remove whole out-of-band regions; do not fold them back.
         }
-        else
+        const float destination = bin + shift;
+        const int lower = static_cast<int>(std::floor(destination));
+        const float fraction = destination - lower;
+        // Interpolate the centered complex spectrum: adjacent Hann bins have opposite signs.
+        // This phase correction prevents cancellation when shifting by a fractional bin.
+        const float centered_phase = phase - 0.5f * Tau * shift;
+        const float real = previous_magnitude[bin] * std::cos(centered_phase);
+        const float imag = previous_magnitude[bin] * std::sin(centered_phase);
+        for (int side = 0; side < 2; ++side)
         {
-            synthesis_phase[bin] = advanced_phase[bin];
+            const int target = lower + side;
+            if (target < 0 || target >= static_cast<int>(Bins))
+            {
+                continue;
+            }
+            const float weight = (side == 0 ? 1.0f - fraction : fraction) * (((target - static_cast<int>(bin)) % 2) == 0 ? 1.0f : -1.0f);
+            fft[2 * target] += weight * real;
+            fft[2 * target + 1] += weight * imag;
         }
-        const float real = magnitude[bin] * std::cos(synthesis_phase[bin]);
-        const float imag = magnitude[bin] * std::sin(synthesis_phase[bin]);
-        fft[2 * bin] = real;
-        fft[2 * bin + 1] = bin == 0 || bin == Size / 2 ? 0.0f : imag;
-        if (bin > 0 && bin < Size / 2)
-        {
-            fft[2 * (Size - bin)] = real;
-            fft[2 * (Size - bin) + 1] = -imag;
-        }
+    }
+    fft[1] = 0.0f;
+    fft[Size + 1] = 0.0f;
+    for (uint32_t bin = 1; bin < Size / 2; ++bin)
+    {
+        fft[2 * (Size - bin)] = fft[2 * bin];
+        fft[2 * (Size - bin) + 1] = -fft[2 * bin + 1];
     }
 #ifdef __IMXRT1062__
     if (first_frame)

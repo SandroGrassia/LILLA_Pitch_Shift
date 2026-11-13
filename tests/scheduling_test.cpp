@@ -67,5 +67,5 @@ int main()
         const auto position = direct.Transport();
         assert(direct.Render() == source[position]);
     }
-    std::puts("PASS: exact 0.6.3 non-unity output with six voices and bend; alternating analysis/synthesis blocks; direct unity samples and bend return.");
+    std::puts("PASS: exact synchronous region-engine output with six voices and bend; alternating analysis/synthesis blocks; direct unity samples and bend return.");
 }

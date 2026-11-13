@@ -53,16 +53,9 @@ private:
     static bool tables_ready;
     static float window[Size];
     alignas(32) static float fft[2 * Size];
-    static float magnitude[Bins];
-    static float frequency_sum[Bins];
-    static float strongest[Bins];
-    static float initial_phase[Bins];
     static float advanced_phase[Bins];
-    static uint16_t dominant_source[Bins];
     static uint16_t peaks[Bins];
     static uint16_t peak_owner[Bins];
-    static uint16_t phase_anchor[Bins];
-    static bool advance_needed[Bins];
     static void Transform(bool inverse);
     static float WrapPhase(float phase);
     void Analyze(uint32_t position);

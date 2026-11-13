@@ -416,7 +416,7 @@ void setup()
     {
         yield();
     }
-    PrintLine("Granular 0.6.7 - FFT phase vocoder - 6 voices - MIDI DIN CH1 - LOOP_FWD tempo 1");
+    PrintLine("Granular 0.6.8 - FFT phase vocoder - 6 voices - MIDI DIN CH1 - LOOP_FWD tempo 1");
     if (Serial && CrashReport)
     {
         Serial.print(CrashReport);

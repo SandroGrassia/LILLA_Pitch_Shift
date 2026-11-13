@@ -77,3 +77,8 @@ Si deve evitare di inserire una dichiarazione in un file abcd.h e la corrisponde
 # Controlli di sicurezza nelle funzioni
 
 Per assicurare la massima velocità di esecuzione, le funzioni NON devono includere il controllo dei valori ammissibili se i chiamanti NON violano mai i range ammissibili.
+
+
+# Upload con Teensy Uploader
+
+All’upload, passare esplicitamente all’uploader il file HEX nella radice del repository corrispondente alla versione attiva e verificata. Controllare che coincida con il firmware appena compilato. Non scegliere il file soltanto in base al numero di versione o alla data.

@@ -1,4 +1,4 @@
-# Granular 0.6.7 - six-voice FFT pitch experiment
+# Granular 0.6.8 - experimental FFT peak-region pitch shifting
 
 The active engine is now a basic STFT phase vocoder, replacing WSOLA in the audio
 path. The WSOLA source files, core tests and previous HEX files remain available
@@ -59,10 +59,18 @@ in the previous sum/12 WSOLA firmware at the same velocity and master volume.
 Each voice uses a 1024-point FFT/IFFT with periodic Hann analysis and synthesis
 windows and a fixed 256-sample hop (75% overlap). The synthesis normalization is
 2/3, since the sum of squared Hann windows is 1.5 at this hop. Phase differences
-between analysis frames estimate instantaneous bin frequencies. Frequencies are
-multiplied by pitch; magnitudes are mapped to nearest destination bins. Collisions
-sum magnitudes and use magnitude-weighted frequency. Output phases accumulate the
-shifted frequencies, then conjugate symmetry produces a real IFFT output.
+between analysis frames estimate instantaneous bin frequencies. Local spectral peaks
+partition the spectrum into nearest-peak regions. Each region is shifted rigidly by
+`(pitch - 1) * peak_frequency`, preserving its bin spacing and lobe width instead
+of stretching every bin position. Peak phase accumulators use the transposed peak
+frequency; surrounding bins retain their analysis phase offsets. Phase history is
+stored in source-bin coordinates so overlapping output regions do not overwrite
+one another's history.
+
+Fractional shifts use two-bin linear interpolation of the centered complex spectrum,
+with a phase correction for the Hann window center. Overlapping regions sum complex
+values, not magnitudes. Peaks beyond Nyquist are rejected and boundary contributions
+are clipped to the positive spectral band. Conjugate symmetry yields real output.
 At unity pitch (note 60 with centered bend), output reads the RAW samples directly,
 retaining velocity, master volume, anticlick and fixed mix headroom. The FFT stays
 warm in the background, so this is an output bypass, not a CPU-saving bypass.
@@ -77,18 +85,13 @@ limits repeated resets. History and counters are separate for each voice and res
 at Note On. FFT size, hop and overlap are unchanged. This is an experimental attack
 preservation measure, not phase locking; listening and CPU checks on R1 are needed.
 
-Identity phase locking ties each mapped bin to the nearest analysis-spectrum peak,
-preserving its analysis phase offset from that peak. Peaks below -60 dB relative
-to the strongest magnitude are ignored. Peak phases advance first; phase locking
-then uses that snapshot to avoid traversal-order dependence. Missing/out-of-band
-or collision-displaced anchors fall back to independent phase advancement.
-Unity pitch and transient resets retain the direct analysis-phase behavior.
-Nearest-bin magnitude mapping remains unchanged; this is not formant preservation.
-
-This is a basic phase vocoder: no
-formant preservation or loudness compensation. Expect level differences with pitch,
-possible phasiness, softened attacks and artifacts on complex signals. These must
-be evaluated against WSOLA on the actual source, not inferred from tone tests.
+Regions use peaks above -60 dB relative to the strongest analysis magnitude.
+On initial/transient frames, phase reset includes the shift's window-center offset.
+This is experimental region mapping, without formant preservation, adaptive gain,
+or full temporal peak tracking. Dense/noisy signals and region changes may still
+produce artifacts. Quality has priority over voice capacity: evaluate one voice
+at pitch 0.5, 1, 1.5, 2 and 3 before measuring sustainable polyphony on R1.
+The configured six-voice limit is retained; it is not a performance guarantee.
 
 The FFT window spans 23.22 ms. The source is prerecorded, so frames can read ahead
 without waiting for live input. For transposed notes, startup overlap builds over the first 768 output
@@ -133,7 +136,7 @@ predict Teensy performance; CMSIS execution and analog audio have not been bench
 ## Build and tests
 
 Build: `C:/Users/Utente/.platformio/penv/Scripts/platformio.exe run`.
-Firmware: `.pio/build/teensy41/firmware.hex`, exported as `Granular_v0_6_7.hex`.
+Firmware: `.pio/build/teensy41/firmware.hex`, exported as `Granular_v0_6_8.hex`.
 No upload is performed. Load with Teensy Loader to test the actual board.
 
 ```powershell
@@ -147,15 +150,20 @@ g++ -std=c++20 -O2 -Wall -Wextra -Werror -static -I tests/midi_stubs -I include 
 ./.pio/midi_input_test.exe
 python tests/encoder_test.py
 python tests/scheduling_test.py
+python tests/region_quality_test.py
 ```
 
 Tests check tone transposition at 0.25..4, neutral reconstruction, wrapping, fixed
 tempo, out-of-band rejection, bend, clean restart, six-slot allocation, repeated
 notes, exact mixing of independent FFT cores, dropped output allocation and headroom.
-The scheduling regression uses the committed 0.6.3 core (882abb2) as an independent
-reference: six interleaved voices match exactly across attacks, loops and bends.
+The scheduling regression compares the new engine against its synchronous-analysis
+variant: six interleaved voices match exactly across attacks, loops and bends.
 It also checks alternating stage execution, direct RAW output and return from bend.
-It requires local Git history containing that commit and a host g++ compiler.
+The region-quality regression compares tones against 0.6.7 (commit 0bb9abb),
+checking target-frequency energy and level at pitch 0.5, 1, 1.5, 2 and 3.
+At pitch 3, tested 220/997 Hz tones concentrate over 99.99% of energy at the target,
+versus approximately 87.2%/85.7% previously. These synthetic measurements do not
+establish speech quality or CPU cost. The quality comparison needs local Git history.
 The mixer clock/UART are mocked. The old standalone WSOLA tests can still be built
 with `src/WsolaCore.cpp src/WsolaAntialias.cpp`; they no longer exercise the live mixer.
 
@@ -177,7 +185,7 @@ First-note breadcrumbs identify MIDI entry/exit, source pointer/count, forward
 FFT stages (100..102) and inverse FFT stages (200..201). This is a diagnostic
 build, not a verified fix. Voice capacity and DSP processing are unchanged.
 
-## Phase-update optimization (0.6.7)
+## Previous engine: phase-update optimization (0.6.7)
 
 Resolve the phase-lock anchors before advancing phases. Only phases actually
 referenced by the output are advanced; independent phases that locking would
@@ -195,3 +203,21 @@ statistics bookkeeping after the timer read is excluded. Compare this maximum
 against 100% when evaluating the actual six-voice margin.
 The working 0.6.6 startup diagnostics and crash breadcrumbs are retained. Firmware
 is rebuilt from clean objects. The previous startup failure's cause remains unproven.
+
+## Verified recovery of 0.6.8
+
+The active sources have been restored to the hardware-tested 0.6.8 configuration:
+FFT 1024, hop 256, region mapping, six slots and sum/6 mixing. Use at most four
+notes for the current quality experiments; the slot count remains six to reproduce
+the original firmware exactly. A clean build produced identical Intel HEX records
+to the original Granular_v0_6_8.hex (line endings ignored). Its SHA-256 is
+`cfa2a63631067c5fb44eb9acc62e76af501ffa6fa83d4ca475cf7be73d63dad0`.
+The original HEX was not overwritten. Versions 0.6.9 and 0.6.10 are retained only
+as rejected experiments; neither is the current firmware. This recovery does not
+establish why 0.6.10 failed on the board.
+
+Run `python tests/verify_068_build.py` after a clean build to check the exact match.
+This is a recovery check, not a test intended to pass after future firmware changes.
+Pre-recovery working files were backed up in `.pio/recovery/pre_068_restore.zip`;
+that local archive is ignored by Git and includes the user's AGENTS.md changes,
+which were left untouched in the working tree.
