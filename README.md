@@ -1,4 +1,137 @@
-# Granular 0.6.8 - experimental FFT peak-region pitch shifting
+# LILLA Pitch Shift 0.7.4 - FFT regions and loop cross-mix
+
+Branch `fft-region-controls`, based on `develop`. This is the R1 prototype
+(16 MiB PSRAM, MIDI DIN channel 1), not yet the full Lilla integration.
+The engine retains six voices, FFT 1024/hop 256, phase-region mapping and the
+unity-pitch RAW bypass from 0.6.8. Playback supports LOOP_FWD and ONCE_FWD; startup remains LOOP_FWD.
+
+## Active controls
+
+- From rotation: adjust the first sample, inclusive.
+- To rotation: adjust the last sample, inclusive.
+- Step rotation: select 1, 10, 100, 1000, 10000 samples or current region length/16.
+  The default is length/16, recalculated as the region changes, with a floor of 1.
+- Step press: restore the length/16 step.
+- From press: reset the first sample to zero.
+- To press: toggle TO (independent endpoints) / SLICE (From moves both endpoints
+  while preserving length). To still adjusts the end/length in either mode.
+- R1 physical Value rotation (Lilla logical ID 11): load another RAW file, resetting bounds to the whole file
+  and returning to TO mode, with cross-mix off. The chosen step mode is retained.
+- R1 physical Select rotation (Lilla logical ID 8): adjust cross-mix length independently of Step.
+  Zero disables it. Lilla limits apply: 300 samples maximum, or 42 samples when
+  the region length is <=674 (Lilla wavetable threshold), also capped to half
+  the region for very short files. Shrinking clamps it; expanding does not restore it.
+  Each detent adds 2 below 30, 4 from 30 to below 90, or 10 from 90 upward.
+  Decreasing subtracts 2 at <=30, 4 at <=90, or 10 above 90, clamped to valid bounds.
+- Press R1 physical Select: toggle LOOP_FWD / ONCE_FWD, including active voices.
+- LineOutVol: master volume as before.
+
+Trim semantics and the 100-sample minimum follow Lilla main's Sound editor.
+Files shorter than 100 samples use their full length as the minimum.
+There is no patch-cache length limit: this prototype uses the loaded PSRAM file.
+Step is applied per collected rotation batch. Bounds never cross or leave the file.
+Display and REGION serial messages show both inclusive endpoints, length, step,
+and TO/SLICE state; the display also shows duration and a region bar.
+Controls are ignored during active file loading; loading failure retains the old
+source and bounds. Edits apply globally to all active and subsequent notes.
+
+## Live-edit behavior
+
+An edit queues the latest valid region. Each active voice fades the old region
+out over approximately 5 ms, discards analyzed/overlap FFT history, and fades the
+new region in over 1024 output samples (23.22 ms), allowing overlap to build.
+The absolute source position is preserved if still in bounds when the change
+is applied; otherwise it jumps to From. New notes always start at From.
+Rapid edits coalesce to the latest request; NoteOff still ends the voice.
+No allocation or logging occurs in the callback; the IRQ-excluded publication
+only updates metadata, leaving resets and fades to the renderer.
+
+This is deliberately a fade-out/restart/fade-in, not a seamless dual-engine
+crossfade. Old-region audio can remain during the initial 5 ms fade. A short
+volume dip is expected; fast repeated edits can prolong attenuation. With cross-mix off, loop seams retain the existing 0.6.8 behavior. Simultaneous six-voice edits reset multiple FFTs in one callback:
+measure peak callback cost on R1 before treating this as real-time verified.
+Reverse and further Lilla play modes remain future steps.
+
+## Loop cross-mix
+
+The source reader linearly blends the last N samples of the selected region
+with its first N samples. Weights sum to one; this is not an equal-power mix.
+Both FFT analysis and the unity-pitch direct reader use that same virtual source,
+so no untransposed signal is mixed into the pitched output. The original PSRAM
+samples are never modified; no extra FFT voice or sample buffer is allocated.
+
+The final mixed sample matches source From+N-1. At the loop boundary reading
+continues at From+N, avoiding a second playback of the head already blended.
+Thus the first traversal has the full selected length; subsequent loop periods
+are region length minus N output samples, independent of MIDI pitch. No-click
+behavior is not guaranteed for every signal: opposite-phase content can cancel,
+and the FFT retains its ordinary reconstruction artifacts.
+
+Cross-mix-only changes apply at the next synthesis frame (at most 256 output
+samples, about 5.8 ms). Transport, phase history, overlap buffers and gain remain
+continuous: there is no fade-out or restart. A frame analyzed ahead using the old
+seam is reanalyzed once, so measure callback peaks while turning Select. In ONCE
+the setting is stored without altering playback. Bounds/mode changes retain the
+existing fade/reset/fade-in transition. Rapid mix requests coalesce to the latest
+value. This removes the forced playback interruption; seam edits may still alter
+the waveform and must be assessed for clicks on hardware.
+The R1 labels are intentionally mapped by function in HardwareControls:
+FileSelect = physical Value, chip 3 b5/b4; CrossMix = physical Select, chip 3 b2/b1.
+Step only selects the From/To increment; it never changes cross-mix or FFT overlap. XMIX on the display
+shows samples and milliseconds, while serial also reports effective loop length.
+Cross-mix starts disabled to preserve the baseline until explicitly adjusted.
+
+## ONCE_FWD
+
+Press physical Select on R1 (chip 3 b0, logical Lilla button ID 8) to toggle modes.
+The display and serial identify the current mode. Rotation still changes XMIX.
+Mode changes use the same fade/reset/fade-in transition as region edits, preserving
+position when possible. An already finished voice is never resurrected by an edit.
+
+ONCE_FWD reads From through To once at fixed original duration, regardless of pitch.
+FFT lookahead is zero-padded beyond To; it never wraps. Loop cross-mix is ignored
+but its setting is retained for returning to LOOP_FWD. The final min(221, length)
+samples fade to zero, and the voice ends exactly at To without emitting an FFT
+tail afterward. This can soften very short snippets; hardware listening is needed.
+Early NoteOff still triggers the existing anticlick release.
+
+Finished voices are reclaimed on MIDI events even while their keys remain held.
+A fixed 128-entry ledger preserves outstanding NoteOff ownership in NoteOn order,
+including repeated keys whose voices finished in a different order. If the ledger
+is full, ended notes retain their voice slots until NoteOff instead of losing
+ownership. CC120/123 clears pending ownership with the existing all-notes-off path.
+No dynamic allocation is introduced. The host suite checks exact duration at
+multiple pitches, tiny regions, silent lookahead, ignored XMIX, live mode changes,
+capacity after natural end, and late/reordered completion ownership.
+
+## Build, validation and firmware
+
+Build with `C:/Users/Utente/.platformio/penv/Scripts/platformio.exe run`.
+The active export is `LILLA_Pitch_Shift_v0_7_1.hex`, copied from the freshly built
+`.pio/build/teensy41/firmware.hex` and verified by SHA-256. No upload is automatic.
+For upload select this exact file, not a historical HEX by date/version alone.
+
+Run `python tests/region_controls_test.py`. Tests cover trim bounds and buttons,
+region/cropped-source sample equivalence at multiple pitches, loops as short as
+two samples in the DSP, queued edits, release during an edit, six-voice publication,
+MIDI allocation, and FFT regressions. Cross-mix tests check independent linear
+blend/transport models, tiny regions, exact FFT equivalence to a materialized
+virtual stream, seam reduction, live changes and six-voice publication. Full-file rendering is sample-identical to
+committed 0.6.8 on the host, including pitch bend and release. Host tests do not
+validate display appearance, encoder feel, audible fades or Teensy CPU peaks.
+
+First hardware check: one sustained note at pitch 1 and then 1.5; adjust From/To,
+try TO/SLICE and both fine/automatic Step, release during an edit, and load another
+file. Then repeat with multiple voices and inspect callback maximum percentage.
+The original `Granular_v0_6_8.hex` is retained. The historical firmware-identity
+check below intentionally does not apply to this new 0.7.4 firmware.
+
+---
+
+The following documentation describes the preserved 0.6.8 baseline. Its old control
+mapping and HEX filename are historical, superseded above on this branch.
+
+# Historical reference: Granular 0.6.8
 
 The active engine is now a basic STFT phase vocoder, replacing WSOLA in the audio
 path. The WSOLA source files, core tests and previous HEX files remain available

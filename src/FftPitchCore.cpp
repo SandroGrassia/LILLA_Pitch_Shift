@@ -35,6 +35,14 @@ void FftPitchCore::Attach(const int16_t *samples, uint32_t count)
 {
     source = samples;
     source_count = count;
+    mode = requested_mode = PlayMode::LoopForward;
+    cross_mix = requested_mix = 0;
+    cross_mix_scale = 0.0f;
+    region_first = requested_first = 0;
+    region_end = requested_end = count;
+    region_pending = false;
+    region_gain = 1.0f;
+    transport = 0;
 }
 
 void FftPitchCore::StartNote(const int16_t *samples, uint32_t count, float pitch, float volume)
@@ -54,9 +62,40 @@ void FftPitchCore::StartNote(const int16_t *samples, uint32_t count, float pitch
     running = true;
 }
 
+void FftPitchCore::SetRegion(uint32_t first, uint32_t end, uint32_t mix)
+{
+    requested_first = first;
+    requested_end = end;
+    requested_mix = mix;
+    region_pending = first != region_first || end != region_end || requested_mode != mode;
+    if (!initialized || !IsActive())
+    {
+        mode = requested_mode;
+        region_first = first;
+        region_end = end;
+        cross_mix = mix;
+        cross_mix_scale = mix > 0 ? 1.0f / (mix - 1u) : 0.0f;
+        transport = std::clamp(transport, first, end - 1);
+        region_pending = false;
+    }
+}
+
+void FftPitchCore::SetMode(PlayMode value)
+{
+    requested_mode = value;
+    SetRegion(requested_first, requested_end, requested_mix);
+}
+
 void FftPitchCore::SetPitch(float value) { pitch_target = value; }
 void FftPitchCore::SetVolume(float value) { volume_target = value; }
-void FftPitchCore::SetRunning(bool value) { running = value; }
+void FftPitchCore::SetRunning(bool value)
+{
+    if (value && !IsActive())
+    {
+        transport = region_first;
+    }
+    running = value;
+}
 bool FftPitchCore::IsActive() const { return running || gate > 0.0f; }
 uint32_t FftPitchCore::Transport() const { return transport; }
 uint32_t FftPitchCore::GeneratedHops() const { return generated; }
@@ -69,15 +108,49 @@ float FftPitchCore::WrapPhase(float phase)
     return phase - Tau * std::round(phase / Tau);
 }
 
+uint32_t FftPitchCore::Advance(uint32_t position, uint32_t count) const
+{
+    const uint32_t next = position + count;
+    if (mode == PlayMode::OnceForward)
+    {
+        return std::min(next, region_end);
+    }
+    if (next < region_end)
+    {
+        return next;
+    }
+    const uint32_t loop_start = region_first + cross_mix;
+    return loop_start + (next - region_end) % (region_end - loop_start);
+}
+
+float FftPitchCore::ReadLoop(uint32_t position) const
+{
+    if (mode == PlayMode::OnceForward)
+    {
+        return position < region_end ? source[position] : 0.0f;
+    }
+    const float outgoing = source[position];
+    if (cross_mix == 0 || position < region_end - cross_mix)
+    {
+        return outgoing;
+    }
+    const uint32_t offset = position - (region_end - cross_mix);
+    const float incoming = source[region_first + offset];
+    const float weight = offset * cross_mix_scale;
+    return outgoing + weight * (incoming - outgoing);
+}
+
 void FftPitchCore::ReadReferenceBlock(int16_t *destination, uint32_t first, uint32_t count) const
 {
+    // A region may have changed during the block; meters follow the new bounds.
+    if (first < region_first || first >= region_end)
+    {
+        first = mode == PlayMode::OnceForward && first >= region_end ? region_end : region_first;
+    }
     for (uint32_t i = 0; i < count; ++i)
     {
-        destination[i] = source[first];
-        if (++first == source_count)
-        {
-            first = 0;
-        }
+        destination[i] = static_cast<int16_t>(ReadLoop(first));
+        first = Advance(first, 1);
     }
 }
 
@@ -146,13 +219,10 @@ void FftPitchCore::Analyze(uint32_t position)
     float frame_energy = 0.0f;
     for (uint32_t i = 0; i < Size; ++i)
     {
-        fft[2 * i] = source[position] * window[i];
+        fft[2 * i] = ReadLoop(position) * window[i];
         frame_energy += fft[2 * i] * fft[2 * i];
         fft[2 * i + 1] = 0.0f;
-        if (++position == source_count)
-        {
-            position = 0;
-        }
+        position = Advance(position, 1);
     }
 #ifdef __IMXRT1062__
     if (first_frame)
@@ -310,6 +380,29 @@ int16_t FftPitchCore::Render()
         initialized = false;
         return 0;
     }
+    if (region_pending)
+    {
+        region_gain = std::max(0.0f, region_gain - 1.0f / 221.0f);
+        if (region_gain == 0.0f)
+        {
+            mode = requested_mode;
+            region_first = requested_first;
+            region_end = requested_end;
+            cross_mix = requested_mix;
+            cross_mix_scale = cross_mix > 0 ? 1.0f / (cross_mix - 1u) : 0.0f;
+            if (transport < region_first || transport >= region_end)
+            {
+                transport = region_first;
+            }
+            initialized = false;
+            region_pending = false;
+            transient_holdoff = 0;
+        }
+    }
+    else
+    {
+        region_gain = std::min(1.0f, region_gain + 1.0f / Size);
+    }
     if (!initialized)
     {
         std::fill_n(previous_phase, Bins, 0.0f);
@@ -320,7 +413,6 @@ int16_t FftPitchCore::Render()
         analysis_ready = false;
         direct_mix = pitch_target == 1.0f ? 1.0f : 0.0f;
         head = 0;
-        transport = 0;
         until_frame = 0;
         pitch_now = pitch_target;
         initialized = true;
@@ -329,6 +421,17 @@ int16_t FftPitchCore::Render()
     volume_now += (volume_target - volume_now) * (1.0f / 256.0f);
     if (until_frame == 0)
     {
+        if (!region_pending && cross_mix != requested_mix)
+        {
+            // Cross-mix-only edits keep transport, phase history and overlap audio.
+            // Reanalyze this frame if lookahead was prepared using the old seam.
+            cross_mix = requested_mix;
+            cross_mix_scale = cross_mix > 0 ? 1.0f / (cross_mix - 1u) : 0.0f;
+            if (mode == PlayMode::LoopForward)
+            {
+                analysis_ready = false;
+            }
+        }
         Generate();
         until_frame = Hop;
     }
@@ -336,20 +439,28 @@ int16_t FftPitchCore::Render()
     {
         // Read-only source lookahead: analyze next frame one 128-sample block early.
         // Mapping still uses the actual pitch at synthesis time, including intervening bend.
-        Analyze((transport + Hop / 2) % source_count);
+        Analyze(Advance(transport, Hop / 2));
     }
     --until_frame;
     gate = running ? std::min(1.0f, gate + 1.0f / 221.0f) : std::max(0.0f, gate - 1.0f / 221.0f);
     // Keep FFT history warm for bend; unity output comes directly from the RAW source.
     const bool direct = pitch_target == 1.0f && std::abs(pitch_now - 1.0f) < 0.00002f;
     direct_mix = direct ? std::min(1.0f, direct_mix + 1.0f / 256.0f) : std::max(0.0f, direct_mix - 1.0f / 256.0f);
-    const float sample = direct_mix == 1.0f ? source[transport] : accumulation[head] + direct_mix * (source[transport] - accumulation[head]);
-    const float value = sample * gate * volume_now;
+    const float direct_sample = ReadLoop(transport);
+    const float sample = direct_mix == 1.0f ? direct_sample : accumulation[head] + direct_mix * (direct_sample - accumulation[head]);
+    const uint32_t remaining = region_end - transport;
+    const uint32_t fade = std::min<uint32_t>(221u, region_end - region_first);
+    const float end_gain = mode == PlayMode::OnceForward && remaining <= fade ? static_cast<float>(remaining - 1u) / (fade - 1u) : 1.0f;
+    const float value = sample * gate * volume_now * region_gain * end_gain;
     accumulation[head] = 0.0f;
     head = (head + 1) & (Size - 1);
-    if (++transport == source_count)
+    transport = Advance(transport, 1);
+    if (mode == PlayMode::OnceForward && transport == region_end)
     {
-        transport = 0;
+        running = false;
+        initialized = false;
+        gate = 0.0f;
+        region_pending = false;
     }
     return static_cast<int16_t>(std::clamp(value, -32768.0f, 32767.0f));
 }

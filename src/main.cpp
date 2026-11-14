@@ -13,6 +13,7 @@
 #include "HardwareControls.h"
 #include "MidiInput.h"
 #include "NoteVoices.h"
+#include "PlaybackRegion.h"
 
 namespace
 {
@@ -37,6 +38,7 @@ namespace
     MidiInput midi_input;
     NoteVoices voices(player);
     NoteVoices::Source source;
+    PlaybackRegion region;
     int volume_percent = 25;
     bool ready = false;
     bool crash_report_checked = false;
@@ -88,6 +90,21 @@ namespace
     void PrintGrain()
     {
         PrintLine("FFT samples=1024 hop=256 (fixed)");
+    }
+
+    void ShowRegion(bool report)
+    {
+        display.ShowMode(voices.Mode() == FftPitchCore::PlayMode::OnceForward);
+        display.ShowRegion(region.From(), region.To(), source.count, region.Step(), region.AutoStep(), region.Slice(), region.CrossMix());
+        if (report)
+        {
+            PrintLine(voices.Mode() == FftPitchCore::PlayMode::OnceForward ? "PLAY_MODE ONCE_FWD (XMIX ignored)" : "PLAY_MODE LOOP_FWD");
+            char message[160];
+            snprintf(message, sizeof(message), "REGION from=%lu to=%lu samples=%lu step=%lu%s mode=%s", static_cast<unsigned long>(region.From()), static_cast<unsigned long>(region.To()), static_cast<unsigned long>(region.Length()), static_cast<unsigned long>(region.Step()), region.AutoStep() ? " (1/16)" : "", region.Slice() ? "SLICE" : "TO");
+            PrintLine(message);
+            snprintf(message, sizeof(message), "XMIX samples=%lu ms=%.3f play_samples=%lu", static_cast<unsigned long>(region.CrossMix()), region.CrossMix() * 1000.0 / AUDIO_SAMPLE_RATE_EXACT, static_cast<unsigned long>(region.Length() - (voices.Mode() == FftPitchCore::PlayMode::LoopForward ? region.CrossMix() : 0u)));
+            PrintLine(message);
+        }
     }
 
     GranularAudio::Timing TotalTiming(const GranularAudio::Timings &timings)
@@ -240,9 +257,11 @@ namespace
         }
         file.close();
         source = {samples, bytes / sizeof(int16_t)};
+        region.Reset(source.count);
         voices.SetSource(source);
         loaded_file = selected_file;
         display.Show(raw_files.Name(selected_file), raw_files.Name(loaded_file), "Ready");
+        ShowRegion(true);
         snprintf(message, sizeof(message), "SOURCE file=%s bytes=%lu duration=%.3f s (shared by all 6 voices)", raw_files.Name(selected_file), static_cast<unsigned long>(bytes), bytes / (2.0 * AUDIO_SAMPLE_RATE_EXACT));
         PrintLine(message);
         return true;
@@ -251,6 +270,7 @@ namespace
     void ShowFileStatus(const char *status)
     {
         display.Show(raw_files.Name(selected_file), raw_files.Name(loaded_file), status);
+        ShowRegion(false);
     }
 
     void FailFileLoad(const char *reason)
@@ -325,6 +345,7 @@ namespace
         }
         const int16_t *old_samples = source.samples;
         source = {pending_samples, pending_bytes / sizeof(int16_t)};
+        region.Reset(source.count);
 
         AudioNoInterrupts();
         voices.SetSource(source);
@@ -345,12 +366,13 @@ namespace
         char message[100];
         snprintf(message, sizeof(message), "FILE loaded=%s", raw_files.Name(loaded_file));
         PrintLine(message);
+        ShowRegion(true);
     }
 
     void PollControls()
     {
         controls.Poll();
-        const int selection = controls.TakeRotation(HardwareControls::Select);
+        const int selection = controls.TakeRotation(HardwareControls::FileSelect);
         if (selection != 0)
         {
             selected_file = constrain(selected_file + selection, 0, raw_files.Count() - 1);
@@ -358,13 +380,61 @@ namespace
             selection_time = millis();
             ShowFileStatus(loading_file >= 0 ? "Loading..." : "Selection pending");
         }
-        const int overlap_rotation = controls.TakeRotation(HardwareControls::Step);
-        const int grain_rotation = controls.TakeRotation(HardwareControls::To);
+        const bool mode_press = controls.TakeModePress();
+        if (mode_press && loading_file < 0)
+        {
+            AudioNoInterrupts();
+            voices.SetMode(voices.Mode() == FftPitchCore::PlayMode::LoopForward ? FftPitchCore::PlayMode::OnceForward : FftPitchCore::PlayMode::LoopForward);
+            AudioInterrupts();
+
+            ShowRegion(true);
+        }
+        const int mix_rotation = controls.TakeRotation(HardwareControls::CrossMix);
+        const int step_rotation = controls.TakeRotation(HardwareControls::Step);
+        const int to_rotation = controls.TakeRotation(HardwareControls::To);
+        const int from_rotation = controls.TakeRotation(HardwareControls::From);
+        const bool step_press = controls.TakeStepPress();
+        const bool from_press = controls.TakeFromPress();
+        const bool to_press = controls.TakeToPress();
         const int next_volume = constrain(volume_percent + controls.TakeRotation(HardwareControls::Volume), 0, 100);
-        controls.TakeRotation(HardwareControls::From);
-        controls.TakeStepPress();
-        controls.TakeFromPress();
-        controls.TakeToPress();
+        if (loading_file < 0 && (mix_rotation != 0 || step_rotation != 0 || to_rotation != 0 || from_rotation != 0 || step_press || from_press || to_press))
+        {
+            const uint32_t old_from = region.From();
+            const uint32_t old_to = region.To();
+            const uint32_t old_mix = region.CrossMix();
+            region.RotateStep(step_rotation);
+            if (step_press)
+            {
+                region.ResetStep();
+            }
+            if (to_press)
+            {
+                region.ToggleSlice();
+            }
+            if (from_rotation != 0)
+            {
+                region.MoveFrom(from_rotation);
+            }
+            if (from_press)
+            {
+                region.ResetFrom();
+            }
+            if (to_rotation != 0)
+            {
+                region.MoveTo(to_rotation);
+            }
+            if (mix_rotation != 0)
+            {
+                region.MoveCrossMix(mix_rotation);
+            }
+            if (old_from != region.From() || old_to != region.To() || old_mix != region.CrossMix())
+            {
+                AudioNoInterrupts();
+                voices.SetRegion(region.From(), region.To() + 1u, region.CrossMix());
+                AudioInterrupts();
+            }
+            ShowRegion(true);
+        }
         if (next_volume != volume_percent)
         {
             volume_percent = next_volume;
@@ -372,14 +442,6 @@ namespace
             AudioNoInterrupts();
             voices.SetVolume(volume_percent);
             AudioInterrupts();
-        }
-        if (overlap_rotation != 0)
-        {
-            PrintOverlap();
-        }
-        if (grain_rotation != 0)
-        {
-            PrintGrain();
         }
     }
 
@@ -416,7 +478,7 @@ void setup()
     {
         yield();
     }
-    PrintLine("Granular 0.6.8 - FFT phase vocoder - 6 voices - MIDI DIN CH1 - LOOP_FWD tempo 1");
+    PrintLine("LILLA Pitch Shift 0.7.4 - FFT region prototype - 6 voices - MIDI DIN CH1 - LOOP_FWD tempo 1");
     if (Serial && CrashReport)
     {
         Serial.print(CrashReport);
@@ -460,7 +522,7 @@ void setup()
     ready = true;
     PrintLine("BOOT: audio enabled; setup complete");
     FlushLogs();
-    PrintLine("FFT 1024 samples; overlap 75%; hop 256; To/Step rotation: show fixed value; Select: RAW file; LineOutVol: master 0..100%; buttons unused.");
+    PrintLine("FFT 1024/256 overlap 75%; From/To: region; Step: trim increment; From press: zero; Step press: 1/16; To press: TO/SLICE; R1 Select: XMIX, press: LOOP/ONCE; R1 Value: RAW; LineOutVol: volume.");
     PrintLine("MIDI notes 36..84; velocity gain; bend +/-2st clamped to pitch 0.25..4; no ADSR, existing 5ms anticlick only. CC120/123: release all.");
     PrintOverlap();
     PrintGrain();
