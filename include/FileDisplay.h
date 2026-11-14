@@ -7,7 +7,7 @@ class FileDisplay
 public:
     FileDisplay();
     void Begin();
-    void ShowMode(bool once);
+    void ShowMode(const char *name, bool once, bool edit_mode);
     void Show(const char *selected, const char *loaded, const char *status);
     void ShowRegion(uint32_t first, uint32_t last, uint32_t total, uint32_t step, bool automatic, bool slice, uint32_t mix);
 private:

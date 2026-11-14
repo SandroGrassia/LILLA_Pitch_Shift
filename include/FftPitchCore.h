@@ -6,7 +6,11 @@
 class FftPitchCore
 {
 public:
-    enum class PlayMode { LoopForward, OnceForward };
+    enum class PlayMode { LoopForward, OnceForward, OnceReverse, LoopReverse, LoopForwardReverse, LoopReverseForward };
+    static bool IsLoop(PlayMode value) { return UsesCrossMix(value) || IsPingPong(value); }
+    static bool IsPingPong(PlayMode value) { return value == PlayMode::LoopForwardReverse || value == PlayMode::LoopReverseForward; }
+    static bool UsesCrossMix(PlayMode value) { return value == PlayMode::LoopForward || value == PlayMode::LoopReverse; }
+    static bool IsReverse(PlayMode value) { return value == PlayMode::OnceReverse || value == PlayMode::LoopReverse || value == PlayMode::LoopReverseForward; }
     void SetMode(PlayMode value);
     PlayMode Mode() const { return mode; }
     static constexpr uint32_t Size = 1024;
@@ -23,7 +27,7 @@ public:
     void SetVolume(float value);
     void SetRunning(bool value);
     bool IsActive() const;
-    uint32_t Transport() const;
+    uint32_t Transport() const; // Absolute/virtual cursor: ping-pong descending leg mirrors beyond To; completed ONCE_REV is UINT32_MAX.
     uint32_t GeneratedHops() const;
     uint32_t AnalyzedFrames() const;
     float Pitch() const;
@@ -45,6 +49,8 @@ private:
     PlayMode requested_mode = PlayMode::LoopForward;
     bool region_pending = false;
     float region_gain = 1.0f;
+    float end_gain_now = 1.0f;
+    bool direction_reanchor = false;
     uint32_t transport = 0;
     uint32_t head = 0;
     uint32_t until_frame = 0;
@@ -76,6 +82,8 @@ private:
     static uint16_t peak_owner[Bins];
     static void Transform(bool inverse);
     static float WrapPhase(float phase);
+    uint32_t SourcePosition(uint32_t position) const;
+    bool ReadingReverse() const;
     uint32_t Advance(uint32_t position, uint32_t count) const;
     float ReadLoop(uint32_t position) const;
     void Analyze(uint32_t position);

@@ -92,6 +92,7 @@ void HardwareControls::Poll()
             }
         }
     }
+
 }
 
 int HardwareControls::TakeRotation(Control control)

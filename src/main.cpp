@@ -40,6 +40,7 @@ namespace
     NoteVoices::Source source;
     PlaybackRegion region;
     int volume_percent = 25;
+    bool edit_play_mode = false;
     bool ready = false;
     bool crash_report_checked = false;
     uint32_t last_diagnostics = 0;
@@ -92,17 +93,31 @@ namespace
         PrintLine("FFT samples=1024 hop=256 (fixed)");
     }
 
+    const char *ModeName()
+    {
+        switch (voices.Mode())
+        {
+        case FftPitchCore::PlayMode::OnceForward: return "ONCE_FWD";
+        case FftPitchCore::PlayMode::OnceReverse: return "ONCE_REV";
+        case FftPitchCore::PlayMode::LoopReverse: return "LOOP_REV";
+        case FftPitchCore::PlayMode::LoopForwardReverse: return "LOOP_FWD_REV";
+        case FftPitchCore::PlayMode::LoopReverseForward: return "LOOP_REV_FWD";
+        default: return "LOOP_FWD";
+        }
+    }
+
     void ShowRegion(bool report)
     {
-        display.ShowMode(voices.Mode() == FftPitchCore::PlayMode::OnceForward);
+        display.ShowMode(ModeName(), !FftPitchCore::UsesCrossMix(voices.Mode()), edit_play_mode);
         display.ShowRegion(region.From(), region.To(), source.count, region.Step(), region.AutoStep(), region.Slice(), region.CrossMix());
         if (report)
         {
-            PrintLine(voices.Mode() == FftPitchCore::PlayMode::OnceForward ? "PLAY_MODE ONCE_FWD (XMIX ignored)" : "PLAY_MODE LOOP_FWD");
             char message[160];
+            snprintf(message, sizeof(message), "PLAY_MODE %s%s", ModeName(), FftPitchCore::UsesCrossMix(voices.Mode()) ? "" : " (XMIX ignored)");
+            PrintLine(message);
             snprintf(message, sizeof(message), "REGION from=%lu to=%lu samples=%lu step=%lu%s mode=%s", static_cast<unsigned long>(region.From()), static_cast<unsigned long>(region.To()), static_cast<unsigned long>(region.Length()), static_cast<unsigned long>(region.Step()), region.AutoStep() ? " (1/16)" : "", region.Slice() ? "SLICE" : "TO");
             PrintLine(message);
-            snprintf(message, sizeof(message), "XMIX samples=%lu ms=%.3f play_samples=%lu", static_cast<unsigned long>(region.CrossMix()), region.CrossMix() * 1000.0 / AUDIO_SAMPLE_RATE_EXACT, static_cast<unsigned long>(region.Length() - (voices.Mode() == FftPitchCore::PlayMode::LoopForward ? region.CrossMix() : 0u)));
+            snprintf(message, sizeof(message), "XMIX samples=%lu ms=%.3f play_samples=%lu", static_cast<unsigned long>(region.CrossMix()), region.CrossMix() * 1000.0 / AUDIO_SAMPLE_RATE_EXACT, static_cast<unsigned long>(FftPitchCore::IsPingPong(voices.Mode()) ? 2u * (region.Length() - 1u) : region.Length() - (FftPitchCore::UsesCrossMix(voices.Mode()) ? region.CrossMix() : 0u)));
             PrintLine(message);
         }
     }
@@ -380,16 +395,32 @@ namespace
             selection_time = millis();
             ShowFileStatus(loading_file >= 0 ? "Loading..." : "Selection pending");
         }
-        const bool mode_press = controls.TakeModePress();
-        if (mode_press && loading_file < 0)
+        if (controls.TakeModePress() && loading_file < 0)
         {
-            AudioNoInterrupts();
-            voices.SetMode(voices.Mode() == FftPitchCore::PlayMode::LoopForward ? FftPitchCore::PlayMode::OnceForward : FftPitchCore::PlayMode::LoopForward);
-            AudioInterrupts();
-
-            ShowRegion(true);
+            edit_play_mode = !edit_play_mode;
+            PrintLine(edit_play_mode ? "SELECT edit=PLAY_MODE" : "SELECT edit=XMIX");
+            ShowRegion(false);
         }
-        const int mix_rotation = controls.TakeRotation(HardwareControls::CrossMix);
+        int mix_rotation = controls.TakeRotation(HardwareControls::CrossMix);
+        if (edit_play_mode && mix_rotation != 0)
+        {
+            if (loading_file < 0)
+            {
+                // Lilla Performance/Sound edit order: adjacent modes only, no circular wrap.
+                const FftPitchCore::PlayMode order[] = {FftPitchCore::PlayMode::OnceForward, FftPitchCore::PlayMode::OnceReverse, FftPitchCore::PlayMode::LoopForward, FftPitchCore::PlayMode::LoopForwardReverse, FftPitchCore::PlayMode::LoopReverseForward, FftPitchCore::PlayMode::LoopReverse};
+                const int current = voices.Mode() == order[0] ? 0 : (voices.Mode() == order[1] ? 1 : (voices.Mode() == order[2] ? 2 : (voices.Mode() == order[3] ? 3 : (voices.Mode() == order[4] ? 4 : 5))));
+                const int next = constrain(current + (mix_rotation > 0 ? 1 : -1), 0, 5);
+                if (next != current)
+                {
+                    AudioNoInterrupts();
+                    voices.SetMode(order[next]);
+                    AudioInterrupts();
+
+                    ShowRegion(true);
+                }
+            }
+            mix_rotation = 0;
+        }
         const int step_rotation = controls.TakeRotation(HardwareControls::Step);
         const int to_rotation = controls.TakeRotation(HardwareControls::To);
         const int from_rotation = controls.TakeRotation(HardwareControls::From);
@@ -478,7 +509,7 @@ void setup()
     {
         yield();
     }
-    PrintLine("LILLA Pitch Shift 0.7.4 - FFT region prototype - 6 voices - MIDI DIN CH1 - LOOP_FWD tempo 1");
+    PrintLine("LILLA Pitch Shift 0.7.8 - FFT region prototype - 6 voices - MIDI DIN CH1 - LOOP_FWD tempo 1");
     if (Serial && CrashReport)
     {
         Serial.print(CrashReport);
@@ -522,7 +553,7 @@ void setup()
     ready = true;
     PrintLine("BOOT: audio enabled; setup complete");
     FlushLogs();
-    PrintLine("FFT 1024/256 overlap 75%; From/To: region; Step: trim increment; From press: zero; Step press: 1/16; To press: TO/SLICE; R1 Select: XMIX, press: LOOP/ONCE; R1 Value: RAW; LineOutVol: volume.");
+    PrintLine("FFT 1024/256 overlap 75%; From/To: region; Step: trim increment; From press: zero; Step press: 1/16; To press: TO/SLICE; R1 Select: rotate XMIX/MODE, press: choose field; R1 Value: RAW; LineOutVol: volume.");
     PrintLine("MIDI notes 36..84; velocity gain; bend +/-2st clamped to pitch 0.25..4; no ADSR, existing 5ms anticlick only. CC120/123: release all.");
     PrintOverlap();
     PrintGrain();

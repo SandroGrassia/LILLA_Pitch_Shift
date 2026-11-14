@@ -11,6 +11,9 @@ for source in ("include/FftPitchCore.h", "src/FftPitchCore.cpp"):
 compiler = shutil.which("g++") or "C:/msys64/ucrt64/bin/g++.exe"
 common = [compiler, "-std=c++20", "-O2", "-Wall", "-Wextra", "-Werror", "-static", "-I", str(root / "tests/stubs"), "-I", str(root / "include"), "-I", str(build)]
 cases = {
+    "ping_pong": ["src/FftPitchCore.cpp", "src/PlaybackRegion.cpp", "src/GranularAudio.cpp", "src/NoteVoices.cpp", "src/ExperimentConfig.cpp", "tests/ping_pong_test.cpp"],
+    "loop_reverse": ["src/FftPitchCore.cpp", "src/PlaybackRegion.cpp", "src/GranularAudio.cpp", "src/NoteVoices.cpp", "src/ExperimentConfig.cpp", "tests/loop_reverse_test.cpp"],
+    "once_reverse": ["src/FftPitchCore.cpp", "src/PlaybackRegion.cpp", "src/GranularAudio.cpp", "src/NoteVoices.cpp", "src/ExperimentConfig.cpp", "tests/once_reverse_test.cpp"],
     "once_forward": ["src/FftPitchCore.cpp", "src/PlaybackRegion.cpp", "src/GranularAudio.cpp", "src/NoteVoices.cpp", "src/ExperimentConfig.cpp", "tests/once_forward_test.cpp"],
     "cross_mix": ["src/FftPitchCore.cpp", "src/PlaybackRegion.cpp", "src/GranularAudio.cpp", "src/NoteVoices.cpp", "src/ExperimentConfig.cpp", "tests/cross_mix_test.cpp"],
     "region_baseline": ["src/FftPitchCore.cpp", str(build / "BaselineFftPitchCore.cpp"), "tests/region_baseline_test.cpp"],

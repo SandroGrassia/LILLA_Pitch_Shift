@@ -1,9 +1,9 @@
-# LILLA Pitch Shift 0.7.4 - FFT regions and loop cross-mix
+# LILLA Pitch Shift 0.7.8 - FFT regions and loop cross-mix
 
 Branch `fft-region-controls`, based on `develop`. This is the R1 prototype
 (16 MiB PSRAM, MIDI DIN channel 1), not yet the full Lilla integration.
 The engine retains six voices, FFT 1024/hop 256, phase-region mapping and the
-unity-pitch RAW bypass from 0.6.8. Playback supports LOOP_FWD and ONCE_FWD; startup remains LOOP_FWD.
+unity-pitch RAW bypass from 0.6.8. Playback supports LOOP_FWD, ONCE_FWD, ONCE_REV, LOOP_REV, LOOP_FWD_REV and LOOP_REV_FWD; startup remains LOOP_FWD.
 
 ## Active controls
 
@@ -23,7 +23,10 @@ unity-pitch RAW bypass from 0.6.8. Playback supports LOOP_FWD and ONCE_FWD; star
   the region for very short files. Shrinking clamps it; expanding does not restore it.
   Each detent adds 2 below 30, 4 from 30 to below 90, or 10 from 90 upward.
   Decreasing subtracts 2 at <=30, 4 at <=90, or 10 above 90, clamped to valid bounds.
-- Press R1 physical Select: toggle LOOP_FWD / ONCE_FWD, including active voices.
+- Press R1 physical Select: choose XMIX or PLAY_MODE editing (shown on display).
+  Rotation follows ONCE_FWD <-> ONCE_REV <-> LOOP_FWD <-> LOOP_FWD_REV <->
+  LOOP_REV_FWD <-> LOOP_REV, clamped at either end, one adjacent transition per
+  controls poll. This follows Lilla Performance/Sound edit ordering; no wrap or long press.
 - LineOutVol: master volume as before.
 
 Trim semantics and the 100-sample minimum follow Lilla main's Sound editor.
@@ -50,7 +53,7 @@ This is deliberately a fade-out/restart/fade-in, not a seamless dual-engine
 crossfade. Old-region audio can remain during the initial 5 ms fade. A short
 volume dip is expected; fast repeated edits can prolong attenuation. With cross-mix off, loop seams retain the existing 0.6.8 behavior. Simultaneous six-voice edits reset multiple FFTs in one callback:
 measure peak callback cost on R1 before treating this as real-time verified.
-Reverse and further Lilla play modes remain future steps.
+Both ping-pong modes are available; all six play modes can be selected.
 
 ## Loop cross-mix
 
@@ -71,7 +74,7 @@ Cross-mix-only changes apply at the next synthesis frame (at most 256 output
 samples, about 5.8 ms). Transport, phase history, overlap buffers and gain remain
 continuous: there is no fade-out or restart. A frame analyzed ahead using the old
 seam is reanalyzed once, so measure callback peaks while turning Select. In ONCE
-the setting is stored without altering playback. Bounds/mode changes retain the
+the setting is stored without altering playback. Bounds and loop-mode changes retain the
 existing fade/reset/fade-in transition. Rapid mix requests coalesce to the latest
 value. This removes the forced playback interruption; seam edits may still alter
 the waveform and must be assessed for clicks on hardware.
@@ -83,10 +86,15 @@ Cross-mix starts disabled to preserve the baseline until explicitly adjusted.
 
 ## ONCE_FWD
 
-Press physical Select on R1 (chip 3 b0, logical Lilla button ID 8) to toggle modes.
-The display and serial identify the current mode. Rotation still changes XMIX.
-Mode changes use the same fade/reset/fade-in transition as region edits, preserving
-position when possible. An already finished voice is never resurrected by an edit.
+Press physical Select on R1 (chip 3 b0, logical Lilla button ID 8) to choose
+PLAY_MODE editing, then rotate through ONCE_FWD <-> ONCE_REV <-> LOOP_FWD.
+The display and serial identify the current mode. Press again to edit XMIX.
+ONCE_FWD <-> ONCE_REV preserves the current transport, gate and FFT overlap.
+The next analysis reanchors phase/frequency for the new direction; existing overlap
+audio drains naturally (up to 1024 samples), without forced fade or retrigger.
+At unity pitch the direct reader reverses immediately. Reversing away from the
+end fade restores gain over at most 221 samples. Loop transitions and pending
+region edits still use fade/reset/fade-in, preserving position when possible. An already finished voice is never resurrected by an edit.
 
 ONCE_FWD reads From through To once at fixed original duration, regardless of pitch.
 FFT lookahead is zero-padded beyond To; it never wraps. Loop cross-mix is ignored
@@ -104,10 +112,71 @@ No dynamic allocation is introduced. The host suite checks exact duration at
 multiple pitches, tiny regions, silent lookahead, ignored XMIX, live mode changes,
 capacity after natural end, and late/reordered completion ownership.
 
+## ONCE_REV
+
+ONCE_REV starts each new note at the inclusive To sample and advances backward
+one source sample per output sample, independent of pitch. Analysis windows read
+backward too, with silence before From. It uses the same final anticlick fade as
+ONCE_FWD, ending exactly after the selected region length, and ignores loop XMIX.
+The loaded PSRAM buffer is unchanged; no reversed copy is allocated.
+
+Live ONCE direction changes preserve the absolute source position and FFT overlap
+without restarting; transitions involving LOOP_FWD retain fade/reset/fade-in. If a region edit excludes the current
+position in reverse mode, reading resumes from the new To. A completed reverse
+core exposes UINT32_MAX as its transport sentinel; reference metering handles
+that as silence. Late NoteOff ownership and voice reclamation are shared with
+ONCE_FWD. Tests compare reverse output sample-for-sample to ONCE_FWD over an
+independently reversed source, including short regions, boundaries at index zero,
+several pitches, live edits, early release and six-voice reuse.
+
+## LOOP_REV
+
+Select PLAY_MODE with the R1 Select button, then rotate through LOOP_FWD,
+LOOP_FWD_REV and LOOP_REV_FWD to reach LOOP_REV. The adjacent transitions now
+work with active voices; there is no direct LOOP_FWD/LOOP_REV shortcut.
+
+New notes start at To and read backward through From. At the lower seam, the
+last N samples blend with the first N samples of the reverse traversal near To.
+The next traversal resumes at To-N, avoiding replay of the blended head. Like
+this prototype's LOOP_FWD, the first traversal spans the full region; subsequent
+periods contain length-N samples. XMIX=0 wraps directly from From to To.
+FFT analysis and unity RAW bypass use the same reverse stream. XMIX edits do
+not restart the voice; bounds edits retain the existing fade/reset/fade-in.
+The engine allocates no reversed source copy or extra FFT voice.
+Host tests compare every output sample with LOOP_FWD over an independently
+reversed source, including live XMIX edits, multiple pitches, tiny regions,
+release, live bounds and six simultaneous voices. Hardware listening/timing
+still needs verification.
+
+## LOOP_FWD_REV and LOOP_REV_FWD
+
+Both modes read a ping-pong stream without cross-mix. LOOP_FWD_REV starts a new
+note at From moving forward; LOOP_REV_FWD starts at To moving backward. Endpoints
+are not duplicated: for a four-sample region the forward-start stream is
+A B C D C B A B C D. A full period contains 2*(length-1) output samples, independent
+of pitch. FFT windows and lookahead follow this same stream through every turn;
+there is no phase/overlap reset, fade or reallocation at the endpoints.
+
+XMIX remains stored for the one-way loop modes but is ignored here, including
+live edits, without extra FFT analysis. Display and serial mark it ignored.
+Changing between the two ping-pong modes preserves a running voice's current leg,
+transport and FFT state; only new notes change their starting direction. This
+matches Lilla's shared internal ping-pong trajectory. Transitions involving the
+one-way loops and edits of the region bounds retain the short fade/reset/fade-in;
+the real source position is preserved if still in bounds, along with the current
+leg when entering or editing ping-pong. These transitions are not yet seamless.
+
+The internal transport is a virtual cursor: its descending leg mirrors beyond To.
+The source reader and reference meter translate it to an in-bounds sample address.
+No reversed sample copy or extra per-voice FFT buffer is allocated. Host tests
+compare both modes sample-for-sample against independently constructed ping-pong
+streams at pitches 0.5, 1, 1.7 and 3, including two-sample regions, endpoint turns,
+ignored mix updates, live mode/bounds edits, meters, releases and six voices.
+
 ## Build, validation and firmware
 
 Build with `C:/Users/Utente/.platformio/penv/Scripts/platformio.exe run`.
-The active export is `LILLA_Pitch_Shift_v0_7_1.hex`, copied from the freshly built
+The active export is `LILLA_Pitch_Shift_v0_7_8.hex`, copied from the freshly built
 `.pio/build/teensy41/firmware.hex` and verified by SHA-256. No upload is automatic.
 For upload select this exact file, not a historical HEX by date/version alone.
 
@@ -124,7 +193,7 @@ First hardware check: one sustained note at pitch 1 and then 1.5; adjust From/To
 try TO/SLICE and both fine/automatic Step, release during an edit, and load another
 file. Then repeat with multiple voices and inspect callback maximum percentage.
 The original `Granular_v0_6_8.hex` is retained. The historical firmware-identity
-check below intentionally does not apply to this new 0.7.4 firmware.
+check below intentionally does not apply to this new 0.7.8 firmware.
 
 ---
 

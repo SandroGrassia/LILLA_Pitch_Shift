@@ -15,7 +15,7 @@ void FileDisplay::Begin()
     tft.setTextColor(ILI9341_WHITE);
     tft.setTextSize(2);
     tft.setCursor(8, 12);
-    tft.print("FFT region 0.7.4");
+    tft.print("FFT region 0.7.8");
     tft.setTextSize(1);
     tft.setCursor(8, 42);
     tft.print("R1 VALUE: file  SELECT: cross-mix");
@@ -79,11 +79,19 @@ void FileDisplay::ShowRegion(uint32_t first, uint32_t last, uint32_t total, uint
     tft.fillRect(9 + left, 233, right > left ? right - left : 1, 4, ILI9341_YELLOW);
 }
 
-void FileDisplay::ShowMode(bool once)
+void FileDisplay::ShowMode(const char *name, bool once, bool edit_mode)
 {
     tft.fillRect(8, 31, 304, 9, ILI9341_BLACK);
     tft.setTextSize(1);
     tft.setTextColor(ILI9341_YELLOW);
     tft.setCursor(8, 31);
-    tft.print(once ? "ONCE_FWD (XMIX ignored)" : "LOOP_FWD");
+    tft.print(name);
+    if (once)
+    {
+        tft.print(" (XMIX ignored)");
+    }
+    tft.fillRect(8, 42, 304, 9, ILI9341_BLACK);
+    tft.setCursor(8, 42);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.print(edit_mode ? "VALUE: file SELECT: MODE [press: XMIX]" : "VALUE: file SELECT: XMIX [press: MODE]");
 }
