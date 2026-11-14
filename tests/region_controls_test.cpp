@@ -146,5 +146,5 @@ int main()
     }
     assert(notes.NoteOn(72, 100, selected) == NoteVoices::Result::Started);
     assert(cores[selected].RegionFrom() == 3000);
-    std::puts("PASS: Lilla trim controls, crop equivalence at 0.5..3, tiny loops, live edits, release during edits and six-voice region publication.");
+    std::puts("PASS: Lilla trim controls, crop equivalence at 0.5..3, tiny loops, live edits, release during edits and configured-voice region publication.");
 }

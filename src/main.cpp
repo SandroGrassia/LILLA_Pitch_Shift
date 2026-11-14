@@ -191,7 +191,7 @@ namespace
             }
             else
             {
-                const char *reason = result == NoteVoices::Result::Full ? "capacity (including anticlick tails)" : result == NoteVoices::Result::OutOfRange ? "outside notes 36..84"
+                const char *reason = result == NoteVoices::Result::Full ? "capacity (including anticlick tails)" : result == NoteVoices::Result::OutOfRange ? "outside notes 36..72"
                                                                                                                                                             : "waiting for rejected NoteOff";
                 snprintf(text, sizeof(text), "NOTE_REJECT note=%u reason=%s", message.data1, reason);
             }
@@ -277,7 +277,7 @@ namespace
         loaded_file = selected_file;
         display.Show(raw_files.Name(selected_file), raw_files.Name(loaded_file), "Ready");
         ShowRegion(true);
-        snprintf(message, sizeof(message), "SOURCE file=%s bytes=%lu duration=%.3f s (shared by all 6 voices)", raw_files.Name(selected_file), static_cast<unsigned long>(bytes), bytes / (2.0 * AUDIO_SAMPLE_RATE_EXACT));
+        snprintf(message, sizeof(message), "SOURCE file=%s bytes=%lu duration=%.3f s (shared by all 5 voices)", raw_files.Name(selected_file), static_cast<unsigned long>(bytes), bytes / (2.0 * AUDIO_SAMPLE_RATE_EXACT));
         PrintLine(message);
         return true;
     }
@@ -509,7 +509,7 @@ void setup()
     {
         yield();
     }
-    PrintLine("LILLA Pitch Shift 0.7.8 - FFT region prototype - 6 voices - MIDI DIN CH1 - LOOP_FWD tempo 1");
+    PrintLine("LILLA Pitch Shift 0.7.10 - FFT region prototype - 5 voices - MIDI DIN CH1 - LOOP_FWD tempo 1");
     if (Serial && CrashReport)
     {
         Serial.print(CrashReport);
@@ -554,7 +554,7 @@ void setup()
     PrintLine("BOOT: audio enabled; setup complete");
     FlushLogs();
     PrintLine("FFT 1024/256 overlap 75%; From/To: region; Step: trim increment; From press: zero; Step press: 1/16; To press: TO/SLICE; R1 Select: rotate XMIX/MODE, press: choose field; R1 Value: RAW; LineOutVol: volume.");
-    PrintLine("MIDI notes 36..84; velocity gain; bend +/-2st clamped to pitch 0.25..4; no ADSR, existing 5ms anticlick only. CC120/123: release all.");
+    PrintLine("MIDI notes 36..72; velocity gain; bend +/-2st additional (pitch 0.22272..2.24492); no ADSR, existing 5ms anticlick only. CC120/123: release all.");
     PrintOverlap();
     PrintGrain();
 }

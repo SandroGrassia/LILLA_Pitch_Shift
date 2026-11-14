@@ -164,5 +164,5 @@ int main()
     assert(!notes.NoteOff(60, report));
     assert(cores[selected].IsActive());
     assert(notes.NoteOff(60, report));
-    std::puts("PASS: ONCE_REV matches reversed-source ONCE_FWD exactly, start/end bounds, lookahead silence, pitch/duration, live edits and six-voice reuse.");
+    std::puts("PASS: ONCE_REV matches reversed-source ONCE_FWD exactly, start/end bounds, lookahead silence, pitch/duration, live edits and configured-voice reuse.");
 }

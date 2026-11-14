@@ -66,14 +66,14 @@ void NoteVoices::ReapFinished()
 float NoteVoices::TargetPitch(uint8_t key) const
 {
     const float bend_steps = bend * ExperimentConfig::BendSemitones / (bend < 0 ? 8192.0f : 8191.0f);
-    return std::clamp(std::exp2((static_cast<int>(key) - ExperimentConfig::RootNote + bend_steps) / 12.0f), 0.25f, 4.0f);
+    return std::exp2((static_cast<int>(key) - ExperimentConfig::RootNote + bend_steps) / 12.0f);
 }
 
 NoteVoices::Result NoteVoices::NoteOn(uint8_t key, uint8_t velocity, uint32_t &voice)
 {
     ReapFinished();
-    // The FFT core supports 0.25..4. Reject unmapped keys instead of silently mapping them to the same pitch.
-    if (key < ExperimentConfig::RootNote - 24 || key > ExperimentConfig::RootNote + 24)
+    // Keyboard range is -24..+12 semitones; pitch bend adds another +/-2 at either endpoint.
+    if (key < ExperimentConfig::RootNote - 24 || key > ExperimentConfig::RootNote + 12)
     {
         ++rejected[key];
         return Result::OutOfRange;

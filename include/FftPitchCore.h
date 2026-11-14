@@ -2,7 +2,7 @@
 #include <cstdint>
 
 // Serialized rendering across all instances: FFT workspace is shared in internal RAM.
-// Source has at least 2 samples, pitch is 0.25..4, gain is 0..1. Setters require audio IRQ exclusion.
+// Source has at least 2 samples, pitch is 2^(-26/12)..2^(14/12), gain is 0..1. Setters require audio IRQ exclusion.
 class FftPitchCore
 {
 public:

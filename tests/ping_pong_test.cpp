@@ -30,7 +30,7 @@ int main()
                     const unsigned phase = (i + start) % period;
                     stream[i] = source[first + (phase < length ? phase : period - phase)];
                 }
-                for (float pitch : {0.5f, 1.0f, 1.7f, 3.0f})
+                for (float pitch : {std::exp2(-26.0f / 12.0f), 0.5f, 1.0f, 1.7f, 3.0f, std::exp2(14.0f / 12.0f)})
                 {
                     FftPitchCore ping;
                     FftPitchCore reference;
@@ -140,5 +140,5 @@ int main()
     {
         assert(!cores[i].IsActive());
     }
-    std::puts("PASS: both ping-pong modes match materialized streams, no repeated endpoints, mix ignored, live direction setting, loop transitions, bounds, meters and six voices.");
+    std::puts("PASS: both ping-pong modes match materialized streams, no repeated endpoints, mix ignored, live direction setting, loop transitions, bounds, meters and configured voices.");
 }

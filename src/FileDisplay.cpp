@@ -15,7 +15,7 @@ void FileDisplay::Begin()
     tft.setTextColor(ILI9341_WHITE);
     tft.setTextSize(2);
     tft.setCursor(8, 12);
-    tft.print("FFT region 0.7.8");
+    tft.print("FFT region 0.7.10");
     tft.setTextSize(1);
     tft.setCursor(8, 42);
     tft.print("R1 VALUE: file  SELECT: cross-mix");

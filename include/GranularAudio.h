@@ -7,7 +7,7 @@ class GranularAudio : public AudioStream
 {
 public:
     explicit GranularAudio(FftPitchCore *voices = nullptr);
-    static constexpr uint32_t VoiceCount = 6;
+    static constexpr uint32_t VoiceCount = 5;
     static constexpr uint32_t Mix = VoiceCount;
     FftPitchCore *core; // Constructed once in internal RAM before SetReady; no allocation in the audio callback.
     struct Levels

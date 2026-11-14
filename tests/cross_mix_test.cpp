@@ -213,5 +213,5 @@ int main()
     {
         assert(cores[i].CrossMix() == 0);
     }
-    std::puts("PASS: cross-mix control bounds, RAW blend, loop timing, FFT materialized-stream equivalence, seam reduction, live edits and six voices.");
+    std::puts("PASS: cross-mix control bounds, RAW blend, loop timing, FFT materialized-stream equivalence, seam reduction, live edits and configured voices.");
 }

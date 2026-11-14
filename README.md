@@ -1,9 +1,21 @@
-# LILLA Pitch Shift 0.7.8 - FFT regions and loop cross-mix
+# LILLA Pitch Shift 0.7.10 - FFT regions and loop cross-mix
 
 Branch `fft-region-controls`, based on `develop`. This is the R1 prototype
 (16 MiB PSRAM, MIDI DIN channel 1), not yet the full Lilla integration.
-The engine retains six voices, FFT 1024/hop 256, phase-region mapping and the
+The engine retains five voices, FFT 1024/hop 256, phase-region mapping and the
 unity-pitch RAW bypass from 0.6.8. Playback supports LOOP_FWD, ONCE_FWD, ONCE_REV, LOOP_REV, LOOP_FWD_REV and LOOP_REV_FWD; startup remains LOOP_FWD.
+
+## Operating limits
+
+Maximum polyphony is five voices, including anticlick tails. The mixer divides
+by five, so a single voice is approximately 1.58 dB louder than with the previous
+six-voice normalization at the same volume setting.
+MIDI notes 36..72 cover -24..+12 semitones around root note 60. Pitch bend adds
++/-2 semitones across the entire range, including the endpoints: the total pitch
+ratio is approximately 0.222725..2.244924 (-26..+14 semitones).
+The selectable region minimum remains 100 samples, matching WHOLE_LILLA's
+MIN_SNIPPET. Files shorter than 100 samples retain their full-file minimum.
+The DSP's two-sample host tests do not expose a smaller UI trim range.
 
 ## Active controls
 
@@ -51,7 +63,7 @@ only updates metadata, leaving resets and fades to the renderer.
 
 This is deliberately a fade-out/restart/fade-in, not a seamless dual-engine
 crossfade. Old-region audio can remain during the initial 5 ms fade. A short
-volume dip is expected; fast repeated edits can prolong attenuation. With cross-mix off, loop seams retain the existing 0.6.8 behavior. Simultaneous six-voice edits reset multiple FFTs in one callback:
+volume dip is expected; fast repeated edits can prolong attenuation. With cross-mix off, loop seams retain the existing 0.6.8 behavior. Simultaneous five-voice edits reset multiple FFTs in one callback:
 measure peak callback cost on R1 before treating this as real-time verified.
 Both ping-pong modes are available; all six play modes can be selected.
 
@@ -127,7 +139,7 @@ core exposes UINT32_MAX as its transport sentinel; reference metering handles
 that as silence. Late NoteOff ownership and voice reclamation are shared with
 ONCE_FWD. Tests compare reverse output sample-for-sample to ONCE_FWD over an
 independently reversed source, including short regions, boundaries at index zero,
-several pitches, live edits, early release and six-voice reuse.
+several pitches, live edits, early release and five-voice reuse.
 
 ## LOOP_REV
 
@@ -145,7 +157,7 @@ not restart the voice; bounds edits retain the existing fade/reset/fade-in.
 The engine allocates no reversed source copy or extra FFT voice.
 Host tests compare every output sample with LOOP_FWD over an independently
 reversed source, including live XMIX edits, multiple pitches, tiny regions,
-release, live bounds and six simultaneous voices. Hardware listening/timing
+release, live bounds and five simultaneous voices. Hardware listening/timing
 still needs verification.
 
 ## LOOP_FWD_REV and LOOP_REV_FWD
@@ -171,21 +183,21 @@ The source reader and reference meter translate it to an in-bounds sample addres
 No reversed sample copy or extra per-voice FFT buffer is allocated. Host tests
 compare both modes sample-for-sample against independently constructed ping-pong
 streams at pitches 0.5, 1, 1.7 and 3, including two-sample regions, endpoint turns,
-ignored mix updates, live mode/bounds edits, meters, releases and six voices.
+ignored mix updates, live mode/bounds edits, meters, releases and five voices.
 
 ## Build, validation and firmware
 
 Build with `C:/Users/Utente/.platformio/penv/Scripts/platformio.exe run`.
-The active export is `LILLA_Pitch_Shift_v0_7_8.hex`, copied from the freshly built
+The active export is `LILLA_Pitch_Shift_v0_7_10.hex`, copied from the freshly built
 `.pio/build/teensy41/firmware.hex` and verified by SHA-256. No upload is automatic.
 For upload select this exact file, not a historical HEX by date/version alone.
 
 Run `python tests/region_controls_test.py`. Tests cover trim bounds and buttons,
 region/cropped-source sample equivalence at multiple pitches, loops as short as
-two samples in the DSP, queued edits, release during an edit, six-voice publication,
+two samples in the DSP, queued edits, release during an edit, five-voice publication,
 MIDI allocation, and FFT regressions. Cross-mix tests check independent linear
 blend/transport models, tiny regions, exact FFT equivalence to a materialized
-virtual stream, seam reduction, live changes and six-voice publication. Full-file rendering is sample-identical to
+virtual stream, seam reduction, live changes and five-voice publication. Full-file rendering is sample-identical to
 committed 0.6.8 on the host, including pitch bend and release. Host tests do not
 validate display appearance, encoder feel, audible fades or Teensy CPU peaks.
 
@@ -193,7 +205,7 @@ First hardware check: one sustained note at pitch 1 and then 1.5; adjust From/To
 try TO/SLICE and both fine/automatic Step, release during an edit, and load another
 file. Then repeat with multiple voices and inspect callback maximum percentage.
 The original `Granular_v0_6_8.hex` is retained. The historical firmware-identity
-check below intentionally does not apply to this new 0.7.8 firmware.
+check below intentionally does not apply to this new 0.7.10 firmware.
 
 ---
 

@@ -72,19 +72,19 @@ int main()
     assert(voices.NoteOn(60, 127, selected) == NoteVoices::Result::Started);
     voices.PitchBend(8191);
     assert(std::fabs(voices.TargetPitch(60) - std::exp2(2.0f / 12.0f)) < 0.00001f);
-    assert(voices.TargetPitch(84) == 4.0f);
+    assert(std::fabs(voices.TargetPitch(72) - std::exp2(14.0f / 12.0f)) < 0.00001f);
     voices.PitchBend(-8192);
     assert(std::fabs(voices.TargetPitch(60) - std::exp2(-2.0f / 12.0f)) < 0.00001f);
-    assert(voices.TargetPitch(36) == 0.25f);
+    assert(std::fabs(voices.TargetPitch(36) - std::exp2(-26.0f / 12.0f)) < 0.00001f);
     voices.PitchBend(0);
     voices.SetVolume(100);
     audio.update();
     assert(voices.NoteOff(60, report));
     assert(report.parameters_changed && report.timings.transient.blocks == 1);
     assert(voices.NoteOn(35, 127, selected) == NoteVoices::Result::OutOfRange);
-    assert(voices.NoteOn(85, 127, selected) == NoteVoices::Result::OutOfRange);
+    assert(voices.NoteOn(73, 127, selected) == NoteVoices::Result::OutOfRange);
     assert(!voices.NoteOff(35, report));
-    assert(!voices.NoteOff(85, report));
+    assert(!voices.NoteOff(73, report));
     // MIDI bursts can start and end a note before the next audio callback.
     assert(voices.NoteOn(72, 100, selected) == NoteVoices::Result::Started);
     voices.SetVolume(50);
@@ -100,5 +100,5 @@ int main()
     }
     voices.ClearRejected();
     assert(voices.HeldCount() == 0);
-    std::puts("PASS: 6 FFT voices sharing a source, FIFO repeated notes, capacity/rejected ownership, tails, restart, per-note measurements, pitch bend, volume and all-notes-off. Host timing is mocked.");
+    std::puts("PASS: 5 FFT voices sharing a source, FIFO repeated notes, capacity/rejected ownership, tails, restart, per-note measurements, pitch bend, volume and all-notes-off. Host timing is mocked.");
 }

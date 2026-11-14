@@ -107,5 +107,5 @@ int main()
     {
         assert(!cores[i].IsActive());
     }
-    std::puts("PASS: LOOP_REV equals reversed-source LOOP_FWD, tiny regions, repeated seams, cross-mix edits, pitch 0.5..3, live bounds, release and six voices.");
+    std::puts("PASS: LOOP_REV equals reversed-source LOOP_FWD, tiny regions, repeated seams, cross-mix edits, pitch 0.5..3, live bounds, release and configured voices.");
 }
