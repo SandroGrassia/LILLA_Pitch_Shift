@@ -1,0 +1,111 @@
+/*
+ * LILLA Audio Sampler
+ * Author: Sandro Grassia, info@lillasampler.it
+ *
+ */
+
+#pragma once
+
+#include <Arduino.h>
+#include "SharedElements.h"
+#include "config.h"
+
+static constexpr int DELAY_CACHE_ACTIVE_SECONDS = DELAY_CACHE_SECONDS; // Maximum delay time per channel.
+static constexpr int DELAY_CACHE_ACTIVE_SAMPLES = static_cast<int>(DELAY_CACHE_ACTIVE_SECONDS * AUDIO_SAMPLE_RATE) + AUDIO_BLOCK_SAMPLES; // Read/write span includes one block reserved for incoming audio.
+static_assert(DELAY_CACHE_ACTIVE_SAMPLES <= DELAY_CACHE_CHANNEL_SAMPLES);
+static constexpr int DELAY_TIME_MAX_INDEX = 102; // Last position: 1990 ms, displayed as 2.0sec.
+
+
+static constexpr float depth_array[40] = {
+        0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0,
+        2, 3, 4, 5, 6, 8, 10, 12, 14, 16,
+        18, 20, 24, 28, 32, 36, 40, 44, 48, 52,
+        56, 60, 65, 70, 75, 80, 85, 90, 95, 100};
+
+enum Delay_parameters
+    {
+        SAMPLES,
+        SAMPLES_LR,
+        MODULATION_DEPTH,
+        MODULATION_FREQUENCY,
+        MODULATION_PHASE_LR,
+        LOOP_GAIN,
+        FEEDBACK_CUTOFF,
+        INSTRUMENT_ROUTE,
+        MODULATION_SOURCE,
+        DELAY_THRESHOLD,
+    };
+
+static constexpr int DELAY_ITEMS = 10; // all Delay parameters
+static constexpr int DELAY_LPF_ITEMS = 7; // Parameters through FEEDBACK_CUTOFF have independent smoothing.
+
+struct Delay_data_struct // DELAY_DATA_DIM byte
+{ 
+    uint16_t samples;
+    int16_t samples_LR;
+    uint8_t instrument_route;
+    uint8_t modulation_source;
+    uint8_t modulation_depth;
+    uint8_t modulation_frequency;
+    uint16_t modulation_phase_LR;
+    uint16_t loop_gain;
+    uint16_t lpf_cutoff = LPF_MAX; // Index in the common cutoff table; old patches default to 20 kHz.
+    int8_t compressor_threshold = -6;
+    bool compressor = false; // Legacy stored flag retained for archive compatibility; playback uses compressor_threshold (-2 selects OFF).
+};
+static constexpr int DELAY_DATA_DIM = sizeof(Delay_data_struct);
+
+static constexpr int Delay_data_limits[DELAY_LPF_ITEMS][2] = {
+    {0, DELAY_TIME_MAX_INDEX}, // SAMPLES
+    {-10, 10}, // SAMPLES_LR
+    {0, 39}, // MODULATION_DEPTH
+    {0, 90}, // MODULATION_FREQUENCY
+    {0, 359}, // MODULATION_PHASE_LR
+    {0, 98}, // LOOP_GAIN, integer percent
+    {0, LPF_MAX} // FEEDBACK_CUTOFF
+};
+
+struct Delay_values_struct
+{
+    float loop_gain;
+    float lpf_cutoff_hz = 20000.0f;
+    float samples;
+    float samples_LR;
+    bool instrument_route[INSTRUMENTS];
+    uint8_t modulation_source; // 0: none 1:wave 2:signal
+    float modulation_depth;        // 0.0 --> 1.0 modulation index
+    float modulation_frequency;    // only for waveform
+    uint16_t modulation_phase_LR;
+};
+
+extern Delay_values_struct Delay_values;
+extern Delay_data_struct Delay_data;
+
+float Delay_feedback(int8_t value);
+void Calc_Delay_values(Delay_data_struct &data); // Normalize the stored stereo offset before initializing the DSP.
+void Turn_ON_Delay(bool ON);
+void Calc_delay_routing(uint8_t value);
+int Calc_delay_samples(int value);
+int Calc_delay_time_tenths(int value); // Nominal delay time in tenths of a millisecond.
+void Convert_legacy_delay(Delay_data_struct &data);
+int Calc_delay_samples_LR(int value);
+int Calc_delay_samples_LR_limit(int time); // Largest whole-millisecond offset within the base time and remaining per-channel buffer capacity.
+float Calc_delay_depth (int value);
+float Calc_delay_frequency(int value);
+FLASHMEM void Print_Delay_data(const Delay_data_struct &data);
+FLASHMEM void Print_Delay_values(Delay_values_struct Delay_values);
+
+// Pointer
+static constexpr int DELAY_element_names = 9;
+enum DELAY_element_name
+{
+    value_DELAY_Feedback,
+    value_DELAY_Lpf_cutoff,
+    value_DELAY_Compressor,
+    value_DELAY_Delay_time,
+    value_DELAY_Delay_time_LR,
+    value_DELAY_Modulation_source,
+    value_DELAY_Modulation_frequency,
+    value_DELAY_Modulation_depth,
+    value_DELAY_Modulation_phase_LR,
+};

@@ -1,3 +1,68 @@
+# LILLA_PitchShift v0_0_5 - R2 integration
+
+The default PlatformIO target is now `lilla_fft_r2`. `lilla/` contains the complete
+WHOLE_LILLA application imported from main commit `0eba4b3`, with its AudioPlayer
+using the shared `include/FftPitchCore.h` / `src/FftPitchCore.cpp` engine.
+The main branch is unchanged. The previous standalone experiment remains available
+with `platformio run -e teensy41`; its controls and firmware documentation are below.
+
+## Integrated behavior
+
+- Four physical player slots, shared by Performance, MIDI Loop, preview and Live.
+- Base transposition -24..+12 semitones relative to each instrument root key.
+  NoteOn outside that range is rejected before allocating a voice. Combined note
+  and preset tuning is clamped to 0.25..2 before the additional +/-2-semitone bend;
+  total pitch is bounded to 0.22272468..2.24492410, including vibrato.
+- Lilla's minimum region length remains 100 samples. All six play modes use FFT.
+- ADSR, velocity, gain ramps, pan, TONE, VCF/LFO, resolution/downsampling and routing
+  remain in Lilla. Unity pitch uses the RAW output path with FFT history kept warm.
+- Stored sources use direct PSRAM access or a two-bank 256-sample Flash reader,
+  including packetized recordings. FFT handles region bounds, direction and XMIX.
+- Live reads the existing mono/stereo circular PSRAM buffers through the same FFT
+  engine. Unrecorded first-fill samples return zero and unavailable loops wait.
+  Mobile forward starts maintain at least 1280 recorded samples of history
+  (29.02 ms at 44.1 kHz); locked regions wait without changing their endpoints.
+  ADSR attack waits for the source to become ready. Released waiting notes can end.
+- Live ONCE_FWD follows recording at fixed original tempo, irrespective of pitch.
+  At recording stop it drains the recorded remainder and ends. Resuming recording
+  fades the old block and reanchors the forward stream with the FFT margin.
+  Both forward and reverse loops, and both ping-pong modes, share the same reader.
+- First FFT frames use the original synchronous analysis/synthesis path. At most
+  one voice starts per audio cycle; a simultaneous four-note chord can spread
+  over three extra blocks (8.7 ms). ADSR waits with each queued voice.
+- Replacement notes fade the outgoing block before reusing its FFT state. Region
+  edits retain the prototype's fade/reset behavior; ONCE direction and ping-pong
+  startup-direction edits retain their existing continuity behavior.
+
+## Build and verification
+
+Build: `platformio run -e lilla_fft_r2` (also the default target).
+The build derives its HEX/ELF name from `FIRMWARE_VERSION` in `lilla/lib/config/config.h`.
+The current HEX is `LILLA_PitchShift_v0_0_5.hex`. It is exported to the
+repository root and checked byte-for-byte against the corresponding named HEX in
+`.pio/build/lilla_fft_r2/`. Teensy GUI upload explicitly selects this root copy,
+so Loader displays the release name. The copy is refreshed and verified before upload.
+No automatic upload is performed.
+
+Run `python tests/region_controls_test.py` for the shared DSP regression suite.
+Run `python tests/lilla_fft_adapter_test.py` for the actual AudioPlayer source and
+Live adapter methods, compiled against a host hardware shim. These tests compare
+Flash/PSRAM rendering with the standalone engine and simulate ongoing capture,
+ring overwrite, startup waiting, first-fill protection and recording-stop drain.
+They do not replace an R2 test of the full application, MIDI/ADSR/effects scheduling,
+physical storage, display, or real input-to-output latency.
+
+The 29 ms Live margin is a source-read requirement, not a measured end-to-end
+latency; input/output buffering adds time. Four voices are the maximum; available headroom depends on effects and source storage. Source-transfer
+admission and Lilla's cycle deadline remain enabled; FFT CPU plus the complete
+R2 effects chain must be measured on hardware. The old speed-shift harvesting and interpolation functions have been removed
+from AudioPlayer; update uses only the FFT rendering path. Display drawing code
+is linked into Flash so the FFT states and processing remain in fast RAM.
+
+---
+
+# Standalone prototype reference
+
 # LILLA Pitch Shift 0.7.10 - FFT regions and loop cross-mix
 
 Branch `fft-region-controls`, based on `develop`. This is the R1 prototype

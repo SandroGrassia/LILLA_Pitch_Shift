@@ -1,0 +1,121 @@
+/*
+ * LILLA Audio Sampler
+ * Author: Sandro Grassia, info@lillasampler.it
+ *
+ */
+
+#pragma once
+
+#include <Arduino.h>
+#include "config.h"
+
+static constexpr int NEW_LOOP = -1;
+static constexpr int NO_TRACK = -1; // track virtuale per note suonate da tastiera nello stato MIDI_LOOP
+static constexpr int MASTER_TRACK = 0;
+static constexpr int LOOP_LAYERS = 4; // Maximum independent recording layers per track.
+static constexpr uint32_t LOOP_EVENTS = 1000; // Note On and Note Off each occupy one event.
+static constexpr uint32_t LOOP_MAX_DURATION_MS = 120000;
+static constexpr int LOOP_UI_A = 1;    // primo encoder prima fila
+static constexpr int LOOP_UI_B = 9;    // primo encoder seconda fila
+static constexpr int LOOP_UI_C = 17;   // primo encoder terza fila
+static constexpr int LOOP_metro_leds = 4; // 4 = 4/4
+static constexpr int MIDI_LOOP_FILES = 1000;
+
+struct LOOP_struct // verificata 8 byte 
+{
+    int time;    // ms
+    uint8_t midi_channel;
+    uint8_t note_number;
+    uint8_t velocity;
+    bool note_on;
+};
+static constexpr int LOOP_struct_bytes = sizeof(LOOP_struct);
+
+extern LOOP_struct LOOP_element[TRACKS][LOOP_LAYERS][LOOP_EVENTS]; // Loop events stored in RAM2 by the definition in SharedLoop.cpp.
+extern uint32_t LOOP_events[TRACKS]; // Total committed events across all layers of each track.
+extern uint32_t LOOP_layer_events[TRACKS][LOOP_LAYERS]; // Committed event counts; an empty layer is available for recording.
+extern uint32_t LOOP_time_order[TRACKS][LOOP_LAYERS][LOOP_EVENTS]; // Circular timestamp order within each layer.
+extern int LOOP_slide[TRACKS]; // slittamento temporale in ms
+extern int LOOP_pitch_int[TRACKS]; // pitch shift in semitones, -24 through +24
+extern float LOOP_stretch; // stretch comune a tutti i track
+
+// LOOP play/stop
+extern bool LOOP_track_run[TRACKS]; // se "true" il track e' in esecuzione
+extern uint32_t LOOP_play_event[TRACKS][LOOP_LAYERS]; // indice del prossimo evento da eseguire
+extern uint32_t LOOP_play_time[TRACKS][LOOP_LAYERS]; // (ms) istante di esecuzione del prossimo evento da eseguire rispetto a LOOP_Clock
+extern float LOOP_volume[TRACKS];
+extern uint32_t LOOP_time; // (ms) durata del track master (0) comune a tutti i track
+
+// LOOP learn
+extern int LOOP_learning_track; // Track currently armed for recording.
+extern int LOOP_learning_layer; // Layer currently armed for recording.
+extern bool LOOP_learn_flag;
+extern uint32_t LOOP_elements;
+extern elapsedMillis LOOP_learn_clock; // utilizzato per calcolare la durata di track learn
+extern uint32_t LOOP_learn_end_time; // Virtual master boundary that ends recording of a secondary track.
+extern int LOOP_clock_memo;
+extern uint32_t LOOP_last_event;
+
+// Metronomo
+extern bool LOOP_metronomo_run; // se "true" i led del metronomo sono visualizzati
+
+// Metronomo, richieste da MidiReader a Main
+extern bool LOOP_metronomo_flag_IN[2]; // accendi led_0, switch led del metronomo
+
+// Menu
+static constexpr int LOOP_menu_values = 4;
+extern int LOOP_menu_max;
+extern const char Menu_LOOP_char[LOOP_menu_values][12];
+extern const uint8_t dimension_voice_Menu_LOOP[LOOP_menu_values];
+extern uint8_t X_position_Menu_LOOP[LOOP_menu_values]; // argument is position
+extern bool Menu_LOOP[LOOP_menu_values];
+extern uint8_t element_Menu_LOOP[LOOP_menu_values]; // argument is position
+extern uint8_t position_Menu_LOOP[LOOP_menu_values]; // argument is element
+
+// Functions
+int LOOP_First_free_layer(int track); // Return the first empty layer, or -1 when all four are occupied.
+bool LOOP_Is_master_recording(void); // Only master layer zero establishes the loop duration.
+void LOOP_Begin_recording(int track, int layer); // Arm an empty layer with audio interrupts disabled.
+bool LOOP_Finish_recording(bool cancel); // Commit or discard the armed layer with audio interrupts disabled.
+void LOOP_set_time_order(int track); // Build circular event ordering independently for every layer.
+void LOOP_restart_layer(int track, int layer); // Schedule a nonempty layer from the current master position.
+void LOOP_restart_procedure(int track); // Schedule all nonempty layers and enable track playback.
+void LOOP_Shift_track(int track, int jump); // Shift every committed layer by the same virtual time offset.
+unsigned long LOOP_Clock_time_from_virtual_time(int T_evento); // definita in main.cpp
+unsigned long LOOP_Clock(void); // definita in main.cpp
+
+// Save to SD
+extern int LOOP_id; // Saved loop identity; NEW_LOOP until a successful save.
+extern int LOOP_suggested_id; // First free SD slot shown for NEW_LOOP; a negative value means unavailable.
+
+// Pointer
+enum LOOP_field_name
+{
+    field_LOOP_Menu,
+    field_LOOP_TrackValues
+};
+
+enum LOOP_menu_element_name : int
+{
+    value_LOOP_Menu_none = -1,
+    value_LOOP_New = 0,
+    value_LOOP_Save = 1,
+    value_LOOP_SaveAsNew = 2,
+    value_LOOP_Delete = 3
+};
+
+static constexpr int LOOP_track_values = 3;
+enum LOOP_track_value_name : int
+{
+    value_LOOP_Track_none = -1,
+    value_LOOP_shift = 0,
+    value_LOOP_pitch = 1,
+    value_LOOP_level = 2
+};
+
+struct LOOP_field_description_struct
+{
+LOOP_field_name field_name;
+LOOP_menu_element_name menu_element;
+LOOP_track_value_name track_value_element;
+};

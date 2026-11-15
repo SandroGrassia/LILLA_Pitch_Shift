@@ -12,10 +12,13 @@ public:
     static bool UsesCrossMix(PlayMode value) { return value == PlayMode::LoopForward || value == PlayMode::LoopReverse; }
     static bool IsReverse(PlayMode value) { return value == PlayMode::OnceReverse || value == PlayMode::LoopReverse || value == PlayMode::LoopReverseForward; }
     void SetMode(PlayMode value);
+    void FinishForwardAt(uint32_t end); // Live forward stream: stop at an already recorded end, preserving overlap and transport.
     PlayMode Mode() const { return mode; }
     static constexpr uint32_t Size = 1024;
     static constexpr uint32_t Hop = 256;
     static constexpr uint32_t Bins = Size / 2 + 1;
+    using SampleReader = int16_t (*)(void *context, uint32_t position);
+    void SetSampleReader(SampleReader reader, void *context);
     FftPitchCore();
     void Attach(const int16_t *samples, uint32_t count);
     void StartNote(const int16_t *samples, uint32_t count, float pitch, float volume);
@@ -36,6 +39,9 @@ public:
     int16_t Render();
 
 private:
+    SampleReader sample_reader = nullptr;
+    void *reader_context = nullptr;
+    float ReadSource(uint32_t position) const;
     const int16_t *source = nullptr;
     uint32_t source_count = 0;
     uint32_t region_first = 0;

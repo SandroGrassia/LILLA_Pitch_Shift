@@ -1,0 +1,536 @@
+"""Exercise production loop SD code with an in-memory, fault-injectable SD card."""
+from pathlib import Path
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[2]
+main = (ROOT / 'src/main.cpp').read_text(encoding='utf-8')
+header = (ROOT / 'lib/SharedLoop/SharedLoop.h').read_text(encoding='utf-8')
+shared = (ROOT / 'lib/SharedLoop/SharedLoop.cpp').read_text(encoding='utf-8')
+
+
+def without_includes(text):
+    return re.sub(r'^\s*#(?:include|pragma)[^\n]*', '', text, flags=re.M)
+
+
+def method(signature):
+    found = re.search(r'^(?:FLASHMEM )?' + re.escape(signature) + r'\n\{.*?^\}', main, re.M | re.S)
+    assert found, signature
+    return found.group(0) + '\n'
+
+
+prefix = r'''
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <type_traits>
+#include <vector>
+#define FLASHMEM
+#define DMAMEM
+#define F(x) x
+using byte = uint8_t;
+using String = std::string;
+using elapsedMillis = uint32_t;
+constexpr int TRACKS = 4;
+constexpr int BUILTIN_SDCARD = 0;
+constexpr int O_RDONLY = 0, O_WRONLY = 1, O_CREAT = 2, O_TRUNC = 4;
+struct SerialStub
+{
+    template<class T> void print(T) {}
+    template<class T> void println(T) {}
+} Serial;
+struct Faults
+{
+    bool begin = false, mkdir = false, sync = false, close = false, seek = false;
+    size_t write_limit = SIZE_MAX, second_read_limit = SIZE_MAX;
+    std::set<String> open, remove, rename;
+} faults;
+struct Node { String text; };
+struct FsFile
+{
+    std::shared_ptr<Node> node;
+    size_t position = 0;
+    bool error = false, second = false;
+    explicit operator bool() const { return bool(node); }
+    int read()
+    {
+        if (second && position >= faults.second_read_limit)
+        {
+            error = true;
+            return -1;
+        }
+        return node && position < node->text.size() ? uint8_t(node->text[position++]) : -1;
+    }
+    int peek() const { return node && position < node->text.size() ? uint8_t(node->text[position]) : -1; }
+    size_t write(const char *data, size_t count)
+    {
+        const size_t available = position < faults.write_limit ? faults.write_limit - position : 0;
+        const size_t written = std::min(count, available);
+        node->text.append(data, written);
+        position += written;
+        error |= written != count;
+        return written;
+    }
+    size_t println(uint8_t value)
+    {
+        const String line = std::to_string(value) + "\r\n";
+        return write(line.data(), line.size());
+    }
+    bool sync() const { return !faults.sync && !error; }
+    bool close() { node.reset(); return !faults.close; }
+    bool seekSet(size_t offset)
+    {
+        if (faults.seek)
+        {
+            return false;
+        }
+        position = offset;
+        second = true;
+        return true;
+    }
+    bool getError() const { return error; }
+    size_t curPosition() const { return position; }
+    size_t fileSize() const { return node->text.size(); }
+};
+struct SDStub
+{
+    struct Backend
+    {
+        std::map<String, std::shared_ptr<Node>> files;
+        FsFile open(const char *path, int mode)
+        {
+            if (faults.open.count(path))
+            {
+                return {};
+            }
+            if (mode & O_TRUNC)
+            {
+                files[path] = std::make_shared<Node>();
+            }
+            const auto it = files.find(path);
+            return it == files.end() ? FsFile{} : FsFile{it->second};
+        }
+    } sdfs;
+    std::set<String> directories;
+    bool begin(int) const { return !faults.begin; }
+    bool exists(const char *path) const { return directories.count(path) || sdfs.files.count(path); }
+    bool mkdir(const char *path)
+    {
+        if (faults.mkdir)
+        {
+            return false;
+        }
+        const String name = path;
+        const size_t slash = name.find_last_of('/');
+        if (slash > 0 && !directories.count(name.substr(0, slash)))
+        {
+            return false;
+        }
+        directories.insert(path);
+        return true;
+    }
+    bool remove(const char *path)
+    {
+        return !faults.remove.count(path) && sdfs.files.erase(path) != 0;
+    }
+    bool rename(const char *from, const char *to)
+    {
+        if (faults.rename.count(String(from) + ">" + to) || !sdfs.files.count(from) || exists(to))
+        {
+            return false;
+        }
+        sdfs.files[to] = sdfs.files[from];
+        sdfs.files.erase(from);
+        return true;
+    }
+} SD;
+'''
+
+prefix += "struct SdStorage { static bool Begin() { return SD.begin(BUILTIN_SDCARD); } static bool Ensure() { return SD.exists(\"/LILLA_PRIVATE\") || SD.mkdir(\"/LILLA_PRIVATE\"); } };\n"
+
+globals_start = main.index('elapsedMillis LOOP_clock =')
+globals_end = main.index('// Pointer', globals_start)
+production = without_includes(header) + without_includes(shared) + main[globals_start:globals_end]
+constants_start = main.index('static constexpr size_t LOOP_FILENAME_SIZE')
+constants_end = main.index('void LOOP_Filename_midi_loop', constants_start)
+production += main[constants_start:constants_end]
+production += method('void LOOP_Filename_midi_loop(int loop_id, char (&filename)[LOOP_FILENAME_SIZE])')
+production += method('void LOOP_Path_midi_loop(int loop_id, char (&path)[LOOP_PATH_SIZE])')
+production += method('void LOOP_reset_all_data(void)')
+production += 'void LOOP_stop_and_reset_runnig_loop_data() { LOOP_reset_all_data(); }\n'
+codec_start = main.index('// Loop SD v3:')
+codec_end = main.index('bool LOOP_Look_for_midi_loop_in_SD(int loop_id)\n{', codec_start)
+production += main[codec_start:codec_end]
+for signature in ['bool LOOP_Look_for_midi_loop_in_SD(int loop_id)', 'int LOOP_Get_first_loop_id_free(void)', 'int LOOP_Get_next_loop_id_in_SD(int loop_id)', 'int LOOP_Get_previous_loop_id_in_SD(int loop_id)']:
+    production += method(signature)
+
+reader = (ROOT / 'lib/MidiReader/MidiReader.cpp').read_text(encoding='utf-8')
+production += 'constexpr int MIDI_LOOP = 1; int Lilla_state = MIDI_LOOP; uint32_t master_clock = 123; unsigned long LOOP_Clock() { return master_clock; }\n'
+timeout = re.search(r'    if \(LOOP_learn_flag && Lilla_state == MIDI_LOOP.*?\n    \}', reader, re.S).group(0)
+production += 'void Check_recording_timeout()\n{\n' + timeout + '\n}\n'
+for name, condition in [('Learn_on', 'if ((Lilla_state == MIDI_LOOP) && LOOP_learn_flag)'), ('Learn_off', 'if ((Lilla_state == MIDI_LOOP) && LOOP_learn_flag && LOOP_elements > 0)')]:
+    start = reader.index(condition)
+    position = reader.index('{', start)
+    depth = 1
+    end = position + 1
+    while depth:
+        depth += (reader[end] == '{') - (reader[end] == '}')
+        end += 1
+    production += f'void {name}(uint8_t midi_channel, uint8_t note_number, uint8_t velocity)\n{{\n' + reader[start:end] + '\n}\n'
+
+production += r'''
+int result;
+LOOP_field_description_struct LOOP_local_pointer{};
+struct PointerStub
+{
+    void Show_pointer(bool) {}
+    void Set_pointer_to_first_menu_element() {}
+    LOOP_field_description_struct Get_pointer() { return {}; }
+} Pointer_MidiLoop;
+struct DisplayMidiLoop { void Show_menu() {} void Show_loop_id(); void Show_save_failed() {} } Display_MidiLoop;
+struct TFTStub
+{
+    String text;
+    void setTextColor(int) {}
+    void print(const char *value) { text = value; }
+    void print(int value) { text = std::to_string(value); }
+} tft;
+constexpr int ILI9341_YELLOW = 0, Loop_chars_loop = 3;
+constexpr int Loop_column_row_loop[] = {0, 0};
+int display_coordinate_x(int value) { return value; }
+int display_coordinate_y(int value) { return value; }
+void Cancel_text_reset_cursor(int, int, int) { tft.text.clear(); }
+void Clear_UI_events() {}
+
+'''
+display = (ROOT / 'lib/DisplayMidiLoop/DisplayMidiLoop.cpp').read_text(encoding='utf-8')
+production += re.search(r'void DisplayMidiLoop::Show_loop_id\(void\)\n\{.*?^\}', display, re.M | re.S).group(0) + '\n'
+production += method('void LOOP_select_menu_elements(void)')
+ui_start = main.index('                    case value_LOOP_Save:\n')
+ui_end = main.index('                    case value_LOOP_Delete:\n', ui_start)
+production += 'void Save_UI(int action)\n{\n    switch (action)\n    {\n' + main[ui_start:ui_end] + '    }\n}\n'
+
+tests = r'''
+const String path = "/LILLA_PRIVATE/MIDI_LOOPS/3.loop";
+void seed(uint32_t count)
+{
+    LOOP_reset_all_data();
+    LOOP_time = 10000;
+    LOOP_stretch_int = 150;
+    LOOP_stretch = 1.5f;
+    LOOP_id = 7;
+    LOOP_original = false;
+    for (int track = 0; track < TRACKS; ++track)
+    {
+        LOOP_events[track] = count;
+        LOOP_layer_events[track][0] = count;
+        LOOP_slide[track] = 100 * track;
+        LOOP_pitch_int[track] = track - 2;
+        for (uint32_t event = 0; event < count; ++event)
+        {
+            LOOP_element[track][0][event] = {int(event), uint8_t(track), uint8_t(40 + event % 80), uint8_t(event % 128), event % 2 == 0};
+        }
+    }
+}
+void put(const String &name, const String &text)
+{
+    SD.sdfs.files[name] = std::make_shared<Node>(Node{text});
+}
+String encoded()
+{
+    FsFile file{std::make_shared<Node>()};
+    assert(LOOP_Compile_midi_loop_file(file));
+    return file.node->text;
+}
+void rejected(const String &text)
+{
+    seed(1);
+    const auto previous = LOOP_element[0][0][0];
+    put(path, text);
+    assert(!LOOP_Copy_midi_loop_from_SD_to_RAM(3));
+    assert(LOOP_id == 7 && !LOOP_original && LOOP_events[0] == 1 && LOOP_time == 10000);
+    assert(memcmp(&previous, &LOOP_element[0][0][0], sizeof(previous)) == 0);
+}
+String change_byte(String text, size_t index, const String &value)
+{
+    size_t position = text.find('\n') + 1;
+    for (size_t i = 0; i < index; ++i)
+    {
+        position = text.find('\n', position) + 1;
+    }
+    text.replace(position, text.find('\n', position) - position + 1, value + "\r\n");
+    return text;
+}
+int main()
+{
+    char first[LOOP_FILENAME_SIZE], second[LOOP_FILENAME_SIZE];
+    LOOP_Filename_midi_loop(0, first);
+    LOOP_Filename_midi_loop(INT32_MAX, second);
+    assert(std::strcmp(first, "0.loop") == 0 && std::strcmp(second, "2147483647.loop") == 0);
+    char longest_path[LOOP_PATH_SIZE];
+    LOOP_Path_midi_loop(INT32_MIN, longest_path);
+    assert(std::strcmp(longest_path, "/LILLA_PRIVATE/MIDI_LOOPS/-2147483648.loop") == 0);
+    char longest_backup[LOOP_SIDECAR_PATH_SIZE];
+    assert(std::snprintf(longest_backup, sizeof(longest_backup), "%s.bak", longest_path) == int(sizeof(longest_backup) - 1));
+    assert(std::strcmp(longest_backup, "/LILLA_PRIVATE/MIDI_LOOPS/-2147483648.loop.bak") == 0);
+    static_assert(std::is_same_v<std::remove_reference_t<decltype(LOOP_events[0])>, uint32_t>);
+    static_assert(std::is_same_v<std::remove_reference_t<decltype(LOOP_time_order[0][0][0])>, uint32_t>);
+    static_assert(std::is_same_v<std::remove_reference_t<decltype(LOOP_play_event[0][0])>, uint32_t>);
+    seed(LOOP_EVENTS);
+    for (int track = 0; track < TRACKS; ++track)
+    {
+        for (int layer = 1; layer < LOOP_LAYERS; ++layer)
+        {
+            LOOP_layer_events[track][layer] = LOOP_EVENTS;
+            LOOP_events[track] += LOOP_EVENTS;
+            for (uint32_t event = 0; event < LOOP_EVENTS; ++event)
+            {
+                LOOP_element[track][layer][event] = {int(event + layer), uint8_t(track), uint8_t(60 + layer), 100, event % 2 == 0};
+            }
+        }
+    }
+    const String layered = encoded();
+    put(path, layered);
+    LOOP_reset_all_data();
+    assert(LOOP_Copy_midi_loop_from_SD_to_RAM(3));
+    assert(LOOP_events[3] == LOOP_LAYERS * LOOP_EVENTS && LOOP_layer_events[3][3] == LOOP_EVENTS);
+    assert(LOOP_element[3][3][LOOP_EVENTS - 1].note_number == 63 && encoded() == layered);
+    seed(LOOP_EVENTS);
+    const String valid = encoded();
+    put(path, valid);
+    LOOP_reset_all_data();
+    assert(LOOP_Copy_midi_loop_from_SD_to_RAM(3));
+    assert(LOOP_events[3] == LOOP_EVENTS && LOOP_time == 10000 && LOOP_pitch_int[3] == 1 && LOOP_slide[3] == 300 && LOOP_stretch == 1.5f);
+    assert(LOOP_element[3][0][LOOP_EVENTS - 1].time == int(LOOP_EVENTS - 1));
+    assert(encoded() == valid);
+    // Rotation uses 32-bit indices, including beyond byte range in the future-capacity build.
+    LOOP_element[0][0][LOOP_EVENTS - 1].time = -1;
+    LOOP_set_time_order(0);
+    assert(LOOP_time_order[0][0][0] == LOOP_EVENTS - 1 && LOOP_time_order[0][0][1] == 0);
+    seed(2);
+    const String small = encoded();
+    seed(LOOP_EVENTS);
+    LOOP_time = LOOP_MAX_DURATION_MS;
+    LOOP_element[3][0][LOOP_EVENTS - 1].time = 119999;
+    put(path, encoded());
+    LOOP_reset_all_data();
+    assert(LOOP_Copy_midi_loop_from_SD_to_RAM(3) && LOOP_time == 120000 && LOOP_events[3] == LOOP_EVENTS && LOOP_element[3][0][LOOP_EVENTS - 1].time == 119999);
+    LOOP_time = LOOP_MAX_DURATION_MS + 1;
+    rejected(encoded());
+    for (size_t length = 0; length < small.size(); ++length)
+    {
+        rejected(small.substr(0, length));
+    }
+    rejected(small + "0\r\n");
+    rejected("LILLALOOP 2\r\n" + small.substr(sizeof(LOOP_SD_MAGIC) - 1));
+    rejected(change_byte(small, 0, "5")); // Track count.
+    rejected(change_byte(small, 4, "5")); // Layer count.
+    for (const char *bad : {"256", "-1", "x", "", "12x", "999999", " 1"})
+    {
+        rejected(change_byte(small, 8, bad));
+    }
+    rejected(change_byte(change_byte(small, 8, "0"), 9, "0")); // Zero duration.
+    rejected(change_byte(small, 12, "0")); // Empty master layer zero.
+    rejected(change_byte(small, 15, "255")); // Huge 32-bit event count.
+    rejected(change_byte(small, 79, "127")); // Slide outside duration.
+    rejected(change_byte(small, 92, "25")); // Pitch.
+    rejected(change_byte(small, 108, "0")); // Stretch.
+    rejected(change_byte(small, 115, "127")); // Event timestamp outside duration.
+    rejected(change_byte(small, 116, "16")); // MIDI channel.
+    rejected(change_byte(small, 117, "128")); // Note.
+    rejected(change_byte(small, 118, "128")); // Velocity.
+    rejected(change_byte(small, 119, "2")); // Bool representation.
+    put(path, small);
+    seed(1);
+    faults.seek = true;
+    assert(!LOOP_Copy_midi_loop_from_SD_to_RAM(3) && LOOP_events[0] == 1);
+    faults = {};
+    faults.second_read_limit = small.size() - 4;
+    assert(!LOOP_Copy_midi_loop_from_SD_to_RAM(3));
+    assert(LOOP_events[0] == 0 && LOOP_events[3] == 0 && LOOP_time == 0 && LOOP_id == NEW_LOOP && !LOOP_original);
+    faults = {};
+    // First save creates the missing directory, and failure paths retain the previous file.
+    SD.sdfs.files.clear();
+    assert(LOOP_Get_first_loop_id_free() == 0);
+    seed(2);
+    assert(LOOP_Copy_midi_loop_from_RAM_to_SD(3));
+    const String previous = SD.sdfs.files[path]->text;
+    seed(3);
+    LOOP_pitch_int[0] = 99;
+    assert(!LOOP_Copy_midi_loop_from_RAM_to_SD(3) && SD.sdfs.files[path]->text == previous);
+    seed(3);
+    faults.write_limit = 30;
+    assert(!LOOP_Copy_midi_loop_from_RAM_to_SD(3) && SD.sdfs.files[path]->text == previous);
+    faults = {};
+    faults.sync = true;
+    assert(!LOOP_Copy_midi_loop_from_RAM_to_SD(3) && SD.sdfs.files[path]->text == previous);
+    faults = {};
+    faults.close = true;
+    assert(!LOOP_Copy_midi_loop_from_RAM_to_SD(3) && SD.sdfs.files[path]->text == previous);
+    faults = {};
+    faults.rename.insert(path + ">" + path + ".bak");
+    assert(!LOOP_Copy_midi_loop_from_RAM_to_SD(3) && SD.sdfs.files[path]->text == previous);
+    faults = {};
+    faults.rename.insert(path + ".tmp>" + path);
+    assert(!LOOP_Copy_midi_loop_from_RAM_to_SD(3) && SD.sdfs.files[path]->text == previous);
+    faults.rename.insert(path + ".bak>" + path);
+    assert(!LOOP_Copy_midi_loop_from_RAM_to_SD(3));
+    assert(!SD.exists(path.c_str()) && SD.sdfs.files[path + ".bak"]->text == previous);
+    assert(LOOP_Get_next_loop_id_in_SD(2) == 3 && LOOP_Get_previous_loop_id_in_SD(4) == 3);
+    faults = {};
+    assert(LOOP_Copy_midi_loop_from_SD_to_RAM(3) && LOOP_events[0] == 2);
+    assert(LOOP_Copy_midi_loop_from_RAM_to_SD(3));
+    assert(SD.sdfs.files[path + ".bak"]->text == previous);
+    faults.remove.insert(path + ".bak");
+    assert(!LOOP_Delete_midi_loop_from_SD(3) && SD.exists(path.c_str()));
+    faults = {};
+    assert(LOOP_Delete_midi_loop_from_SD(3) && !SD.exists(path.c_str()) && !SD.exists((path + ".bak").c_str()));
+    assert(LOOP_Get_next_loop_id_in_SD(2) == 2);
+    faults.begin = true;
+    assert(!LOOP_Copy_midi_loop_from_SD_to_RAM(3) && !LOOP_Copy_midi_loop_from_RAM_to_SD(3));
+    // UI must keep both the dirty flag and the original ID on failure.
+    seed(3);
+    Save_UI(value_LOOP_Save);
+    assert(LOOP_id == 7 && !LOOP_original);
+    Save_UI(value_LOOP_SaveAsNew);
+    assert(LOOP_id == 7 && !LOOP_original);
+    faults = {};
+    faults.write_limit = 10;
+    Save_UI(value_LOOP_SaveAsNew);
+    assert(LOOP_id == 7 && !LOOP_original);
+    faults = {};
+    Save_UI(value_LOOP_SaveAsNew);
+    assert(LOOP_id == 0 && LOOP_original);
+    LOOP_original = false;
+    Save_UI(value_LOOP_Save);
+    assert(LOOP_id == 0 && LOOP_original);
+    // A preview must not turn a new RAM loop into a saved loop or change its menu.
+    seed(3);
+    LOOP_id = NEW_LOOP;
+    LOOP_suggested_id = LOOP_Get_first_loop_id_free();
+    assert(LOOP_suggested_id == 1);
+    Display_MidiLoop.Show_loop_id();
+    assert(tft.text == "1" && LOOP_id == NEW_LOOP);
+    LOOP_select_menu_elements();
+    assert(!Menu_LOOP[0] && Menu_LOOP[1] && !Menu_LOOP[2] && Menu_LOOP[3]);
+    // Occupying the preview before Save selects the next free slot instead of overwriting it.
+    put("/LILLA_PRIVATE/MIDI_LOOPS/1.loop.bak", "reserved");
+    faults.write_limit = 10;
+    Save_UI(value_LOOP_Save);
+    assert(LOOP_id == NEW_LOOP && LOOP_suggested_id == 2 && tft.text == "2" && !LOOP_original);
+    faults = {};
+    Save_UI(value_LOOP_Save);
+    assert(LOOP_id == 2 && LOOP_original && tft.text == "2");
+    assert(SD.sdfs.files["/LILLA_PRIVATE/MIDI_LOOPS/1.loop.bak"]->text == "reserved");
+    // Missing SD and exhausted IDs show the placeholder while keeping the RAM loop unsaved.
+    LOOP_id = NEW_LOOP;
+    faults.begin = true;
+    Save_UI(value_LOOP_Save);
+    assert(LOOP_id == NEW_LOOP && LOOP_suggested_id < 0 && tft.text == "---");
+    faults = {};
+    for (int id = 0; id < MIDI_LOOP_FILES; ++id)
+    {
+        char occupied_path[LOOP_PATH_SIZE];
+        LOOP_Path_midi_loop(id, occupied_path);
+        put(occupied_path, "occupied");
+    }
+    Save_UI(value_LOOP_Save);
+    assert(LOOP_id == NEW_LOOP && LOOP_suggested_id < 0 && tft.text == "---");
+    LOOP_id = 7;
+    Display_MidiLoop.Show_loop_id();
+    assert(tft.text == "7");
+    for (int track = 0; track < TRACKS; ++track)
+    {
+        LOOP_learning_track = track;
+        LOOP_time = 90000;
+        LOOP_elements = 0;
+        LOOP_learn_flag = true;
+        master_clock = 30000;
+        Learn_on(0, 60, 100);
+        assert(track == MASTER_TRACK || LOOP_learn_end_time == 90000);
+        const uint32_t limit = track == MASTER_TRACK ? LOOP_MAX_DURATION_MS : LOOP_time;
+        LOOP_learn_flag = true;
+        LOOP_learn_clock = limit - 1;
+        master_clock = 89999;
+        Check_recording_timeout();
+        assert(LOOP_learn_flag);
+        LOOP_learn_clock = track == MASTER_TRACK ? limit : 60000;
+        master_clock = 90000;
+        Check_recording_timeout();
+        assert(!LOOP_learn_flag);
+        LOOP_elements = 0;
+        LOOP_learn_flag = true;
+        Check_recording_timeout();
+        assert(LOOP_learn_flag);
+    }
+    // Starting exactly at a boundary records until the following master cycle.
+    LOOP_learning_track = 1;
+    LOOP_time = 8000;
+    LOOP_elements = 0;
+    LOOP_learn_flag = true;
+    master_clock = 16000;
+    Learn_on(0, 60, 100);
+    assert(LOOP_learn_end_time == 24000);
+    master_clock = 23999;
+    LOOP_learn_clock = 16000; // Real elapsed time does not override the stretched master clock.
+    Check_recording_timeout();
+    assert(LOOP_learn_flag);
+    master_clock = 24001; // The callback may run just after the exact boundary.
+    Check_recording_timeout();
+    assert(!LOOP_learn_flag);
+    // Exercise production recording conditions: the last slot is usable and no later event writes past it.
+    LOOP_learning_track = 0;
+    LOOP_elements = 0;
+    LOOP_learn_flag = true;
+    for (uint32_t event = 0; event < LOOP_EVENTS; ++event)
+    {
+        if (event % 2 == 0)
+        {
+            Learn_on(0, 60, 100);
+        }
+        else
+        {
+            Learn_off(0, 60, 0);
+        }
+    }
+    assert(LOOP_elements == LOOP_EVENTS && LOOP_last_event == LOOP_EVENTS - 1 && !LOOP_learn_flag);
+    // Completion disables recording before any subsequent MIDI event arrives.
+    Learn_on(0, 61, 100);
+    Learn_off(0, 61, 0);
+    assert(LOOP_elements == LOOP_EVENTS && LOOP_element[0][0][LOOP_EVENTS - 1].note_number == 60);
+    // The clock can cross the limit while a collected MIDI batch is handled.
+    LOOP_elements = 1;
+    LOOP_last_event = 0;
+    LOOP_learn_flag = true;
+    LOOP_learn_clock = LOOP_MAX_DURATION_MS + 1;
+    Learn_on(0, 60, 100);
+    assert(!LOOP_learn_flag && LOOP_element[0][0][1].time == 120000);
+    LOOP_learn_flag = true;
+    Learn_off(0, 60, 0);
+    assert(!LOOP_learn_flag && LOOP_element[0][0][2].time == 120000);
+    std::cout << "PASS: loop SD round trips, bounds, malformed/truncated files, second-pass failure, safe replacement/recovery; capacity=" << LOOP_EVENTS << '\n';
+}
+'''
+
+compiler = shutil.which('g++') or r'C:\msys64\ucrt64\bin\g++.exe'
+with tempfile.TemporaryDirectory(prefix='lilla-loop-') as directory:
+    for capacity in [1000]:
+        cpp = Path(directory) / 'loop.cpp'
+        exe = Path(directory) / ('loop.exe' if os.name == 'nt' else 'loop')
+        variant = production.replace('LOOP_EVENTS = 1000;', f'LOOP_EVENTS = {capacity};')
+        cpp.write_text(prefix + variant + tests, encoding='utf-8', newline='\r\n')
+        subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror', str(cpp), '-o', str(exe)], check=True)
+        environment = os.environ.copy()
+        environment['PATH'] = str(Path(compiler).parent) + os.pathsep + environment.get('PATH', '')
+        subprocess.run([str(exe)], check=True, env=environment)

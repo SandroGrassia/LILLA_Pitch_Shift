@@ -33,6 +33,8 @@ FftPitchCore::FftPitchCore()
 
 void FftPitchCore::Attach(const int16_t *samples, uint32_t count)
 {
+    sample_reader = nullptr;
+    reader_context = nullptr;
     source = samples;
     source_count = count;
     mode = requested_mode = PlayMode::LoopForward;
@@ -113,6 +115,16 @@ void FftPitchCore::SetMode(PlayMode value)
     }
 }
 
+void FftPitchCore::FinishForwardAt(uint32_t end)
+{
+    mode = requested_mode = PlayMode::OnceForward;
+    region_end = requested_end = end;
+    cross_mix = requested_mix = 0;
+    cross_mix_scale = 0.0f;
+    region_pending = false;
+    analysis_ready = false;
+}
+
 void FftPitchCore::SetPitch(float value) { pitch_target = value; }
 void FftPitchCore::SetVolume(float value) { volume_target = value; }
 void FftPitchCore::SetRunning(bool value)
@@ -180,17 +192,28 @@ uint32_t FftPitchCore::Advance(uint32_t position, uint32_t count) const
     return loop_start + (next - region_end) % (region_end - loop_start);
 }
 
+void FftPitchCore::SetSampleReader(SampleReader reader, void *context)
+{
+    sample_reader = reader;
+    reader_context = context;
+}
+
+float FftPitchCore::ReadSource(uint32_t position) const
+{
+    return sample_reader != nullptr ? sample_reader(reader_context, position) : source[position];
+}
+
 float FftPitchCore::ReadLoop(uint32_t position) const
 {
     if (IsPingPong(mode))
     {
-        return source[SourcePosition(position)];
+        return ReadSource(SourcePosition(position));
     }
     if (!IsLoop(mode))
     {
-        return position >= region_first && position < region_end ? source[position] : 0.0f;
+        return position >= region_first && position < region_end ? ReadSource(position) : 0.0f;
     }
-    const float outgoing = source[position];
+    const float outgoing = ReadSource(position);
     if (mode == PlayMode::LoopReverse)
     {
         if (cross_mix == 0 || position >= region_first + cross_mix)
@@ -198,7 +221,7 @@ float FftPitchCore::ReadLoop(uint32_t position) const
             return outgoing;
         }
         const uint32_t offset = region_first + cross_mix - 1u - position;
-        const float incoming = source[region_end - 1u - offset];
+        const float incoming = ReadSource(region_end - 1u - offset);
         const float weight = offset * cross_mix_scale;
         return outgoing + weight * (incoming - outgoing);
     }
@@ -207,7 +230,7 @@ float FftPitchCore::ReadLoop(uint32_t position) const
         return outgoing;
     }
     const uint32_t offset = position - (region_end - cross_mix);
-    const float incoming = source[region_first + offset];
+    const float incoming = ReadSource(region_first + offset);
     const float weight = offset * cross_mix_scale;
     return outgoing + weight * (incoming - outgoing);
 }
