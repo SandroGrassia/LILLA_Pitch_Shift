@@ -10,7 +10,7 @@
 #include "PlaybackProfile.h"
 
 // Firmware version
-constexpr char FIRMWARE_VERSION[] = "LILLA_PitchShift v0_0_5";
+constexpr char FIRMWARE_VERSION[] = "LILLA_PitchShift v0_0_9";
 
 // Hardware versions
 /*
@@ -47,7 +47,7 @@ void Setup_GATE_pins(void);
 static constexpr int AUDIO_CYCLE_BUDGET_US = 2900; // Conservative block budget for 128 samples at 44.1 kHz.
 static constexpr int AUDIO_POST_PLAYER_RESERVE_US = 200; // Restored downstream margin for the audio chain without reverb; validate under worst-case hardware load.
 static constexpr int AUDIO_PLAYER_DEADLINE_US = AUDIO_CYCLE_BUDGET_US - AUDIO_POST_PLAYER_RESERVE_US; // Emergency cutoff measured from Trigger, including MIDI preparation.
-static constexpr int PLAYERS = 4;
+static constexpr int PLAYERS = 2;
 static constexpr int INSTRUMENTS = 8;   // mux number of Instruments per Patch
 static constexpr int SAMPLES_VOLUME = 5000; // rampa per cambio gain - deve essere pari
 static constexpr int BLOCK_MIN = 674;       // Maximum span stored in AudioTables as a wavetable; longer loops are read in bounded segments.

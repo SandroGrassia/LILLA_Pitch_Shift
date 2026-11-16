@@ -1,4 +1,4 @@
-# LILLA_PitchShift v0_0_5 - R2 integration
+# LILLA_PitchShift v0_0_9 - R2 integration
 
 The default PlatformIO target is now `lilla_fft_r2`. `lilla/` contains the complete
 WHOLE_LILLA application imported from main commit `0eba4b3`, with its AudioPlayer
@@ -6,9 +6,75 @@ using the shared `include/FftPitchCore.h` / `src/FftPitchCore.cpp` engine.
 The main branch is unchanged. The previous standalone experiment remains available
 with `platformio run -e teensy41`; its controls and firmware documentation are below.
 
+## Staged dual-band work (v0_0_9)
+
+The low-band FIR is now prepared in four 256-sample decimated chunks (each reads
+1024 source samples plus FIR context), spaced by 128 output samples. The low FFT
+analysis is performed on a later callback. Filtered samples are kept per voice;
+transform and short read scratch remain shared and serialized. Synthesis keeps
+using the pitch at the original output instant. Mid-frame control invalidation
+can still require synchronous recovery; those edit-time peaks need hardware checks.
+
+AudioPlayer prepares four initial FIR chunks, then low and high analyses over six
+callbacks before rendering the attack. Transport and ADSR do not advance while
+waiting. The two player identities start on opposite callback parities. This adds
+about 17.4..20.3 ms of NoteOn startup latency, including at unity pitch, in exchange
+for distributing startup work. The existing Live source margin remains 5120 samples;
+the preparation wait adds to end-to-end latency. No extra delay is added at steady state.
+
+Timing reports retain two voices. start_max_us now includes preparation callbacks
+as well as the first rendered block; starts counts only first rendered blocks.
+The pipeline was checked against the previous PCM on 94/95/105 at pitch 2 and
+prepared/immediate attack equivalence is tested across all modes and multiple pitches.
+R2 listening confirmed that clicks disappeared with two voices. Observed maximum
+CPU was 77.3%, start/preparation maximum 1234 us, steady player maximum 999 us,
+and deadline stops remained zero in the reported run. These measurements do not
+certify every source/effect configuration.
+
+## Transition timing probe (v0_0_8)
+
+Two-player DSP and scheduling are unchanged. With USB Serial connected, FFT_TIMING
+reports every two seconds when sufficient serial buffer space is available.
+CPU maximum covers the audio update; start_max_us and run_max_us are per-player
+render maxima (including effects, excluding final delivery and cleanup). starts
+counts first rendered blocks; deadline_stops counts emergency voice stops since
+the previous report. active is an instantaneous count, not an interval maximum.
+A CPU peak over 100% or a deadline stop supports an overload diagnosis; neither
+proves the cause of every audible interruption. No I2S underrun counters are added.
+
+## Two-player trial (v0_0_7)
+
+Limit physical AudioPlayer and ADSR arrays to two entries and remove routing
+connections for slots 2 and 3. The dual-band FFT, pitch limits, effects and Live
+margin are unchanged. This isolates polyphony cost when investigating clicks
+during note transitions. Hardware confirmation is pending.
+
+## Dual-band engine update (v0_0_6)
+
+Ported the accepted R1 baseline from tag `baseline-r1-0.7.11` (commit `1857d39`),
+not from main, which still contains the original WHOLE_LILLA application.
+The high band retains FFT 1024/hop 256; the low band uses a 65-tap anti-alias FIR,
+decimation by four and FFT 1024/hop 256, covering 4096 source samples. Peak regions
+are blended over 200..400 Hz of the input spectrum. Cubic interpolation returns
+the low band to the original sample rate. No rejected offline variants are included.
+
+The callback source reader is preserved for Flash, PSRAM and live capture, including
+zero-filled unrecorded samples. Recording-stop drain invalidates both prepared
+analyses. Live startup now needs 5120 recorded samples (~116 ms); this is not a
+measured end-to-end latency. Shared transform and decimator scratch live in RAM2
+to retain RAM1 stack headroom; per-voice phase/overlap histories remain in RAM1.
+
+Two AudioPlayers and first-instrument-only playback are retained. The increased
+CPU and source-read cost must be measured on R2; two slots do not guarantee two
+real-time voices with every effect/storage configuration. Source admission now
+reserves coincident short/long analyses, so Flash playback may be rejected earlier.
+The R1 listening improvement on low bass is established, but the full Lilla port
+still needs listening and timing checks on hardware. The wall/crumbling artifact
+remains an unresolved limitation of the accepted baseline.
+
 ## Integrated behavior
 
-- Four physical player slots, shared by Performance, MIDI Loop, preview and Live.
+- Two physical player slots, shared by Performance, MIDI Loop, preview and Live.
 - Base transposition -24..+12 semitones relative to each instrument root key.
   NoteOn outside that range is rejected before allocating a voice. Combined note
   and preset tuning is clamped to 0.25..2 before the additional +/-2-semitone bend;
@@ -20,16 +86,16 @@ with `platformio run -e teensy41`; its controls and firmware documentation are b
   including packetized recordings. FFT handles region bounds, direction and XMIX.
 - Live reads the existing mono/stereo circular PSRAM buffers through the same FFT
   engine. Unrecorded first-fill samples return zero and unavailable loops wait.
-  Mobile forward starts maintain at least 1280 recorded samples of history
-  (29.02 ms at 44.1 kHz); locked regions wait without changing their endpoints.
+  Mobile forward starts maintain at least 5120 recorded samples of history
+  (116.10 ms at 44.1 kHz); locked regions wait without changing their endpoints.
   ADSR attack waits for the source to become ready. Released waiting notes can end.
 - Live ONCE_FWD follows recording at fixed original tempo, irrespective of pitch.
   At recording stop it drains the recorded remainder and ends. Resuming recording
   fades the old block and reanchors the forward stream with the FFT margin.
   Both forward and reverse loops, and both ping-pong modes, share the same reader.
-- First FFT frames use the original synchronous analysis/synthesis path. At most
-  one voice starts per audio cycle; a simultaneous four-note chord can spread
-  over three extra blocks (8.7 ms). ADSR waits with each queued voice.
+- First FFT frames are prepared over six callbacks without advancing source or
+  ADSR. The two voices start on opposite callback parities; startup adds about
+  17.4..20.3 ms before the attack. Steady-state low filtering is split into four jobs.
 - Replacement notes fade the outgoing block before reusing its FFT state. Region
   edits retain the prototype's fade/reset behavior; ONCE direction and ping-pong
   startup-direction edits retain their existing continuity behavior.
@@ -38,7 +104,7 @@ with `platformio run -e teensy41`; its controls and firmware documentation are b
 
 Build: `platformio run -e lilla_fft_r2` (also the default target).
 The build derives its HEX/ELF name from `FIRMWARE_VERSION` in `lilla/lib/config/config.h`.
-The current HEX is `LILLA_PitchShift_v0_0_5.hex`. It is exported to the
+The current HEX is `LILLA_PitchShift_v0_0_9.hex`. It is exported to the
 repository root and checked byte-for-byte against the corresponding named HEX in
 `.pio/build/lilla_fft_r2/`. Teensy GUI upload explicitly selects this root copy,
 so Loader displays the release name. The copy is refreshed and verified before upload.
@@ -52,12 +118,12 @@ ring overwrite, startup waiting, first-fill protection and recording-stop drain.
 They do not replace an R2 test of the full application, MIDI/ADSR/effects scheduling,
 physical storage, display, or real input-to-output latency.
 
-The 29 ms Live margin is a source-read requirement, not a measured end-to-end
-latency; input/output buffering adds time. Four voices are the maximum; available headroom depends on effects and source storage. Source-transfer
+The 116 ms Live margin is a source-read requirement, not a measured end-to-end
+latency; input/output buffering adds time. Two voices are the maximum; available headroom depends on effects and source storage. Source-transfer
 admission and Lilla's cycle deadline remain enabled; FFT CPU plus the complete
 R2 effects chain must be measured on hardware. The old speed-shift harvesting and interpolation functions have been removed
 from AudioPlayer; update uses only the FFT rendering path. Display drawing code
-is linked into Flash so the FFT states and processing remain in fast RAM.
+is linked into Flash while shared temporary FFT buffers use RAM2 and voice histories use RAM1.
 
 ---
 

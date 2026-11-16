@@ -204,13 +204,9 @@ AudioOutputI2S audio_out;           // Send the main stereo signal to the I2S ou
 
 AudioConnection patchCord1(Player[0], 0, Router_L, 0);
 AudioConnection patchCord2(Player[1], 0, Router_L, 1);
-AudioConnection patchCord3(Player[2], 0, Router_L, 2);
-AudioConnection patchCord4(Player[3], 0, Router_L, 3);
 
 AudioConnection patchCord17(Player[0], 1, Router_R, 0);
 AudioConnection patchCord18(Player[1], 1, Router_R, 1);
-AudioConnection patchCord19(Player[2], 1, Router_R, 2);
-AudioConnection patchCord20(Player[3], 1, Router_R, 3);
 
 AudioConnection patchCord33(Router_L, 0, D_Compressor, 0);
 AudioConnection patchCord34(D_Compressor, 0, Delay_L, 0);
@@ -951,6 +947,33 @@ FLASHMEM void setup()
 
 FLASHMEM void loop()
 {
+    static uint32_t fft_report_ms = 0;
+    static uint32_t fft_last_stops = 0;
+    const uint32_t now = millis();
+    if (Serial && now - fft_report_ms >= 2000u && Serial.availableForWrite() >= 192)
+    {
+        uint32_t start_max, run_max, starts, active = 0;
+
+        AudioNoInterrupts();
+        AudioPlayer::Take_fft_timing(start_max, run_max, starts);
+        const float cpu = AudioProcessorUsageMax();
+        AudioProcessorUsageMaxReset();
+        const uint32_t stops = audio_player_emergency_stops;
+        for (uint8_t voice = 0; voice < PLAYERS; ++voice)
+        {
+            active += Player[voice].State() != AudioPlayer::PlayerState::Idle;
+        }
+        AudioInterrupts();
+
+        char report[192];
+        const int length = snprintf(report, sizeof(report), "FFT_TIMING ms=%lu active=%lu cpu_max=%.1f%% start_max_us=%lu run_max_us=%lu starts=%lu deadline_stops=%lu\n", static_cast<unsigned long>(now - fft_report_ms), static_cast<unsigned long>(active), cpu, static_cast<unsigned long>(start_max), static_cast<unsigned long>(run_max), static_cast<unsigned long>(starts), static_cast<unsigned long>(stops - fft_last_stops));
+        if (length > 0 && length < static_cast<int>(sizeof(report)))
+        {
+            Serial.write(reinterpret_cast<const uint8_t *>(report), length);
+        }
+        fft_report_ms = now;
+        fft_last_stops = stops;
+    }
     static bool recording_limit_notified = false;
     if (Lilla_state != DIRECT_SAMPLING || !DS_recording_slots_full)
     {
@@ -4731,13 +4754,13 @@ FLASHMEM void loop()
         from_note = 0, to_note = 127, root_key = 60, midi_ch = 0 (canale MIDI 1).
 
         MEMORIA E SCRITTURA
-        LS_buffer_storage Ã¨ l'area condivisa, allocata staticamente in PSRAM.
+        LS_buffer_storage ÃƒÂ¨ l'area condivisa, allocata staticamente in PSRAM.
         LS_buffer_mono_ptr identifica la vista mono; LS_buffer_L_ptr e LS_buffer_R_ptr identificano i due canali stereo.
         Ogni vista attiva contiene LS_buffer_dim campioni, con indici fisici da 0 a LS_buffer_dim - 1.
         Dopo l'ultimo indice si riparte da zero: il buffer si comporta come un nastro circolare.
 
-        LiveSampler.Q_sample Ã¨ l'indice dell'ultimo campione scritto; LS_Q_sample ne conserva una copia per la UI.
-        Dopo il reset Q_sample vale -1. Durante il primo riempimento, la parte successiva a Q non Ã¨ ancora registrata.
+        LiveSampler.Q_sample ÃƒÂ¨ l'indice dell'ultimo campione scritto; LS_Q_sample ne conserva una copia per la UI.
+        Dopo il reset Q_sample vale -1. Durante il primo riempimento, la parte successiva a Q non ÃƒÂ¨ ancora registrata.
         Dopo un giro completo, quella parte contiene l'audio precedente, fino alla sua sovrascrittura.
         La scrittura non azzera preventivamente il blocco successivo.
 
@@ -4747,10 +4770,10 @@ FLASHMEM void loop()
 
         FINESTRA VISUALIZZATA
         La waveform mostra i campioni da LS_window_A_sample a LS_window_B_sample.
-        LS_window_width Ã¨ l'ampiezza della finestra; LS_X_sample si trova al suo centro.
+        LS_window_width ÃƒÂ¨ l'ampiezza della finestra; LS_X_sample si trova al suo centro.
         LS_window_A_sample = LS_constrain_position(LS_X_sample - (LS_window_width - 1) / 2)
         LS_window_B_sample = LS_window_A_sample + LS_window_width - 1
-        Il limite destro resta una coordinata logica e puÃ² superare la fine fisica della cache.
+        Il limite destro resta una coordinata logica e puÃƒÂ² superare la fine fisica della cache.
 
         .................................(LS_X_sample)..........(LS_Y_sample)...................(LS_buffer_dim - 1)
                   (LS_window_A_sample)+++++++++|+++++++(LS_window_B_sample)
@@ -4758,7 +4781,7 @@ FLASHMEM void loop()
         PUNTI DI RIFERIMENTO
         LS_X_sample identifica il riferimento iniziale mostrato dalla UI.
         LS_Y_sample = LS_X_sample + LS_XY_delta identifica l'altro estremo del segmento per i modi loop.
-        LS_Y_sample puÃ² trovarsi fuori dalla finestra visualizzata o oltre l'ultimo indice fisico della cache.
+        LS_Y_sample puÃƒÂ² trovarsi fuori dalla finestra visualizzata o oltre l'ultimo indice fisico della cache.
         Il punto effettivo di lettura della voce viene calcolato separatamente da AudioPlayer in base al modo.
 
         FIXED: LS_XY_lock == true
@@ -4773,7 +4796,7 @@ FLASHMEM void loop()
         Con LS_X_delta = 0 la UI mostra SYNC; la waveform scorre mostrando l'audio precedente a sinistra.
 
         Al Note On il Player prepara la propria posizione di lettura: non segue continuamente LS_X_sample della UI.
-        In FWD, con cache piena, la lettura Ã¨ circolare e non termina al limite B, anche dopo STOP della registrazione.
+        In FWD, con cache piena, la lettura ÃƒÂ¨ circolare e non termina al limite B, anche dopo STOP della registrazione.
         Durante il primo riempimento resta attiva la protezione che sfuma e arresta la voce quando raggiunge audio non registrato.
         Nei modi loop il contenuto riprodotto cambia se la registrazione sovrascrive il segmento selezionato.
 
@@ -5460,7 +5483,7 @@ FLASHMEM void loop()
         root_key = 60
         midi_ch = 0 (midi channel 1)
 
-        Se la registrazione Ã¨ mono, PATCHES_MAX comprende 1 Instrument e il Sound SOUNDS_MAX:
+        Se la registrazione ÃƒÂ¨ mono, PATCHES_MAX comprende 1 Instrument e il Sound SOUNDS_MAX:
 
         */
 
@@ -15300,7 +15323,7 @@ FLASHMEM bool TEST_Current_Patch_SD_round_trip(void)
     Serial.println(F("Patch successfully saved"));
 
     // 2. Alterazione intenzionale della Patch in RAM.
-    // Serve a dimostrare che Resume non Ã¨ un semplice no-op.
+    // Serve a dimostrare che Resume non ÃƒÂ¨ un semplice no-op.
     Patch[test_patch_id].used = !Original_Patch.used;
 
     if (Patch[test_patch_id] == Original_Patch)
@@ -15329,7 +15352,7 @@ FLASHMEM bool TEST_Current_Patch_SD_round_trip(void)
     const bool data_match = Patch[test_patch_id] == Original_Patch;
 
     // Ripristino finale garantito.
-    // In caso di successo l'assegnazione Ã¨ ridondante ma innocua.
+    // In caso di successo l'assegnazione ÃƒÂ¨ ridondante ma innocua.
     Patch[test_patch_id] = Original_Patch;
 
     if (!data_match)

@@ -12,5 +12,5 @@ for source in ("include/FftPitchCore.h", "src/FftPitchCore.cpp"):
     (build / ("LegacyFftPitchCore" + Path(source).suffix)).write_bytes(data)
 compiler = shutil.which("g++") or "C:/msys64/ucrt64/bin/g++.exe"
 exe = build / "region_quality_test.exe"
-subprocess.run([compiler, "-std=c++20", "-O2", "-Wall", "-Wextra", "-Werror", "-static", "-I", str(root / "include"), "-I", str(build), str(root / "src/FftPitchCore.cpp"), str(build / "LegacyFftPitchCore.cpp"), str(root / "tests/region_quality_test.cpp"), "-o", str(exe)], check=True)
+subprocess.run([compiler, "-std=c++20", "-O2", "-Wall", "-Wextra", "-Werror", "-static", "-I", str(root / "include"), "-I", str(build), str(root / "src/FftSpectralFrame.cpp"), str(root / "src/FftPitchCore.cpp"), str(build / "LegacyFftPitchCore.cpp"), str(root / "tests/region_quality_test.cpp"), "-o", str(exe)], check=True)
 subprocess.run([str(exe)], check=True)

@@ -129,7 +129,7 @@ int main()
     {
         FftPitchCore continuous;
         continuous.StartNote(dc.data(), dc.size(), pitch, 1.0f);
-        for (unsigned i = 0; i < 2048; ++i)
+        for (unsigned i = 0; i < (FFT_DUAL_BAND ? 4096u : 2048u); ++i)
         {
             continuous.Render();
         }

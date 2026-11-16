@@ -13,8 +13,8 @@ float PlayerReadBudget::Estimate(const Plan &plan, uint32_t output_samples)
     }
     if (plan.fft)
     {
-        // One 1024-sample analysis plus direct-path reads; reserve mixed endpoints and cache boundaries.
-        const uint32_t samples = plan.crossfade > 0 && !plan.pingpong ? 2560u : 1536u;
+        // Coincident short and long analyses, FIR context and direct reads; reserve cache boundaries and mixed endpoints.
+        const uint32_t samples = plan.crossfade > 0 && !plan.pingpong ? 11264u : 6144u;
         const uint32_t transfers = samples / 256u;
         return (Transfer_us(plan.source, samples) + (transfers - 1u) * Transfer_us(plan.source, 0) + (plan.packets ? transfers * 40.0f : 0.0f)) * Margin;
     }

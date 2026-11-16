@@ -38,9 +38,10 @@ struct Tone { void Process(int16_t *, int, float, int, float) {} };
 class AudioPlayer
 {
 public:
+    uint8_t identity = 0;
     static uint32_t fft_first_frame_cycle;
     FftPitchCore fft_core;
-    static constexpr uint32_t Live_fft_margin = FftPitchCore::Size + FftPitchCore::Hop;
+    static constexpr uint32_t Live_fft_margin = FftPitchCore::SourceLookahead;
     bool fft_live_waiting = false, fft_live_follow = false, fft_live_restart = false;
     bool LS_flag = false, live_unrecorded_notice = false, finished = false;
     Recorder *Live_Sampler = nullptr;

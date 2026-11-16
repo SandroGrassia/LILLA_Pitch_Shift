@@ -32,6 +32,7 @@
 class AudioPlayer : public AudioStream
 {
 public:
+    static void Take_fft_timing(uint32_t &start_max, uint32_t &run_max, uint32_t &starts); // Caller excludes audio IRQ.
     enum class PlayerState : uint8_t
     {
         Idle, // No active source; a cached budget-retirement tail may still be emitted.
@@ -45,8 +46,11 @@ public:
 
 private:
     static uint32_t fft_first_frame_cycle;
+    static uint32_t fft_start_max_us;
+    static uint32_t fft_run_max_us;
+    static uint32_t fft_starts;
     FftPitchCore fft_core;
-    static constexpr uint32_t Live_fft_margin = FftPitchCore::Size + FftPitchCore::Hop; // 1280 samples: lookahead plus one scheduling block, 29.0 ms.
+    static constexpr uint32_t Live_fft_margin = FftPitchCore::SourceLookahead; // 5120 samples: dual-band lookahead and scheduling margin, 116.1 ms.
     bool fft_live_waiting = false;
     bool fft_live_follow = false;
     bool fft_live_restart = false;

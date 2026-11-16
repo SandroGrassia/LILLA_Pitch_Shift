@@ -3,8 +3,9 @@
 #include <cmath>
 #ifdef __IMXRT1062__
 #include <Arduino.h>
-#include <arm_math.h>
-#include <arm_const_structs.h>
+#define FFT_SCRATCH DMAMEM
+#else
+#define FFT_SCRATCH
 #endif
 
 namespace
@@ -12,22 +13,28 @@ namespace
 constexpr float Tau = 6.2831853071795864769f;
 }
 
-bool FftPitchCore::tables_ready = false;
-float FftPitchCore::window[FftPitchCore::Size] = {};
-alignas(32) float FftPitchCore::fft[2 * FftPitchCore::Size] = {};
-float FftPitchCore::advanced_phase[FftPitchCore::Bins] = {};
-uint16_t FftPitchCore::peaks[FftPitchCore::Bins] = {};
-uint16_t FftPitchCore::peak_owner[FftPitchCore::Bins] = {};
+bool FftPitchCore::filter_ready = false;
+float FftPitchCore::decimator[FftPitchCore::FilterTaps] = {};
+FFT_SCRATCH float FftPitchCore::low_input[FftPitchCore::Hop * FftPitchCore::LowFactor + FftPitchCore::FilterTaps] = {};
 
 FftPitchCore::FftPitchCore()
 {
-    if (!tables_ready)
+    if (!filter_ready)
     {
-        for (uint32_t i = 0; i < Size; ++i)
+        float sum = 0.0f;
+        for (uint32_t i = 0; i < FilterTaps; ++i)
         {
-            window[i] = 0.5f - 0.5f * std::cos(Tau * i / Size);
+            const int offset = static_cast<int>(i) - static_cast<int>(FilterTaps / 2);
+            const float sinc = offset == 0 ? 0.14f : std::sin(Tau * 0.07f * offset) / (0.5f * Tau * offset);
+            const float window = 0.42f - 0.5f * std::cos(Tau * i / (FilterTaps - 1)) + 0.08f * std::cos(2.0f * Tau * i / (FilterTaps - 1));
+            decimator[i] = sinc * window;
+            sum += decimator[i];
         }
-        tables_ready = true;
+        for (float &value : decimator)
+        {
+            value /= sum;
+        }
+        filter_ready = true;
     }
 }
 
@@ -59,15 +66,19 @@ void FftPitchCore::StartNote(const int16_t *samples, uint32_t count, float pitch
     gate = 0.0f;
     initialized = false;
     transport = 0;
-    generated = 0;
-    analyzed = 0;
-    transient_resets = 0;
-    transient_holdoff = 0;
+    high.generated = 0;
+    high.analyzed = 0;
+    high.transient_resets = 0;
+    high.transient_holdoff = 0;
     running = true;
 }
 
 void FftPitchCore::SetRegion(uint32_t first, uint32_t end, uint32_t mix)
 {
+    if (high.generated == 0)
+    {
+        initialized = false;
+    }
     requested_first = first;
     requested_end = end;
     requested_mix = mix;
@@ -92,6 +103,10 @@ void FftPitchCore::SetRegion(uint32_t first, uint32_t end, uint32_t mix)
 
 void FftPitchCore::SetMode(PlayMode value)
 {
+    if (high.generated == 0)
+    {
+        initialized = false;
+    }
     if (initialized && IsActive() && !region_pending && IsPingPong(mode) && IsPingPong(value))
     {
         mode = requested_mode = value; // Only the startup direction differs; keep the current leg and FFT history.
@@ -102,8 +117,11 @@ void FftPitchCore::SetMode(PlayMode value)
         if (mode != value)
         {
             mode = requested_mode = value;
-            analysis_ready = false;
+            high.analysis_ready = false;
             direction_reanchor = true;
+            low.analysis_ready = false;
+            low_parts = 0;
+            low_reanchor = true;
         }
         return; // Reverse at the current position without clearing overlap audio or the gate.
     }
@@ -113,16 +131,6 @@ void FftPitchCore::SetMode(PlayMode value)
     {
         transport = region_end - 1u;
     }
-}
-
-void FftPitchCore::FinishForwardAt(uint32_t end)
-{
-    mode = requested_mode = PlayMode::OnceForward;
-    region_end = requested_end = end;
-    cross_mix = requested_mix = 0;
-    cross_mix_scale = 0.0f;
-    region_pending = false;
-    analysis_ready = false;
 }
 
 void FftPitchCore::SetPitch(float value) { pitch_target = value; }
@@ -137,15 +145,10 @@ void FftPitchCore::SetRunning(bool value)
 }
 bool FftPitchCore::IsActive() const { return running || gate > 0.0f; }
 uint32_t FftPitchCore::Transport() const { return transport; }
-uint32_t FftPitchCore::GeneratedHops() const { return generated; }
-uint32_t FftPitchCore::AnalyzedFrames() const { return analyzed; }
+uint32_t FftPitchCore::GeneratedHops() const { return high.generated; }
+uint32_t FftPitchCore::AnalyzedFrames() const { return high.analyzed; }
 float FftPitchCore::Pitch() const { return pitch_now; }
-uint32_t FftPitchCore::TransientResets() const { return transient_resets; }
-
-float FftPitchCore::WrapPhase(float phase)
-{
-    return phase - Tau * std::round(phase / Tau);
-}
+uint32_t FftPitchCore::TransientResets() const { return high.transient_resets; }
 
 uint32_t FftPitchCore::SourcePosition(uint32_t position) const
 {
@@ -190,17 +193,6 @@ uint32_t FftPitchCore::Advance(uint32_t position, uint32_t count) const
     }
     const uint32_t loop_start = region_first + cross_mix;
     return loop_start + (next - region_end) % (region_end - loop_start);
-}
-
-void FftPitchCore::SetSampleReader(SampleReader reader, void *context)
-{
-    sample_reader = reader;
-    reader_context = context;
-}
-
-float FftPitchCore::ReadSource(uint32_t position) const
-{
-    return sample_reader != nullptr ? sample_reader(reader_context, position) : source[position];
 }
 
 float FftPitchCore::ReadLoop(uint32_t position) const
@@ -249,224 +241,24 @@ void FftPitchCore::ReadReferenceBlock(int16_t *destination, uint32_t first, uint
     }
 }
 
-void FftPitchCore::Transform(bool inverse)
-{
-#ifdef __IMXRT1062__
-    arm_cfft_f32(&arm_cfft_sR_f32_len1024, fft, inverse ? 1 : 0, 1);
-#else
-    // Portable host-test backend; production uses the bundled CMSIS-DSP FFT.
-    for (uint32_t i = 1, j = 0; i < Size; ++i)
-    {
-        uint32_t bit = Size >> 1;
-        while ((j & bit) != 0)
-        {
-            j ^= bit;
-            bit >>= 1;
-        }
-        j ^= bit;
-        if (i < j)
-        {
-            std::swap(fft[2 * i], fft[2 * j]);
-            std::swap(fft[2 * i + 1], fft[2 * j + 1]);
-        }
-    }
-    for (uint32_t length = 2; length <= Size; length <<= 1)
-    {
-        for (uint32_t j = 0; j < length / 2; ++j)
-        {
-            const float angle = (inverse ? Tau : -Tau) * j / length;
-            const float wr = std::cos(angle);
-            const float wi = std::sin(angle);
-            for (uint32_t base = 0; base < Size; base += length)
-            {
-                const uint32_t a = 2 * (base + j);
-                const uint32_t b = 2 * (base + j + length / 2);
-                const float real = fft[b] * wr - fft[b + 1] * wi;
-                const float imag = fft[b] * wi + fft[b + 1] * wr;
-                fft[b] = fft[a] - real;
-                fft[b + 1] = fft[a + 1] - imag;
-                fft[a] += real;
-                fft[a + 1] += imag;
-            }
-        }
-    }
-    if (inverse)
-    {
-        for (float &value : fft)
-        {
-            value /= Size;
-        }
-    }
-#endif
-}
-
 void FftPitchCore::Analyze(uint32_t position)
 {
-    ++analyzed;
-#ifdef __IMXRT1062__
-    if (first_frame)
-    {
-        CrashReport.breadcrumb(3, 100);
-        CrashReport.breadcrumb(4, reinterpret_cast<uint32_t>(source));
-        CrashReport.breadcrumb(5, source_count);
-    }
-#endif
-    float frame_energy = 0.0f;
     for (uint32_t i = 0; i < Size; ++i)
     {
-        fft[2 * i] = ReadLoop(position) * window[i];
-        frame_energy += fft[2 * i] * fft[2 * i];
-        fft[2 * i + 1] = 0.0f;
+        high.Input(i, ReadLoop(position));
         position = Advance(position, 1);
     }
-#ifdef __IMXRT1062__
-    if (first_frame)
-    {
-        CrashReport.breadcrumb(3, 101);
-    }
-#endif
-    Transform(false);
-#ifdef __IMXRT1062__
-    if (first_frame)
-    {
-        CrashReport.breadcrumb(3, 102);
-    }
-#endif
-    float positive_flux = 0.0f;
-    float spectral_sum = 0.0f;
-    for (uint32_t bin = 0; bin < Bins; ++bin)
-    {
-        const float real = fft[2 * bin];
-        const float imag = fft[2 * bin + 1];
-        const float amplitude = std::sqrt(real * real + imag * imag);
-        positive_flux += std::max(0.0f, amplitude - previous_magnitude[bin]);
-        spectral_sum += amplitude;
-        previous_magnitude[bin] = amplitude;
-        const float phase = std::atan2(imag, real);
-        const float expected = Tau * bin * Hop / Size;
-        const float deviation = (first_frame || direction_reanchor) ? 0.0f : WrapPhase(phase - previous_phase[bin] - expected);
-        analysis_frequency[bin] = bin + deviation * (Size / (Tau * Hop));
-        previous_phase[bin] = phase;
-    }
-    if (transient_holdoff > 0)
-    {
-        --transient_holdoff;
-    }
-    frame_transient = direction_reanchor || (!first_frame && transient_holdoff == 0 && frame_energy > Size * 64.0f * 64.0f && positive_flux > 0.35f * spectral_sum);
+    high.Analyze(direction_reanchor);
     direction_reanchor = false;
-    if (frame_transient)
-    {
-        transient_holdoff = 4;
-        ++transient_resets;
-    }
-    analysis_ready = true;
 }
 
 void FftPitchCore::Generate()
 {
-    ++generated;
-    if (!analysis_ready)
+    if (!high.analysis_ready)
     {
-        Analyze(transport); // First frame starts immediately; no extra attack latency.
+        Analyze(transport);
     }
-    // Find peaks in the ANALYSIS spectrum: shifted bins have artificial gaps at pitch > 1.
-    // Ignore peaks more than 60 dB below the largest analysis magnitude.
-    const float peak_floor = *std::max_element(previous_magnitude, previous_magnitude + Bins) * 0.001f;
-    uint32_t peak_count = 0;
-    for (uint32_t bin = 0; bin < Bins; ++bin)
-    {
-        const float value = previous_magnitude[bin];
-        const float left = bin > 0 ? previous_magnitude[bin - 1] : -1.0f;
-        const float right = bin + 1 < Bins ? previous_magnitude[bin + 1] : -1.0f;
-        if (value > peak_floor && value > left && value >= right)
-        {
-            peaks[peak_count++] = static_cast<uint16_t>(bin);
-        }
-    }
-    if (peak_count > 0)
-    {
-        uint32_t nearest = 0;
-        for (uint32_t bin = 0; bin < Bins; ++bin)
-        {
-            while (nearest + 1 < peak_count && 2 * bin > static_cast<uint32_t>(peaks[nearest]) + peaks[nearest + 1])
-            {
-                ++nearest;
-            }
-            peak_owner[bin] = peaks[nearest];
-        }
-    }
-    // Shift each peak region rigidly: preserve local lobe width instead of dilating it.
-    // Phase history is indexed by source bin, independent of destination collisions.
-    const bool reset_phase = first_frame || frame_transient || pitch_now == 1.0f;
-    for (uint32_t index = 0; index < peak_count; ++index)
-    {
-        const uint32_t peak = peaks[index];
-        const float shift = (pitch_now - 1.0f) * analysis_frequency[peak];
-        advanced_phase[peak] = reset_phase ? WrapPhase(previous_phase[peak] + 0.5f * Tau * shift) : WrapPhase(synthesis_phase[peak] + Tau * analysis_frequency[peak] * pitch_now * Hop / Size);
-    }
-    std::fill_n(fft, 2 * Size, 0.0f);
-    for (uint32_t bin = 0; bin < Bins; ++bin)
-    {
-        if (peak_count == 0)
-        {
-            synthesis_phase[bin] = previous_phase[bin];
-            continue;
-        }
-        const uint32_t peak = peak_owner[bin];
-        const float shift = (pitch_now - 1.0f) * analysis_frequency[peak];
-        const float shifted_peak = analysis_frequency[peak] * pitch_now;
-        const float phase = WrapPhase(advanced_phase[peak] + previous_phase[bin] - previous_phase[peak]);
-        synthesis_phase[bin] = phase;
-        if (shifted_peak < 0.0f || shifted_peak > Size / 2)
-        {
-            continue; // Remove whole out-of-band regions; do not fold them back.
-        }
-        const float destination = bin + shift;
-        const int lower = static_cast<int>(std::floor(destination));
-        const float fraction = destination - lower;
-        // Interpolate the centered complex spectrum: adjacent Hann bins have opposite signs.
-        // This phase correction prevents cancellation when shifting by a fractional bin.
-        const float centered_phase = phase - 0.5f * Tau * shift;
-        const float real = previous_magnitude[bin] * std::cos(centered_phase);
-        const float imag = previous_magnitude[bin] * std::sin(centered_phase);
-        for (int side = 0; side < 2; ++side)
-        {
-            const int target = lower + side;
-            if (target < 0 || target >= static_cast<int>(Bins))
-            {
-                continue;
-            }
-            const float weight = (side == 0 ? 1.0f - fraction : fraction) * (((target - static_cast<int>(bin)) % 2) == 0 ? 1.0f : -1.0f);
-            fft[2 * target] += weight * real;
-            fft[2 * target + 1] += weight * imag;
-        }
-    }
-    fft[1] = 0.0f;
-    fft[Size + 1] = 0.0f;
-    for (uint32_t bin = 1; bin < Size / 2; ++bin)
-    {
-        fft[2 * (Size - bin)] = fft[2 * bin];
-        fft[2 * (Size - bin) + 1] = -fft[2 * bin + 1];
-    }
-#ifdef __IMXRT1062__
-    if (first_frame)
-    {
-        CrashReport.breadcrumb(3, 200);
-    }
-#endif
-    Transform(true);
-#ifdef __IMXRT1062__
-    if (first_frame)
-    {
-        CrashReport.breadcrumb(3, 201);
-    }
-#endif
-    for (uint32_t i = 0; i < Size; ++i)
-    {
-        accumulation[(head + i) & (Size - 1)] += fft[2 * i] * window[i] * (2.0f / 3.0f);
-    }
-    first_frame = false;
-    analysis_ready = false;
+    high.Generate(pitch_now, FFT_DUAL_BAND ? FftSpectralFrame::Band::High : FftSpectralFrame::Band::Full);
 }
 
 int16_t FftPitchCore::Render()
@@ -499,7 +291,7 @@ int16_t FftPitchCore::Render()
             }
             initialized = false;
             region_pending = false;
-            transient_holdoff = 0;
+            high.transient_holdoff = 0;
             direction_reanchor = false;
         }
     }
@@ -509,17 +301,7 @@ int16_t FftPitchCore::Render()
     }
     if (!initialized)
     {
-        std::fill_n(previous_phase, Bins, 0.0f);
-        std::fill_n(previous_magnitude, Bins, 0.0f);
-        std::fill_n(synthesis_phase, Bins, 0.0f);
-        std::fill_n(accumulation, Size, 0.0f);
-        first_frame = true;
-        analysis_ready = false;
-        direct_mix = pitch_target == 1.0f ? 1.0f : 0.0f;
-        head = 0;
-        until_frame = 0;
-        pitch_now = pitch_target;
-        initialized = true;
+        InitializeRender();
     }
     pitch_now += (pitch_target - pitch_now) * (1.0f / 256.0f);
     volume_now += (volume_target - volume_now) * (1.0f / 256.0f);
@@ -533,7 +315,9 @@ int16_t FftPitchCore::Render()
             cross_mix_scale = cross_mix > 0 ? 1.0f / (cross_mix - 1u) : 0.0f;
             if (UsesCrossMix(mode))
             {
-                analysis_ready = false;
+                high.analysis_ready = false;
+                low.analysis_ready = false;
+            low_parts = 0;
             }
         }
         Generate();
@@ -551,14 +335,13 @@ int16_t FftPitchCore::Render()
     const bool direct = pitch_target == 1.0f && std::abs(pitch_now - 1.0f) < 0.00002f;
     direct_mix = direct ? std::min(1.0f, direct_mix + 1.0f / 256.0f) : std::max(0.0f, direct_mix - 1.0f / 256.0f);
     const float direct_sample = ReadLoop(transport);
-    const float sample = direct_mix == 1.0f ? direct_sample : accumulation[head] + direct_mix * (direct_sample - accumulation[head]);
+    const float processed = high.Take() + (FFT_DUAL_BAND ? RenderLow() : 0.0f);
+    const float sample = direct_mix == 1.0f ? direct_sample : processed + direct_mix * (direct_sample - processed);
     const uint32_t remaining = mode == PlayMode::OnceReverse ? transport - region_first + 1u : region_end - transport;
     const uint32_t fade = std::min<uint32_t>(221u, region_end - region_first);
     const float end_gain = !IsLoop(mode) && remaining <= fade ? static_cast<float>(remaining - 1u) / (fade - 1u) : 1.0f;
     end_gain_now = std::min(end_gain, end_gain_now + 1.0f / 221.0f);
     const float value = sample * gate * volume_now * region_gain * end_gain_now;
-    accumulation[head] = 0.0f;
-    head = (head + 1) & (Size - 1);
     transport = Advance(transport, 1);
     if ((mode == PlayMode::OnceForward && transport == region_end) || (mode == PlayMode::OnceReverse && transport == UINT32_MAX))
     {
@@ -568,4 +351,198 @@ int16_t FftPitchCore::Render()
         region_pending = false;
     }
     return static_cast<int16_t>(std::clamp(value, -32768.0f, 32767.0f));
+}
+
+float FftPitchCore::ReadOffset(uint32_t position, int offset) const
+{
+    if (offset >= 0)
+    {
+        return ReadLoop(Advance(position, static_cast<uint32_t>(offset)));
+    }
+    int64_t next = static_cast<int64_t>(position) + (IsReverse(mode) && !IsPingPong(mode) ? -offset : offset);
+    if (!IsLoop(mode))
+    {
+        return next >= region_first && next < region_end ? ReadLoop(static_cast<uint32_t>(next)) : 0.0f;
+    }
+    if (IsPingPong(mode))
+    {
+        const int64_t period = 2 * static_cast<int64_t>(region_end - region_first - 1u);
+        next = region_first + ((next - region_first) % period + period) % period;
+    }
+    else
+    {
+        const int64_t period = region_end - region_first - cross_mix;
+        if (next < region_first)
+        {
+            next += ((region_first - next + period - 1) / period) * period;
+        }
+        else if (next >= region_end)
+        {
+            next -= ((next - region_end + period) / period) * period;
+        }
+    }
+    return ReadLoop(static_cast<uint32_t>(next));
+}
+
+void FftPitchCore::FilterLowPart(uint32_t position, int offset, uint32_t part)
+{
+    const int first = offset + part * Hop * LowFactor;
+    for (uint32_t i = 0; i < Hop * LowFactor + FilterTaps; ++i)
+    {
+        low_input[i] = ReadOffset(position, first + static_cast<int>(i) - static_cast<int>(FilterTaps / 2));
+    }
+    for (uint32_t i = 0; i < Hop; ++i)
+    {
+        const uint32_t base = i * LowFactor;
+        float filtered = decimator[FilterTaps / 2] * low_input[base + FilterTaps / 2];
+        for (uint32_t tap = 0; tap < FilterTaps / 2; ++tap)
+        {
+            filtered += decimator[tap] * (low_input[base + tap] + low_input[base + FilterTaps - 1u - tap]);
+        }
+        low_filtered[part * Hop + i] = filtered;
+    }
+}
+
+void FftPitchCore::FinishLowAnalysis()
+{
+    for (uint32_t i = 0; i < Size; ++i)
+    {
+        low.Input(i, low_filtered[i]);
+    }
+    low.Analyze(low_reanchor);
+    low_reanchor = false;
+}
+
+void FftPitchCore::AnalyzeLow(uint32_t position, int offset)
+{
+    // Synchronous fallback for standalone callers and mid-frame control invalidation.
+    for (uint32_t part = 0; part < 4; ++part)
+    {
+        FilterLowPart(position, offset, part);
+    }
+    FinishLowAnalysis();
+}
+
+float FftPitchCore::NextLow(int offset)
+{
+    if (low_until_frame == 0)
+    {
+        if (!low.analysis_ready)
+        {
+            AnalyzeLow(transport, offset);
+        }
+        low.Generate(pitch_now, FftSpectralFrame::Band::Low);
+        low_until_frame = Hop;
+    }
+    else if (low_until_frame <= 224 && low_until_frame >= 128 && low_until_frame % 32 == 0)
+    {
+        const uint32_t part = (224u - low_until_frame) / 32u;
+        if (part == 0)
+        {
+            low_prepare_position = transport;
+            low_prepare_offset = offset + LowFactor * low_until_frame;
+            low_parts = 0;
+        }
+        if (low_parts == part)
+        {
+            FilterLowPart(low_prepare_position, low_prepare_offset, part);
+            ++low_parts;
+        }
+    }
+    else if (low_until_frame == 96 && low_parts == 4)
+    {
+        FinishLowAnalysis();
+    }
+    --low_until_frame;
+    return low.Take();
+}
+
+float FftPitchCore::RenderLow()
+{
+    if (!low_primed)
+    {
+        low_samples[1] = NextLow(0);
+        low_samples[0] = low_samples[1];
+        low_samples[2] = NextLow(LowFactor);
+        low_samples[3] = NextLow(2 * LowFactor);
+        low_primed = true;
+    }
+    else if (low_phase == LowFactor)
+    {
+        low_samples[0] = low_samples[1];
+        low_samples[1] = low_samples[2];
+        low_samples[2] = low_samples[3];
+        low_samples[3] = NextLow(2 * LowFactor);
+        low_phase = 0;
+    }
+    // Cubic interpolation of the low-rate output, using file lookahead rather than output delay.
+    const float t = static_cast<float>(low_phase++) / LowFactor;
+    const float a = -low_samples[0] + 3.0f * low_samples[1] - 3.0f * low_samples[2] + low_samples[3];
+    const float b = 2.0f * low_samples[0] - 5.0f * low_samples[1] + 4.0f * low_samples[2] - low_samples[3];
+    const float c = -low_samples[0] + low_samples[2];
+    return 0.5f * (((a * t + b) * t + c) * t + 2.0f * low_samples[1]);
+}
+
+void FftPitchCore::SetSampleReader(SampleReader reader, void *context)
+{
+    sample_reader = reader;
+    reader_context = context;
+}
+
+float FftPitchCore::ReadSource(uint32_t position) const
+{
+    return sample_reader != nullptr ? sample_reader(reader_context, position) : source[position];
+}
+
+void FftPitchCore::FinishForwardAt(uint32_t end)
+{
+    mode = requested_mode = PlayMode::OnceForward;
+    region_end = requested_end = end;
+    cross_mix = requested_mix = 0;
+    cross_mix_scale = 0.0f;
+    region_pending = false;
+    high.analysis_ready = false;
+    low.analysis_ready = false;
+    low_parts = 0;
+}
+
+void FftPitchCore::InitializeRender()
+{
+    high.Reset();
+    low.Reset();
+    low_until_frame = 0;
+    low_phase = 0;
+    low_primed = false;
+    low_reanchor = false;
+    direct_mix = pitch_target == 1.0f ? 1.0f : 0.0f;
+    until_frame = 0;
+    pitch_now = pitch_target;
+    initialized = true;
+    low_parts = 0;
+    start_step = 0;
+}
+
+bool FftPitchCore::PrepareStartStep()
+{
+    if (!initialized)
+    {
+        InitializeRender();
+    }
+    if (FFT_DUAL_BAND && start_step < 4)
+    {
+        FilterLowPart(transport, 0, start_step++);
+        return false;
+    }
+    if (FFT_DUAL_BAND && start_step == 4)
+    {
+        FinishLowAnalysis();
+        ++start_step;
+        return false;
+    }
+    if (!high.analysis_ready)
+    {
+        Analyze(transport);
+        return false;
+    }
+    return true;
 }

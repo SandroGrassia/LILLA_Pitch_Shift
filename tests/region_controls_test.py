@@ -23,5 +23,6 @@ cases = {
 }
 for name, sources in cases.items():
     exe = build / (name + ".exe")
-    subprocess.run(common + [str(root / path) for path in sources] + ["-o", str(exe)], cwd=root, check=True)
+    flags = ["-DFFT_DUAL_BAND=0"] if name == "region_baseline" else []
+    subprocess.run(common + flags + [str(root / "src/FftSpectralFrame.cpp")] + [str(root / path) for path in sources] + ["-o", str(exe)], cwd=root, check=True)
     subprocess.run([str(exe)], cwd=root, check=True)

@@ -5,6 +5,30 @@ int main()
     {
         source[i] = static_cast<int16_t>(10000 * std::sin(i * 0.031) + 4000 * std::sin(i * 0.173));
     }
+    // Preparing the first frame must not consume source samples or alter the subsequent PCM.
+    for (uint8_t mode = 0; mode < 6; ++mode)
+    {
+        for (float pitch : {0.5f, 1.0f, 1.7f, 2.24492410f})
+        {
+            FftPitchCore staged;
+            FftPitchCore immediate;
+            staged.StartNote(source.data(), source.size(), pitch, 0.5f);
+            immediate.StartNote(source.data(), source.size(), pitch, 0.5f);
+            staged.SetMode(AudioPlayer::Fft_mode(mode));
+            immediate.SetMode(AudioPlayer::Fft_mode(mode));
+            const uint32_t first = staged.Transport();
+            for (unsigned step = 0; step < 6; ++step)
+            {
+                assert(!staged.PrepareStartStep());
+                assert(staged.Transport() == first && staged.GeneratedHops() == 0);
+            }
+            assert(staged.PrepareStartStep());
+            for (unsigned i = 0; i < 5000; ++i)
+            {
+                assert(staged.Render() == immediate.Render());
+            }
+        }
+    }
     // Exercise the production Flash cache and PSRAM offset reader across all six modes.
     for (int storage : {Flash, Psram})
     {
@@ -27,7 +51,7 @@ int main()
             {
                 assert(player.fft_core.Render() == reference.Render());
             }
-            assert(player.transfers < 600); // A mixed seam must not reread Flash twice for every sample.
+            assert(player.transfers < 1200); // Two analysis bands approximately double bounded cache traffic; still far below per-sample transfers.
         }
     }
     for (float pitch : {0.22272468f, 1.0f, 1.7f, 2.24492410f})
@@ -49,6 +73,12 @@ int main()
         FftPitchCore reference;
         reference.StartNote(source.data(), source.size(), pitch, 1.0f);
         unsigned written = AudioPlayer::Live_fft_margin;
+        struct RecordedSource { const int16_t *samples; unsigned *written; } recorded = {source.data(), &written};
+        reference.SetSampleReader([](void *context, uint32_t position) -> int16_t
+        {
+            const auto &recorded = *static_cast<RecordedSource *>(context);
+            return position < *recorded.written ? recorded.samples[position] : 0;
+        }, &recorded);
         unsigned rendered = 0;
         for (unsigned block = 0; block < 150; ++block)
         {
@@ -87,27 +117,29 @@ int main()
     recorder.Q_sample = 1279;
     loop.Start_fft();
     assert(loop.fft_live_waiting);
-    recorder.Q_sample = 4095;
+    recorder.Q_sample = AudioPlayer::Live_fft_margin - 1;
     assert(loop.Prepare_fft_live() && !loop.fft_live_waiting);
     // Exercise the production render wrapper: queued FFT starts must preserve ADSR attacks.
-    AudioPlayer chord[4];
+    AudioPlayer chord[2];
+    unsigned next_identity = 0;
     for (auto &voice : chord)
     {
+        voice.identity = next_identity++;
         voice.source_now = {Psram, 0, static_cast<uint32_t>(source.size()), source.data()};
         voice.fft_mode_wait = LOOP_FWD;
         voice.Start_fft();
     }
-    for (unsigned cycle = 0; cycle < 4; ++cycle)
+    for (unsigned cycle = 0; cycle < 10; ++cycle)
     {
         audio_update_cycle = cycle;
         for (auto &voice : chord)
         {
             voice.Update_fft();
         }
-        for (unsigned voice = 0; voice < 4; ++voice)
+        for (unsigned voice = 0; voice < 2; ++voice)
         {
-            assert((chord[voice].fft_core.GeneratedHops() > 0) == (voice <= cycle));
-            assert((chord[voice].envelope.calls > 0) == (voice <= cycle));
+            assert((chord[voice].fft_core.GeneratedHops() > 0) == (cycle >= 6u + voice));
+            assert((chord[voice].envelope.calls > 0) == (cycle >= 6u + voice));
         }
     }
     chord[0].powered = false;
@@ -119,7 +151,7 @@ int main()
 
     // A running reverse Live voice can enter forward follow mode and then drain on STOP.
     LS_XY_lock = false;
-    recorder.Q_sample = 4095;
+    recorder.Q_sample = AudioPlayer::Live_fft_margin - 1;
     recorder.writing = true;
     AudioPlayer switching;
     switching.LS_flag = true;
