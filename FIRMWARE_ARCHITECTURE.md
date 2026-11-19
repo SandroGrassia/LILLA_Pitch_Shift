@@ -1,303 +1,295 @@
 # Firmware Architecture
 
-This document explains how LILLA's firmware brings playback, recording, effects and controls together. It describes firmware **7.3.0**, focusing on the role of each part and how the parts work together.
+This document describes **LILLA_PitchShift v0_0_13 on HW R2**. It follows the
+current application and shared FFT engine. Build commands, firmware artifacts and
+validation status are maintained in [README.md](README.md).
 
-For operating instructions, see the [User Guide](User%20Guide.md). Developers can consult the separate [implementation notes](docs/firmware-implementation-notes.md) for source references, exact limits and storage details.
+For the DSP strategy, formulas and graphical examples, see
+[FFT Details](FFT_DETAILS.md).
 
-## Contents
+## 1. Platform and component boundaries
 
-- [1. Platform and organization](#1-platform-and-organization)
-- [2. Execution model and synchronization](#2-execution-model-and-synchronization)
-- [3. Audio signal flow](#3-audio-signal-flow)
-- [4. AudioPlayer](#4-audioplayer)
-- [5. Delay](#5-delay)
-- [6. Patch, sound and voice model](#6-patch-sound-and-voice-model)
-- [7. Pitch-dependent polyphony](#7-pitch-dependent-polyphony)
-- [8. Memory and persistence](#8-memory-and-persistence)
-- [9. Recording and capture workflows](#9-recording-and-capture-workflows)
-- [10. MIDI and loop scheduling](#10-midi-and-loop-scheduling)
+The Teensy 4.1 runs at 600 MHz with the Arduino framework and Teensy Audio library.
+R2 provides 256 KB FRAM and 32 MB PSRAM. The application is assembled in
+`lilla/src/main.cpp`; components live under `lilla/lib/`. The DSP engine is shared
+through `include/FftPitchCore.h`, `src/FftPitchCore.cpp`,
+`include/FftSpectralFrame.h` and `src/FftSpectralFrame.cpp`.
 
-<br><br>
-
-## 1. Platform and organization
-
-> *Introduces the processing platform and the main groups of components that make up the instrument.*
-
-LILLA runs on a Teensy 4.1, using the Arduino framework and Teensy Audio library. Its firmware connects a sound engine, recording and storage services, MIDI handling, and the physical controls and display.
-
-The application brings these components together at startup. Each component then handles a particular responsibility, while the application coordinates operations such as changing a patch or saving a recording.
-
-| Component group | Main responsibility |
+| Component | Responsibility |
 | --- | --- |
-| Sound engine | Play samples, manage voices and apply sound shaping. |
-| Effects and routing | Combine signals and send them to effects, monitoring and outputs. |
-| Recording and storage | Record audio, load samples and preserve saved material. |
-| MIDI | Receive performance gestures and record or replay note sequences. |
-| Controls and display | Interpret user actions and present the current settings. |
+| `LillaClock` | Advance cycle timing, MIDI/control work, attack preparation and source-read budgeting. |
+| `PlayersManager` | Resolve presets, admit notes, allocate/release the two physical voices and coordinate edits. |
+| `AudioPlayer` | Adapt stored/live sources to the FFT engine, apply envelope/effects and deliver stereo blocks. |
+| `FftPitchCore` | Source transport, regions, modes, cross-mix, dual-band scheduling and output reconstruction. |
+| `FftSpectralFrame` | Windowing, spectral analysis, phase locking, pitch mapping, inverse FFT and overlap-add. |
+| `FftAttackCache` | Share two initial-analysis snapshots across matching PSRAM attacks. |
+| `PatchCacheManager` | Prepare and manage sample storage in PSRAM and invalidate attack snapshots on reuse. |
+| Routers, mixers and effects | Combine voices, delay sends/returns, monitoring and main outputs. |
+| Recording/storage/UI components | Capture, persist and load audio/settings; interpret controls and update the display. |
 
-<br><br>
+## 2. Execution and synchronization
 
-## 2. Execution model and synchronization
+Audio updates process 128 output samples at approximately 44.1 kHz: a deadline of
+about 2.90 ms. MIDI handling, player processing and downstream audio components
+share this deadline. The foreground scans controls, draws the display and manages
+storage operations. Some loading workflows intentionally quiesce playback.
 
-> *Explains how audio processing continues alongside controls, screen updates and storage operations.*
+`LillaClock::update` advances the deadline clock even when control callbacks are
+paused. When controls are running it updates filter/delay managers and MIDI, then
+requests idle attack-cache work. Source-read budgeting follows. The player updates
+render their blocks and pass them into the connected audio graph.
 
-At startup, LILLA initializes the hardware and restores its saved settings before enabling audio processing. During normal use, work follows two closely coordinated paths.
+Each FFT band owns its transform and peak/phase scratch. Each core owns its low
+FIR input buffer. Attack-cache access remains serialized in the audio callback context. Related foreground/control changes
+are published under the existing audio synchronization rules. Readiness checks
+prevent half-prepared sample storage or attack entries from being used.
 
-The audio path runs at regular intervals, processing blocks of 128 samples: approximately 2.9 milliseconds of sound. It handles incoming MIDI, prepares the playing voices and advances the connected audio stages. Each block must be ready in time for playback to remain continuous.
-
-Alongside this, the application scans the controls, updates the display and coordinates loading and saving. Transfers that can be spread over time are divided into smaller steps so they can coexist with audio processing.
-
-When a control change affects several related settings, they are handed to the sound engine together. The processing order also matters, particularly for feedback and live recording: the signal-flow diagrams show connections, while scheduling determines when each component acts on them.
-
-<br><br>
-
-## 3. Audio signal flow
-
-> *Follows sound from the playing voices and line input to effects, recording, monitoring and the main output.*
-
-Each playing voice produces a stereo signal. Routing sends it to the main mix, the delay effect and the pre-listening output according to the selected settings.
+## 3. Signal flow
 
 ```mermaid
 flowchart TD
-    Voices[Playback voices] --> Routers[Stereo routing]
-    Routers --> Delay[Delay and feedback]
-    Routers --> Dry[Main mix]
-    Delay --> Dry
-    Tone[Tuning tone] --> Dry
-    Dry --> Filter[Common output filters]
-    Filter --> Main[Output mix]
-    Input[Line input] --> Gain[Input gain]
-    Gain --> Main
-    Main --> Output[Main output]
-    Routers --> Monitor[Pre-listening mix]
-    Gain --> Monitor
-    Monitor --> Phones[Pre-listening output]
-    Gain --> Sampler[Sampler recording]
-    Gain --> Compressor[Live input and feedback compressor]
-    Filter --> Compressor
-    Compressor --> Live[Live Sampler]
-    Live -. playback source .-> Voices
+    PSRAM[Stored samples in PSRAM] --> Reader[AudioPlayer source reader]
+    Live[Live circular PSRAM buffer] --> Reader
+    Reader --> Core[FftPitchCore: transport and dual-band FFT]
+    Core --> Gain[ADSR, velocity and volume]
+    Gain --> Texture[Downsampling and resolution]
+    Texture --> Tone[TONE]
+    Tone --> VCF[VCF and modulation]
+    VCF --> Pan[Stereo pan]
+    Pan --> Router[Left and right routers]
+    Router --> Main[Main mix and output filters]
+    Router --> Delay[Delay and feedback]
+    Delay --> Main
+    Router --> Monitor[Pre-listening mix]
+    Input[Line input and gain] --> Main
+    Input --> Monitor
+    Input --> Sampler[Sampler recording]
+    Input --> Compressor[Live input and feedback compressor]
+    Main --> Compressor
+    Compressor --> Live
 ```
 
-Main playback passes through common output filters before being combined with input monitoring. Pre-listening has a separate mix and output, allowing material to be auditioned independently.
+Two `AudioPlayer` objects and two `AudioADSR` objects are instantiated. Each player
+has left/right connections to its router slot. Routing selects main output,
+pre-listening and delay contributions. Delay uses stereo lines, feedback filtering,
+gain and linked compression; its settings remain part of the patch.
 
-The input also supplies both recording modes. Live Sampler can combine that input with sound returning from the playback path; its feedback is separate from the delay's feedback.
+## 4. Source transport and AudioPlayer
 
-### Mixer
+AudioPlayer owns a per-voice `FftPitchCore` and supplies samples through a reader
+callback. Stored PSRAM reads address the selected source range directly. The
+retained Flash reader uses two 256-sample cache banks and supports packetized
+sources. It is not a promise of usable Flash playback: current FFT admission
+estimates reject direct Flash sources before playback (see section 8).
 
-The Mixer brings together the patch's eight Sound sources and the line input. Mute and gain determine each source's contribution, while pan places the Sound sources in the stereo field. The line input has its own level and routing controls.
+Live reads map into circular PSRAM and guard unrecorded first-fill material.
+The engine maps source reads according to the region, direction and loop mode.
+There is no separate speed-shift rendering path in AudioPlayer's update.
 
-Two destinations can be selected independently: **LINEOUT** feeds the main output, and **PRE_LIST** feeds the separate pre-listening output. Pre-listening selects one source at a time, including the line input, so material can be auditioned without sending it to the main output. Choosing another source for pre-listening leaves the main-output routes unchanged.
+Pitch changes spectral content while the source transport advances at its original
+tempo. The engine supports ONCE_FWD, ONCE_REV, LOOP_FWD, LOOP_REV, LOOP_FWD_REV and
+LOOP_REV_FWD. Lilla's region minimum is 100 samples. End/start cross-mix applies to
+ordinary loops; ping-pong modes reverse direction without that cross-mix.
+Permitted performance-mode transitions and region edits go through the engine's
+continuity/fade handling. Cross-mix-only edits retain transport and overlap state,
+though prepared analyses may need rebuilding.
 
-These controls act on the playback and input paths shown above. They let the performer balance the patch and decide what reaches the audience and what is heard privately. Delay sends are selected separately on the Delay page.
+Unity pitch selects direct RAW output while FFT histories remain warm. It preserves
+a transparent source path but is not a low-CPU bypass of the processing engine.
+Replacement notes fade the outgoing block before reusing the voice state.
 
-<br><br>
+After the engine, AudioPlayer applies velocity, envelope, volume and texture,
+then TONE/VCF and stereo pan. TONE OFF excludes its filter. When enabled, TONE
+intentionally lowers its cutoff as pitch rises above unity; this must be separated
+from any change in the FFT engine's own high-frequency response.
 
-## 4. AudioPlayer
+## 5. Dual-band spectral processing
 
-> *Describes how a voice turns stored audio into a note, then shapes its volume, timbre and stereo position.*
-
-An AudioPlayer is one playback voice. It reads the selected source, follows its playback direction and loop settings, and produces the sound of a note. Up to 16 voices share the engine.
-
-```mermaid
-flowchart TD
-    Flash[Flash samples] --> Reader[Source reader]
-    SD[SD samples] --> Cache[Fast playback memory]
-    Flash --> Cache
-    Cache --> Reader
-    Live[Live Sampler audio] --> Reader
-    WT[Wavetables] --> Reader
-    Reader --> AA[Optional pitch antialiasing]
-    AA --> Pitch[Pitch and interpolation]
-    Pitch --> Amp[Envelope, velocity and volume]
-    Amp --> Texture[Downsampling and resolution]
-    Texture --> Tone[TONE and low-pitch filtering]
-    Tone --> VCF[VCF]
-    Mod[Modulation] -. cutoff control .-> VCF
-    VCF --> Pan[Stereo position]
-    Pan --> Routing[Output routing]
-```
-
-### Reading and pitch
-
-Samples can come from Flash, fast playback memory or the Live Sampler buffer. SD material is loaded into playback memory before notes use it. A separate wavetable path supplies prepared repeating waveforms.
-
-Pitch determines how quickly the voice moves through the source. Higher notes read faster; lower notes read more slowly. Interpolation calculates values between stored samples, and short transitions help smooth changes at playback boundaries.
-
-### Volume and texture
-
-The envelope shapes the note's attack, sustain and release. Velocity and volume set its level, while pan places it in the stereo field.
-
-Downsampling deliberately holds sample values longer, and resolution reduces their amplitude precision. Both create changes in texture without changing the instrument's output sample rate.
-
-### Filters and modulation
-
-TONE controls the brightness of upward-transposed playback. Its optional antialiasing reduces unwanted frequencies during upward playback within its supported pitch range. Low-pitch filtering works independently to smooth slower playback.
-
-The VCF offers low-pass, high-pass, band-pass and notch responses, with adjustable resonance. Its cutoff can follow pitch and move over time using a rising or falling envelope, an LFO, or pressure-controlled LFO depth. Changes are smoothed to avoid abrupt shifts in timbre.
-
-<br><br>
-
-## 5. Delay
-
-> *Explains how stereo echoes are formed and how feedback, filtering, compression and modulation shape them.*
-
-The delay has separate left and right delay lines. Each combines new input with returning echoes, while a linked compressor controls their level together to preserve the stereo balance.
-
-```mermaid
-flowchart LR
-    Send[Delay send L/R] --> Sum[Input plus feedback]
-    Sum --> Compressor[Linked stereo compressor]
-    Compressor --> Main[Main mix]
-    Compressor --> Line[Left and right delay lines]
-    Line --> Filter[Feedback low-pass filters]
-    Filter --> Gain[Feedback amount]
-    Gain --> Sum
-    Mod[Modulation] --> Time[Delay time and stereo offset]
-    Time -.-> Line
-    Dry[Dry signal] --> Main
-```
-
-Feedback controls how much sound returns for another pass. Low-pass filters soften the returning echoes, so repeated sound can become progressively darker. The compressor limits the buildup caused by combining new sound and feedback.
-
-The left and right delay times can differ slightly to create stereo movement. Modulation varies the read position over time, adding pitch movement to the echoes. The dry signal follows its own route to the main mix.
-
-The delay uses a reserved area of fast memory, with approximately two seconds available per channel. Its settings are saved with the patch.
-
-<br><br>
-
-## 6. Patch, sound and voice model
-
-> *Explains the relationship between saved sounds, patch slots and the voices used while playing.*
-
-A patch gathers up to eight instrument slots. Each slot refers to a sound and adds performance settings such as its root key and keyboard range.
-
-| Element | Role |
-| --- | --- |
-| Patch | Groups the instruments used together. |
-| Instrument slot | Maps a sound to keys and applies its performance settings. |
-| Sound | Defines the source audio, playback region, direction and sound-shaping settings. |
-| Preset | Makes the resolved settings available to the playback engine. |
-| Voice | Plays one instance of a sound, with its own position and envelope. |
-
-A sound does not permanently occupy a voice. Voices are assigned when notes arrive and released when playback ends. Layered sounds and release tails therefore share the same pool of up to 16 voices.
-
-The voice manager chooses which voices can play together. It also coordinates source changes so an outgoing note can finish using its audio while the next patch becomes ready.
-
-<br><br>
-
-## 7. Pitch-dependent polyphony
-
-> *Explains why the number of simultaneous voices can decrease at high playback pitches.*
-
-Reading a sample at a higher pitch requires more source audio in the same amount of time. LILLA estimates the combined work of the requested voices and keeps it within the time available for audio processing.
-
-When the load would be too high, the voice manager can retire an eligible voice or decline a new note. It considers the whole group of voices, including layers, rather than only the highest note.
-
-### Maximum polyphony predicted by the budget
-
-The following reference uses samples in fast playback memory, a long forward/reverse loop and neutral tuning. It includes room for pitch bend and vibrato. Different sources and playback settings can give different results; these are model predictions rather than a guarantee for every combination of effects.
-
-| Semitones from the root key | Polyphony |
-| ---: | ---: |
-| 0...+37 | 16 |
-| +38 | 15 |
-| +39 | 14 |
-| +40 | 13 |
-| +41...+42 | 12 |
-| +43 | 11 |
-| +44...+45 | 10 |
-| +46...+47 | 9 |
-| +48...+49 | 8 |
-| +50...+51 | 7 |
-| +52...+61 | 6 |
-
-The [implementation notes](docs/firmware-implementation-notes.md#7-pitch-dependent-polyphony) describe the assumptions behind these figures.
-
-<br><br>
-
-## 8. Memory and persistence
-
-> *Distinguishes temporary working audio from saved material and explains how samples become available for playback.*
-
-LILLA uses several kinds of memory, each with a different purpose.
-
-| Storage | Main role | Survives power-off? |
+| Property | High branch | Low branch |
 | --- | --- | --- |
-| Internal RAM | Current settings and audio processing. | No |
-| PSRAM | Fast sample playback, delay lines and the Live Sampler buffer. | No |
-| Flash | Imported samples and direct recordings. | Yes |
-| FRAM | Saved patch, sound and system settings. | Yes |
-| microSD | Audio library, patch and MIDI-loop files, imports, exports and backups. | Yes |
+| Analysis rate | 44.1 kHz | 11.025 kHz after decimation by four |
+| FFT size | 1024 | 1024 |
+| Analysis hop | 256 input samples | 256 decimated samples, or 1024 original samples |
+| Original time span | About 23.2 ms | About 92.9 ms |
+| Bin spacing | About 43.07 Hz | About 10.77 Hz |
 
-### Preparing audio for playback
+The low branch uses a symmetric 65-tap FIR before decimation. Both branches apply
+Hann windows and compute complex FFTs. Analysis retains magnitudes, phases and
+frequency estimates; subsequent frames refine frequency from phase progression.
+The first frame has no preceding phase history and starts from bin-center estimates.
 
-A cache is a temporary copy of audio in fast memory. Loading a sample into a cache gives the players quick access to the selected region. The new copy becomes available only when it is complete.
+Synthesis maps peak regions to the requested pitch with phase locking, performs
+inverse transforms and overlap-adds the results. Contributions blend across
+200..400 Hz of the original input spectrum. Low output is interpolated cubically
+back to the output rate and combined with the high branch. Transient handling is
+part of spectral synthesis, not an additional original-attack audio layer.
 
-Changing patches does not immediately discard every old cache. A voice that is still sounding may need its previous audio, so that memory remains in use until the voice releases it.
+Analyses slide throughout the file during playback. Neither a first-frame analysis
+nor its cached copy represents the entire recording. The long low window improves
+bass discrimination but does not remove time/frequency tradeoffs or guarantee clear
+upward transposition of complex noisy attacks.
 
-### Keeping saved material together
+## 6. Startup, steady scheduling and attack cache
 
-Sample audio and the settings that refer to it are separate. An SD-based sound needs its source files to remain available; a temporary live capture must be saved before power-off.
+A block of output is 128 samples. A low analysis window represents approximately
+4096 original samples. A FIR portion is one quarter of the work preparing that
+window: it reads 1089 source values including filter context and produces 256
+filtered/decimated values. Four portions fill the 1024-value low analysis buffer.
 
-The SD catalog helps the browser find audio without holding the entire library in working memory. Persistent source references allow saved sounds to identify their audio even when the catalog's alphabetical order changes.
+On an uncached start, `PrepareStartStep` performs one step per callback:
 
-See [SD files and folders](SD_FILES.md) and the [User Guide](User%20Guide.md#backup-and-restore) for the material to preserve when moving or backing up a setup.
+| Callback | Work |
+| --- | --- |
+| 1..4 | Prepare the four low-band FIR portions. |
+| 5 | Window and analyze the complete low-band frame. |
+| 6 | Read, window and analyze the high-band frame. |
+| Following eligible callback | Begin synthesis and output. |
 
-<br><br>
+Source transport and ADSR attack do not advance during preparation. The two player
+identities start on opposite callback parities, and first synthesis is limited to
+one new voice per cycle. Uncached preparation/scheduling adds about 17.4..20.3 ms;
+this is not a complete end-to-end latency measurement.
 
-## 9. Recording and capture workflows
+During sustained playback, low FIR work is also divided into four portions and
+analysis is staged separately from synthesis. High analyses are prepared ahead of
+the corresponding synthesis. Histories and mutable
+transform/filter scratch are private to each instance. Mid-frame geometry edits can invalidate prepared
+work and require synchronous recovery, so edit-time peaks still need measurement.
 
-> *Describes the two recording approaches and how Live Sampler keeps playback smooth while new audio arrives.*
+### Shared initial analyses
 
-### Sampler
+`FftAttackCache` contains **two entries globally**, not two per patch or per player.
+Each entry stores initial phase, magnitude and frequency arrays for both bands.
+A non-playing builder core prepares these arrays; it is not an extra AudioPlayer.
 
-Sampler records the line input into Flash as a mono or stereo take. The recording can then be converted into playable sample material or exported as a WAV file. The application coordinates recording, completion checks and saving so the take has a clear state throughout the process.
+The key contains the PSRAM pointer, source sample count and first-sample offset,
+region start/end, cross-mix and play mode. Pitch, velocity and gain are not keys.
+A restored voice gets its own histories and overlap state; cached data is neither
+consumed nor modified by playback. Many successive notes can reuse the same entry.
 
-### Live Sampler
+`PlayersManager::Prepare_attack_cache` considers the first two eligible active
+PSRAM presets. Work runs only when every physical voice is Idle and no sample copy
+is pending. Continuous notes or release tails can postpone preparation. Live
+sources are excluded because their contents change during recording.
 
-Live Sampler records into a circular area of fast memory. Once that area is full, new audio replaces the oldest material. Playback can explore the buffer while recording continues, using a fixed start point or one that follows the recorder.
+A hit restores analyses and skips the six preparation callbacks, but still needs
+synthesis and startup scheduling. A miss uses staged preparation. More than two
+file/geometries in a patch are permitted; the cache capacity only limits prepared
+attacks. It does not set the number of Instrument slots or physical voices.
 
-During the first pass, playback needs enough recorded audio to begin. With a moving SYNC start, forward notes at the original pitch or below can start before the buffer is full; higher-pitched notes wait until the first pass is complete. Playback fades and stops if it reaches material that has not yet been recorded.
+Pool initialization, recording reservation, file invalidation and copy/reuse paths
+invalidate cached analyses. Geometry changes miss by key. Entries are temporary
+RAM data, not persisted in FRAM or saved patch files. The cache reduces startup
+work only; sustained DSP processing remains necessary.
 
-Loop modes are available after recording stops. Resuming recording switches them to Once FWD and gives active voices a safe restart while preserving the selected start point. Short fades help soften transitions when reading and writing approach each other.
+## 7. Patch, note and voice model
 
-Before recording, a compressor controls the combined input and feedback level. It shares the delay compressor's design but has its own settings and processing state.
+A patch has up to eight Instrument slots. A Sound defines source and playback
+settings; a Preset resolves them for performance. A Voice is a running instance
+with its own transport, pitch/phase histories and ADSR. Only the first matching
+Instrument is selected for a note; Instrument layering is disabled.
 
-A selected live region can be captured into a patch sound. That capture initially relies on temporary memory: saving the patch writes the captured audio to Flash so it survives power-off.
+The two physical voices are shared across keyboard input, MIDI Loop, preview and
+Live Sampler. Release tails still occupy slots. Source admission, allocation and
+replacement logic determine whether an incoming note can start.
 
-#### ONCE FWD read/write transitions
+Base note transposition is -24..+12 semitones from the Instrument root. Notes outside
+that range are rejected. Combined note/preset tuning is clamped to 0.25..2 before
+additional bend; bend is +/-2 semitones, and total pitch including vibrato is
+bounded to approximately 0.22272468..2.24492410.
 
-The animations show a held note while an already full cache is being recorded. Orange **WRITE** marks the latest written block; blue **READ** marks the audio being read. The faster waveform ahead of the writer represents material from the previous pass. Below, **Audio Output** shows the resulting sound and its fades.
+MIDI supplies notes, bend, pressure and controls. MIDI Loop records/replays events
+through the same manager and voice pool; it has no separate DSP voices. Event
+processing is bounded per audio update so MIDI work cannot grow without limit.
 
-Each output block contains 128 samples. The animations are slowed down to make the transitions visible. The [interactive examples](docs/animations/live-sampler-forward.html) can be downloaded and opened in a browser for step-by-step playback.
+## 8. Memory, persistence and admission
 
-#### One octave up: pitch = 2
+| Memory | Current responsibility |
+| --- | --- |
+| RAM1 | Application state, per-player histories/overlap, peak/phase scratch and low input/filtered buffers. |
+| RAM2 | Fixed waveform pixels, private aligned transform buffers allocated once from the heap, attack-cache entries and application buffers. |
+| PSRAM | Stored-sample playback cache, live buffers, delay memory and idle attack-cache builder. |
+| Flash sample storage | Persistent imported/recorded audio; reader retained with admission constraints. |
+| FRAM | Persistent patch, sound and system settings. |
+| microSD | Audio and patch files, import/export, MIDI-loop files and backups. |
 
-At **+1 octave**, each 128-sample output block advances the reader by 256 source samples, while the recorder advances by 128. The reader therefore catches up with the write area. The existing fast-playback rule fades out the current block when its last fetched sample falls inside the latest written block. On the following update, playback jumps to the saved position and fades in while reading previous-pass audio ahead of the writer. The output remains contiguous and is compressed to half the source duration.
+Sample storage caching and attack caching are different: one holds PCM audio,
+the other holds initial spectral analyses. Publishing a complete PCM cache allows
+new notes to use it; active voices retain source ownership as required until safe
+release/reuse. SD loading can explicitly quiesce playback.
 
-![ONCE FWD at one octave up: partial read/write overlap, fade-out, forward jump and fade-in, with each output block compressed to 128 samples.](docs/animations/live-forward-plus-octave.gif)
+`PlayerReadBudget` estimates FFT reads conservatively: 6144 samples for an ordinary
+analysis cycle reservation, or 11264 for a non-ping-pong cross-mix, plus transfer
+overhead and margin. Even the ordinary Flash estimate is about 2665 us, above the
+1800 us admission limit. Direct Flash notes are therefore effectively rejected
+under this configuration; stored playback needs a usable PSRAM source.
 
-#### One octave down: pitch = 0.5
+Read admission is not a measurement of total FFT/effects CPU. The independent
+cycle deadline is 2700 us (2900 us budget less 200 us downstream reserve). Emergency
+voice stops protect the deadline but may be audible. The physical two-voice limit
+also does not guarantee every effects/source combination meets real-time timing.
 
-At **-1 octave**, the reader advances by 64 source samples per 128-sample output block, so the writer can catch up with it. The player predicts whether the **next** read window, including the eight-tap sinc context, would overlap the block that will be written next. It fades out the **current, still-safe** block instead of reading through that future overlap. For the following fade-in it initially rewinds 128 source samples from the fade-out block's start, moving farther back if necessary to keep the complete prefetch outside the next written block.
+## 9. Recording and Live Sampler
 
-![ONCE FWD at one octave down: predictive fade-out before overlap, backward restart and safe fade-in, with each 64-sample source interval expanded to 128 samples.](docs/animations/live-forward-minus-octave.gif)
+Sampler records input into persistent sample storage and coordinates completion,
+conversion and export. Live Sampler records into circular PSRAM; input/feedback
+compression precedes recording. New recorded blocks eventually replace old data.
+A live capture must be saved to preserve it across power-off.
 
-### Import and export
+Live playback uses the same FFT core as stored playback. The source reader returns
+zero for unrecorded first-fill positions and defers starts whose required region
+is not ready. Moving forward playback reserves **5120 recorded samples**, about
+116 ms at 44.1 kHz, for analysis lookahead. Fixed regions wait for their bounds
+rather than moving them. ADSR attack waits with the source; released waiting notes
+can end without producing a delayed attack.
 
-WAV and MP3 import converts supported files into the sample format used by LILLA. Sample-rate conversion allows recordings from other systems to be prepared for playback. Material can be prepared on SD or imported into Flash, while WAV export makes Sampler recordings available outside the instrument.
+The source margin is not measured input-to-output latency. Six startup preparation
+callbacks and audio I/O buffering add time. The attack cache never substitutes
+static analyses for a changing live buffer.
 
-<br><br>
+Live ONCE_FWD follows recording at original transport tempo regardless of pitch.
+When recording stops, the voice drains the recorded remainder and ends. Resuming
+recording fades/reanchors the forward stream with the required source margin.
+Forward, reverse and ping-pong reads use the same guarded circular reader when
+the selected live mode/region is available.
 
-## 10. MIDI and loop scheduling
+## 10. Diagnostics and verification
 
-> *Explains how MIDI gestures reach the sound engine and how the four-track looper records and replays a performance.*
+`FFT_TIMING` is printed from the foreground approximately every two seconds when
+USB Serial has sufficient buffer space. A short synchronized snapshot captures
+counters; diagnostic text is not repeatedly emitted from the audio interrupt.
 
-Incoming MIDI supplies notes, pitch bend, pressure and other controls. Processing is coordinated with the audio cycle, and the amount handled at once is limited so a burst of messages does not monopolize audio processing.
+`active` is the instantaneous player count, not an interval maximum. `cpu_max`
+is the maximum audio CPU percentage since the preceding report. `start_max_us`
+covers per-player preparation and first rendered blocks; `run_max_us` covers
+steady per-player processing including effects but excluding final delivery and
+cleanup. `starts` counts first rendered blocks. `deadline_stops` is an interval
+count; `cache_hits` is cumulative since boot. The report has no I2S underrun count.
 
-MIDI Loop records NoteOn and NoteOff events on four tracks, each with four independent layers of up to 1000 events. Layer 0 of the master track establishes the shared duration: REC arms it, the first NoteOn starts timing, and REC closes it. Every subsequent layer can be armed only during playback. It waits up to 20 seconds for its first NoteOn, then closes at the next master boundary; pressing REC again discards only that armed or recording layer. Existing layers continue playing during overdubbing. A full track rejects further recording without replacing any layer.
+Use CPU/deadline counters to assess timing margin and cache hits to verify reuse;
+a successful cache hit cannot certify sustained real-time performance. Host tests
+exercise modes, regions, cached/uncached equivalence and source/live transitions.
+Hardware listening and timing checks remain necessary for the complete graph.
+Source references and build/test commands are linked from the README.
 
-Level, time shift and transposition apply to all layers of a track. Each layer has its own event count, circular timestamp order and playback cursor. Voice ownership includes both track and layer, including queued notes, so retriggering or releasing a note in one layer does not affect the same pitch in another. The audio callback processes up to two events per layer per block, separately from the external MIDI budget. Recorded NoteOff events release matching voices; any notes still open are released before the first chronological event of that same layer on its next pass, rather than by a global master-boundary NoteOff. Release follows the ADSR envelope. Closing recording alone does not release live keyboard notes.
 
-Loop playback uses the same voice engine as live MIDI input. The `LILLALOOP 3` SD format stores all layer event counts and events together with the shared track settings; previous formats are not accepted. Reproducing a saved loop also requires the appropriate patches and sample audio. Selective deletion of committed layers is not yet exposed by the UI.
+### I2S input service order (0.0.18)
+
+InputDevice is constructed before Trigger and the players, so the completed DMA
+blocks are exchanged before FFT work. The input ISR requires this exchange before
+the next 64-sample half-buffer interrupt. The 128-sample full-cycle CPU budget and
+player deadline counters do not detect missed input half-buffers. The recorder
+retains its position later in the graph to preserve recording/feedback timing.
+
+
+## Final release naming and validation (2026-11-19)
+
+The final release is v0_0_13. It consolidates the changes from diagnostic builds
+0.0.13 through 0.0.23; those historical version headings and HEX names remain
+as an experiment record. The final HEX has no diagnostic suffix, but retains
+the serial diagnostics. The user confirmed the input scheduling fix resolved
+the overlapping-note disturbance during recording. Release is now 1 second,
+with decay retained at 2 seconds. Waveform alignment reduced flicker, followed
+by positive feedback on partial display updates. Earlier pending-verification
+statements describe the status at each historical step. See README.md for the
+consolidated behavior and final build validation.
