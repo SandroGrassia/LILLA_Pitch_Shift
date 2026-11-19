@@ -1,12 +1,13 @@
 #pragma once
 #include <cstdint>
 #include "FftSpectralFrame.h"
+#include "FftDiagnostics.h"
 
 #ifndef FFT_DUAL_BAND
 #define FFT_DUAL_BAND 1
 #endif
 
-// Serialized rendering across all instances: FFT workspace is shared in internal RAM.
+// Every instance owns its mutable FFT and low-band filtering workspace.
 // Source has at least 2 samples, pitch is 2^(-26/12)..2^(14/12), gain is 0..1. Setters require audio IRQ exclusion.
 class FftPitchCore
 {
@@ -42,10 +43,21 @@ public:
     float Pitch() const;
     uint32_t TransientResets() const;
     void ReadReferenceBlock(int16_t *destination, uint32_t first, uint32_t count) const;
+    struct InitialAnalysis
+    {
+        float phase[2][Bins];
+        float magnitude[2][Bins];
+        float frequency[2][Bins];
+    };
+    void SaveInitialAnalysis(InitialAnalysis &data) const;
+    void LoadInitialAnalysis(const InitialAnalysis &data);
     bool PrepareStartStep(); // One bounded preparation stage; no transport or envelope advancement.
     int16_t Render();
+    FftCoreDiagnostics TakeDiagnostics(); // Caller excludes rendering.
+
 
 private:
+    FftCoreDiagnostics diagnostics;
     SampleReader sample_reader = nullptr;
     void *reader_context = nullptr;
     float ReadSource(uint32_t position) const;
@@ -55,7 +67,7 @@ private:
     static constexpr uint32_t FilterTaps = 65;
     static bool filter_ready;
     static float decimator[FilterTaps];
-    static float low_input[Hop * LowFactor + FilterTaps];
+    float low_input[Hop * LowFactor + FilterTaps] = {};
     float low_filtered[Size] = {};
     uint32_t low_prepare_position = 0;
     int low_prepare_offset = 0;

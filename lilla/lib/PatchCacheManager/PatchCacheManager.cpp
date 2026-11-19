@@ -1,3 +1,4 @@
+#include "FftAttackCache.h"
 #include "SdSoundSource.h"
 /*
  * LILLA Audio Sampler
@@ -32,6 +33,7 @@ uint32_t PatchCacheManager::File_samples(int16_t file_id)
 
 void PatchCacheManager::Begin(void)
 {
+    FftAttackCache::Invalidate();
     SdSoundSource::Unbind_all();
     for (auto &item : cache)
     {
@@ -55,6 +57,7 @@ void PatchCacheManager::Begin(void)
 
 int16_t *PatchCacheManager::Reserve_capture(uint8_t slot, int16_t file_id, uint32_t samples)
 {
+    FftAttackCache::Invalidate();
     if (samples == 0 || samples > PATCH_CACHE_ARRAY_SAMPLES || cache_pointer[slot] == nullptr)
     {
         return nullptr;
@@ -326,12 +329,14 @@ bool PatchCacheManager::Prepare_copy(CopyJob &job)
     job.first_sample = item.first_sample + item.copied;
     const uint32_t remaining = item.samples - item.copied;
     job.samples = remaining < 512u ? remaining : 512u;
+    FftAttackCache::Invalidate(); // The foreground transfer may overwrite a reused source address.
     job.destination = cache_pointer[selected] + item.copied;
     return true;
 }
 
 bool PatchCacheManager::Complete_copy(const CopyJob &job, bool success)
 {
+    FftAttackCache::Invalidate();
     auto &item = cache[job.cache_id];
     if (item.state != Loading || item.file_id != job.file_id || item.first_sample + item.copied != job.first_sample)
     {
@@ -389,6 +394,7 @@ uint16_t PatchCacheManager::Get_reclaim_mask(void) const
 
 void PatchCacheManager::Invalidate_file(int16_t file_id)
 {
+    FftAttackCache::Invalidate();
     for (uint8_t i = 0; i < PATCH_CACHE_ARRAY_COUNT; ++i)
     {
         if (cache[i].file_id != file_id)

@@ -1,7 +1,8 @@
 #pragma once
 #include <cstdint>
+#include <memory>
 
-// Serialized callers share the transform workspace. Each instance owns phase and overlap history.
+// Each band owns its transform workspace, phase history and overlap accumulation.
 class FftSpectralFrame
 {
     friend class FftPitchCore;
@@ -32,11 +33,14 @@ private:
     float accumulation[Size] = {};
     static bool tables_ready;
     static float window[Size];
-    alignas(32) static float fft[2 * Size];
-    static float advanced_phase[Bins];
-    static uint16_t peaks[Bins];
-    static uint16_t peak_owner[Bins];
-    static void Transform(bool inverse);
+    // Allocated once at construction, using the Teensy RAM2 heap. Extra space
+    // preserves 32-byte alignment independently of the allocator alignment.
+    std::unique_ptr<float[]> fft_storage;
+    float *fft = nullptr;
+    float advanced_phase[Bins] = {};
+    uint16_t peaks[Bins] = {};
+    uint16_t peak_owner[Bins] = {};
+    void Transform(bool inverse);
     static float WrapPhase(float phase);
     static float LowWeight(float frequency);
 };

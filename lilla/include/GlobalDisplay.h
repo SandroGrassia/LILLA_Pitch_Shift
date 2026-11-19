@@ -10,4 +10,15 @@
 #include <ILI9341_t3n.h>
 
 extern ILI9341_t3n tft;
-extern GFXcanvas16 canvas;
+// The waveform borrows fixed pixel storage, independent of heap allocation.
+class WaveformCanvas final : public GFXcanvas16
+{
+public:
+    WaveformCanvas(uint16_t width, uint16_t height, uint16_t *pixels)
+        : GFXcanvas16(width, height, false)
+    {
+        buffer = pixels;
+    }
+};
+
+extern WaveformCanvas canvas;

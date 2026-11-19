@@ -26,6 +26,10 @@ class DisplayLiveSampler
 {
 private:
     int compressor_threshold = -6;
+    bool wave_display_valid = false;
+    int displayed_channel = -1;
+    bool displayed_stereo = false;
+    void Flush_wave_canvas(void);
     float LS_K_wave_color;             // samples-per-pixel ratio for the waveform canvas
     float LS_wave_poit_distance_0 = 0; // previous pixel distance from write head, used for colour gradient
     int LS_window_A_sample;            // first sample index of the visible window

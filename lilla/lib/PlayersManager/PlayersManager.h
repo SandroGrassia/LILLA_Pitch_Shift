@@ -83,6 +83,7 @@ private:
 
 public:
     float Reserved_read_us(void) const; // Sum current and pending reservations without stale idle costs.
+    void Prepare_attack_cache(void); // Audio IRQ only, bounded work while all physical players are idle.
     void Prepare_read_budget(void); // Revalidate edits and source changes before any Player renders.
 
     using ReadSource = PlayerReadSource; // Select seek+read, zero+copy, or RAM2 copy into RAM1 respectively.

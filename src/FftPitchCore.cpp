@@ -1,12 +1,6 @@
 #include "FftPitchCore.h"
 #include <algorithm>
 #include <cmath>
-#ifdef __IMXRT1062__
-#include <Arduino.h>
-#define FFT_SCRATCH DMAMEM
-#else
-#define FFT_SCRATCH
-#endif
 
 namespace
 {
@@ -15,7 +9,6 @@ constexpr float Tau = 6.2831853071795864769f;
 
 bool FftPitchCore::filter_ready = false;
 float FftPitchCore::decimator[FftPitchCore::FilterTaps] = {};
-FFT_SCRATCH float FftPitchCore::low_input[FftPitchCore::Hop * FftPitchCore::LowFactor + FftPitchCore::FilterTaps] = {};
 
 FftPitchCore::FftPitchCore()
 {
@@ -256,6 +249,7 @@ void FftPitchCore::Generate()
 {
     if (!high.analysis_ready)
     {
+        ++diagnostics.high_fallbacks;
         Analyze(transport);
     }
     high.Generate(pitch_now, FFT_DUAL_BAND ? FftSpectralFrame::Band::High : FftSpectralFrame::Band::Full);
@@ -350,6 +344,14 @@ int16_t FftPitchCore::Render()
         gate = 0.0f;
         region_pending = false;
     }
+    ++diagnostics.renders;
+    if (!std::isfinite(value))
+    {
+        ++diagnostics.nonfinite;
+        return 0; // Avoid undefined float-to-integer conversion while reporting the fault.
+    }
+    diagnostics.peak = std::max(diagnostics.peak, std::abs(value));
+    diagnostics.clips += value < -32768.0f || value > 32767.0f;
     return static_cast<int16_t>(std::clamp(value, -32768.0f, 32767.0f));
 }
 
@@ -429,6 +431,7 @@ float FftPitchCore::NextLow(int offset)
     {
         if (!low.analysis_ready)
         {
+            ++diagnostics.low_fallbacks;
             AnalyzeLow(transport, offset);
         }
         low.Generate(pitch_now, FftSpectralFrame::Band::Low);
@@ -508,6 +511,7 @@ void FftPitchCore::FinishForwardAt(uint32_t end)
 
 void FftPitchCore::InitializeRender()
 {
+    ++diagnostics.resets;
     high.Reset();
     low.Reset();
     low_until_frame = 0;
@@ -545,4 +549,37 @@ bool FftPitchCore::PrepareStartStep()
         return false;
     }
     return true;
+}
+
+void FftPitchCore::SaveInitialAnalysis(InitialAnalysis &data) const
+{
+    const FftSpectralFrame *bands[] = {&high, &low};
+    for (uint32_t band = 0; band < 2; ++band)
+    {
+        std::copy_n(bands[band]->previous_phase, Bins, data.phase[band]);
+        std::copy_n(bands[band]->previous_magnitude, Bins, data.magnitude[band]);
+        std::copy_n(bands[band]->analysis_frequency, Bins, data.frequency[band]);
+    }
+}
+
+void FftPitchCore::LoadInitialAnalysis(const InitialAnalysis &data)
+{
+    InitializeRender();
+    FftSpectralFrame *bands[] = {&high, &low};
+    for (uint32_t band = 0; band < 2; ++band)
+    {
+        std::copy_n(data.phase[band], Bins, bands[band]->previous_phase);
+        std::copy_n(data.magnitude[band], Bins, bands[band]->previous_magnitude);
+        std::copy_n(data.frequency[band], Bins, bands[band]->analysis_frequency);
+        bands[band]->analysis_ready = true;
+        bands[band]->analyzed = 1;
+    }
+    start_step = 5;
+}
+
+FftCoreDiagnostics FftPitchCore::TakeDiagnostics()
+{
+    const auto result = diagnostics;
+    diagnostics = {};
+    return result;
 }

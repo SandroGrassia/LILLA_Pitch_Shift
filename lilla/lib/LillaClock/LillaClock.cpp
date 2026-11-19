@@ -14,6 +14,10 @@ void LillaClock::update(void)
     }
     if (Players_Manager_ptr != nullptr)
     {
+        if (!stop_flag)
+        {
+            Players_Manager_ptr->Prepare_attack_cache();
+        }
         Players_Manager_ptr->Prepare_read_budget(); // Covers main-loop edits, source promotion and pending retries before source reads.
     }
 }

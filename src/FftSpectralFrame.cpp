@@ -14,16 +14,13 @@ constexpr float Tau = 6.2831853071795864769f;
 
 bool FftSpectralFrame::tables_ready = false;
 float FftSpectralFrame::window[FftSpectralFrame::Size] = {};
-#ifdef __IMXRT1062__
-DMAMEM
-#endif
-alignas(32) float FftSpectralFrame::fft[2 * FftSpectralFrame::Size] = {};
-float FftSpectralFrame::advanced_phase[FftSpectralFrame::Bins] = {};
-uint16_t FftSpectralFrame::peaks[FftSpectralFrame::Bins] = {};
-uint16_t FftSpectralFrame::peak_owner[FftSpectralFrame::Bins] = {};
 
 FftSpectralFrame::FftSpectralFrame()
+    : fft_storage(new float[2 * Size + 7]{})
 {
+    const uintptr_t address = reinterpret_cast<uintptr_t>(fft_storage.get());
+    const uintptr_t aligned_address = (address + 31u) & ~uintptr_t(31u);
+    fft = reinterpret_cast<float *>(aligned_address);
     if (!tables_ready)
     {
         for (uint32_t i = 0; i < Size; ++i)
@@ -82,9 +79,9 @@ void FftSpectralFrame::Transform(bool inverse)
     }
     if (inverse)
     {
-        for (float &value : fft)
+        for (uint32_t i = 0; i < 2 * Size; ++i)
         {
-            value /= Size;
+            fft[i] /= Size;
         }
     }
 #endif

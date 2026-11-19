@@ -1,5 +1,6 @@
 // Hardware shim for testing the actual adapter methods extracted from AudioPlayer.cpp.
 #include "FftPitchCore.h"
+#include "FftAttackCache.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -41,7 +42,9 @@ public:
     uint8_t identity = 0;
     static uint32_t fft_first_frame_cycle;
     FftPitchCore fft_core;
+    FftVoiceDiagnostics fft_diagnostics;
     static constexpr uint32_t Live_fft_margin = FftPitchCore::SourceLookahead;
+    bool fft_attack_cached = false;
     bool fft_live_waiting = false, fft_live_follow = false, fft_live_restart = false;
     bool LS_flag = false, live_unrecorded_notice = false, finished = false;
     Recorder *Live_Sampler = nullptr;

@@ -10,7 +10,7 @@
 #include "PlaybackProfile.h"
 
 // Firmware version
-constexpr char FIRMWARE_VERSION[] = "LILLA_PitchShift v0_0_9";
+constexpr char FIRMWARE_VERSION[] = "LILLA_PitchShift v0_0_13";
 
 // Hardware versions
 /*

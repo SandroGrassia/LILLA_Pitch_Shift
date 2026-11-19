@@ -1622,3 +1622,36 @@ float PlayersManager::Calc_release(float value)
 {
     return (value / 2.0f);
 }
+
+void PlayersManager::Prepare_attack_cache(void)
+{
+    for (uint8_t voice = 0; voice < PLAYERS; ++voice)
+    {
+        if (Player_ptr[voice].State() != AudioPlayer::PlayerState::Idle)
+        {
+            return;
+        }
+    }
+    if (Cache_manager_ptr->Has_pending_copy())
+    {
+        return; // Never retain a pointer while its source pool is being rebuilt.
+    }
+    uint32_t eligible = 0;
+    static constexpr FftPitchCore::PlayMode modes[] = {FftPitchCore::PlayMode::OnceForward, FftPitchCore::PlayMode::OnceReverse, FftPitchCore::PlayMode::LoopForward, FftPitchCore::PlayMode::LoopForwardReverse, FftPitchCore::PlayMode::LoopReverseForward, FftPitchCore::PlayMode::LoopReverse};
+    for (uint8_t instrument = 0; instrument < INSTRUMENTS && eligible < FftAttackCache::Capacity; ++instrument)
+    {
+        const auto &preset = Preset[instrument];
+        const auto &source = preset.source;
+        if (!preset.active || source.storage != Psram || source.psram_ptr == nullptr || (preset.file >= FIRST_LIVE_SAMPLING_FILE && !SdSoundSource::Is_sd(preset.file)) || preset.A < 0 || static_cast<uint32_t>(preset.A) < source.first_sample || preset.B < preset.A || static_cast<uint32_t>(preset.B) - source.first_sample >= source.samples)
+        {
+            continue;
+        }
+        ++eligible;
+        const FftAttackCache::Request request = {source.psram_ptr, source.samples, source.first_sample, static_cast<uint32_t>(preset.A), static_cast<uint32_t>(preset.B + 1), static_cast<uint32_t>(preset.Noclick >= 2 ? preset.Noclick : 0), modes[preset.mode]};
+        if (!FftAttackCache::Ready(request))
+        {
+            FftAttackCache::Prepare(request);
+            return;
+        }
+    }
+}

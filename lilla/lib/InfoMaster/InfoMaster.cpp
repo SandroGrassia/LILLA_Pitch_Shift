@@ -357,10 +357,13 @@ int16_t *InfoMaster::LS_620_samples_array(int file_id, int A_window_sample, int 
 
     if (!LS_XY_lock)
     {
-        if (LS_antiflicker)
+        if (LS_antiflicker || samples_per_line != last_samples_per_line ||
+            file_id != last_wave_file || FIFO_dim != last_wave_fifo_dim)
         {
             last_A_window_sample = A_window_sample_local;
             last_samples_per_line = samples_per_line;
+            last_wave_file = file_id;
+            last_wave_fifo_dim = FIFO_dim;
             LS_antiflicker = false;
         }
 
@@ -373,7 +376,7 @@ int16_t *InfoMaster::LS_620_samples_array(int file_id, int A_window_sample, int 
                 // - che non supera A_window_sample
 
                 A_window_sample_local = last_A_window_sample;
-                while ((A_window_sample_local + samples_per_line) < A_window_sample)
+                while ((A_window_sample_local + samples_per_line) <= A_window_sample)
                 {
                     A_window_sample_local += samples_per_line;
                 }
@@ -393,6 +396,12 @@ int16_t *InfoMaster::LS_620_samples_array(int file_id, int A_window_sample, int 
 
             last_A_window_sample = A_window_sample_local;
         }
+    }
+
+    else
+    {
+        // Re-anchor when scrolling resumes after a locked window.
+        LS_antiflicker = true;
     }
 
     // si effettuano WAVEBOARD_WIDTH prelievi

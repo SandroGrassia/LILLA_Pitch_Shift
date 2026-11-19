@@ -27,9 +27,11 @@ private:
     // Live Sampling
     int16_t* FIFO;
     int FIFO_dim;
-    bool LS_antiflicker = false;
-    int last_A_window_sample;
-    int last_samples_per_line;
+    bool LS_antiflicker = true;
+    int last_A_window_sample = 0;
+    int last_samples_per_line = 0;
+    int last_wave_file = -1;
+    int last_wave_fifo_dim = 0;
 
     void Read_samples(int file_id, int16_t *destination, int seek_in, int samples_in); // samples_in <= BASKET_INFO
 

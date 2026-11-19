@@ -28,11 +28,23 @@
 #include "PlayerToneFilter.h"
 #include "PlayerAntialias.h"
 #include "FftPitchCore.h"
+#include "FftAttackCache.h"
 
 class AudioPlayer : public AudioStream
 {
 public:
     static void Take_fft_timing(uint32_t &start_max, uint32_t &run_max, uint32_t &starts); // Caller excludes audio IRQ.
+    struct FftSnapshot
+    {
+        FftVoiceDiagnostics voice;
+        FftCoreDiagnostics core;
+        uint32_t transport, hops, frames;
+        int writer;
+        float pitch, envelope;
+        uint8_t state, mode;
+        bool live, writing, first_fill;
+    };
+    FftSnapshot Take_fft_diagnostics(); // Caller excludes audio IRQ.
     enum class PlayerState : uint8_t
     {
         Idle, // No active source; a cached budget-retirement tail may still be emitted.
@@ -50,7 +62,9 @@ private:
     static uint32_t fft_run_max_us;
     static uint32_t fft_starts;
     FftPitchCore fft_core;
+    FftVoiceDiagnostics fft_diagnostics;
     static constexpr uint32_t Live_fft_margin = FftPitchCore::SourceLookahead; // 5120 samples: dual-band lookahead and scheduling margin, 116.1 ms.
+    bool fft_attack_cached = false;
     bool fft_live_waiting = false;
     bool fft_live_follow = false;
     bool fft_live_restart = false;

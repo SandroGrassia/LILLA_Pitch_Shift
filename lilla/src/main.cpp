@@ -164,12 +164,14 @@
 // *************************************************************
 
 // Attenzione: la funzione update() e' chiamata nell'ordine in cui vengono dichiarati gli oggetti Audiostream
+// Exchange completed I2S blocks before FFT work: the DMA needs fresh blocks
+// within the next 64 samples (about 1.45 ms), even if the full update fits in 128.
+AudioInputI2S InputDevice;                                            // Service the input DMA first.
 LillaClock Trigger;                                                   // Schedule MIDI and player work at audio-block boundaries.
 AudioPlayer Player[PLAYERS];                                          // Audio voices that process and output the active Sounds.
 Router_16x3 Router_L;                                                 // Route left voice outputs to delay, main and pre-listen buses.
 Router_16x3 Router_R;                                                 // Route right voice outputs to delay, main and pre-listen buses.
 CacheCycleFinalizer CacheCycle_finalizer;                             // Finalize cache-cycle work after the players have run.
-AudioInputI2S InputDevice;                                            // Receive stereo audio from the I2S input.
 StereoGain LINE_IN_amplifier;                                         // Apply stereo input gain before recording and monitoring.
 AudioPeakDetector PeakTracking_L;                                     // Measure the left input peak for the recording display.
 AudioPeakDetector PeakTracking_R;                                     // Measure the right input peak for the recording display.
@@ -277,7 +279,8 @@ AudioControlSGTL5000 Audio_shield; // Configure the SGTL5000 audio codec.
 
 // 16-bit ('565') color settings http://www.barth-dev.de/online/rgb565-color-picker/ and https://ee-programming-notepad.blogspot.com/2016/10/16-bit-color-generator-picker.html
 ILI9341_t3n tft(SPI1_DISPLAY_CS, SPI1_DC, SPI1_RST, SPI1_MOSI, SPI1_SCLK, 255); // Write-only display on SPI1; MISO 39 is reserved for the MCP23S17 devices.
-GFXcanvas16 canvas = GFXcanvas16(WAVEBOARD_WIDTH, WAVEBOARD_HEIGHT);            // RGB565 off-screen waveform canvas; uses two bytes per pixel.
+DMAMEM uint16_t waveform_pixels[WAVEBOARD_WIDTH * WAVEBOARD_HEIGHT];
+WaveformCanvas canvas(WAVEBOARD_WIDTH, WAVEBOARD_HEIGHT, waveform_pixels); // Fixed RGB565 canvas in internal RAM2.
 
 InfoMaster Info;                                     // Provide sample counts and waveform data for audio sources.
 WaveVibrato Vibrato;                                 // Generate the shared MIDI vibrato waveform.
@@ -945,35 +948,96 @@ FLASHMEM void setup()
 // ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 // ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 
-FLASHMEM void loop()
+// Snapshot under IRQ exclusion; format and drain USB output only in the foreground.
+static void Report_fft_diagnostics()
 {
-    static uint32_t fft_report_ms = 0;
-    static uint32_t fft_last_stops = 0;
-    const uint32_t now = millis();
-    if (Serial && now - fft_report_ms >= 2000u && Serial.availableForWrite() >= 192)
+    static uint32_t last_ms = 0, last_stops = 0, sequence = 0;
+    static AudioPlayer::FftSnapshot voices[PLAYERS];
+    static uint32_t line = PLAYERS * 2;
+    static char report[768];
+    static size_t length = 0, sent = 0;
+    if (!Serial)
     {
+        length = sent = 0;
+        line = PLAYERS * 2;
+        return;
+    }
+    if (sent < length)
+    {
+        const size_t available = Serial.availableForWrite();
+        const size_t count = std::min(available, length - sent);
+        if (count != 0)
+        {
+            sent += Serial.write(reinterpret_cast<const uint8_t *>(report) + sent, count);
+        }
+        return;
+    }
+    int written = 0;
+    if (line < PLAYERS * 2)
+    {
+        const uint32_t id = line / 2;
+        const auto &v = voices[id];
+        const auto &d = v.voice;
+        const auto &c = v.core;
+        if ((line & 1u) == 0)
+        {
+            written = snprintf(report, sizeof(report),
+                "FFT_VOICE seq=%lu id=%lu state=%u live=%u mode=%u pitch=%.5f env=%.5f blocks=%lu starts=%lu ends=%lu release_blocks=%lu full_us=%lu alloc_fail=%lu waits=%lu/%lu/%lu\n",
+                (unsigned long)sequence, (unsigned long)id, v.state, v.live, v.mode, v.pitch, v.envelope,
+                (unsigned long)d.blocks, (unsigned long)d.starts, (unsigned long)d.ends, (unsigned long)d.release_blocks,
+                (unsigned long)d.full_max_us, (unsigned long)d.allocation_failures,
+                (unsigned long)d.source_waits, (unsigned long)d.prepare_waits, (unsigned long)d.schedule_waits);
+        }
+        else
+        {
+            written = snprintf(report, sizeof(report),
+                "FFT_SIGNAL seq=%lu id=%lu pos=%lu writer=%d writing=%u first_fill=%u age=%lu/%lu unrecorded=%lu near_writer=%lu hops=%lu frames=%lu resets=%lu fallback=%lu/%lu renders=%lu nonfinite=%lu peaks=%.1f/%.1f clips=%lu/%lu/%lu\n",
+                (unsigned long)sequence, (unsigned long)id, (unsigned long)v.transport, v.writer, v.writing, v.first_fill,
+                (unsigned long)d.read_age_min, (unsigned long)d.read_age_max,
+                (unsigned long)d.unrecorded_reads, (unsigned long)d.near_writer_reads,
+                (unsigned long)v.hops, (unsigned long)v.frames, (unsigned long)c.resets,
+                (unsigned long)c.high_fallbacks, (unsigned long)c.low_fallbacks, (unsigned long)c.renders,
+                (unsigned long)c.nonfinite, c.peak, d.gain_peak,
+                (unsigned long)c.clips, (unsigned long)d.gain_clips, (unsigned long)d.output_clips);
+        }
+        ++line;
+    }
+    else
+    {
+        const uint32_t now = millis();
+        if (now - last_ms < 2000u) { return; }
         uint32_t start_max, run_max, starts, active = 0;
-
         AudioNoInterrupts();
         AudioPlayer::Take_fft_timing(start_max, run_max, starts);
         const float cpu = AudioProcessorUsageMax();
         AudioProcessorUsageMaxReset();
+        const uint32_t memory_max = AudioMemoryUsageMax();
+        AudioMemoryUsageMaxReset();
         const uint32_t stops = audio_player_emergency_stops;
+        const uint32_t cache_hits = FftAttackCache::Hits();
         for (uint8_t voice = 0; voice < PLAYERS; ++voice)
         {
+            voices[voice] = Player[voice].Take_fft_diagnostics();
             active += Player[voice].State() != AudioPlayer::PlayerState::Idle;
         }
         AudioInterrupts();
-
-        char report[192];
-        const int length = snprintf(report, sizeof(report), "FFT_TIMING ms=%lu active=%lu cpu_max=%.1f%% start_max_us=%lu run_max_us=%lu starts=%lu deadline_stops=%lu\n", static_cast<unsigned long>(now - fft_report_ms), static_cast<unsigned long>(active), cpu, static_cast<unsigned long>(start_max), static_cast<unsigned long>(run_max), static_cast<unsigned long>(starts), static_cast<unsigned long>(stops - fft_last_stops));
-        if (length > 0 && length < static_cast<int>(sizeof(report)))
-        {
-            Serial.write(reinterpret_cast<const uint8_t *>(report), length);
-        }
-        fft_report_ms = now;
-        fft_last_stops = stops;
+        ++sequence;
+        written = snprintf(report, sizeof(report),
+            "FFT_TIMING seq=%lu ms=%lu active=%lu cpu_max=%.1f%% start_max_us=%lu run_max_us=%lu starts=%lu deadline_stops=%lu cache_hits=%lu memory_max=%lu\n",
+            (unsigned long)sequence, (unsigned long)(now - last_ms), (unsigned long)active, cpu,
+            (unsigned long)start_max, (unsigned long)run_max, (unsigned long)starts,
+            (unsigned long)(stops - last_stops), (unsigned long)cache_hits, (unsigned long)memory_max);
+        last_ms = now;
+        last_stops = stops;
+        line = 0;
     }
+    length = written > 0 && written < static_cast<int>(sizeof(report)) ? written : 0;
+    sent = 0;
+}
+
+FLASHMEM void loop()
+{
+    Report_fft_diagnostics();
     static bool recording_limit_notified = false;
     if (Lilla_state != DIRECT_SAMPLING || !DS_recording_slots_full)
     {
@@ -4754,13 +4818,13 @@ FLASHMEM void loop()
         from_note = 0, to_note = 127, root_key = 60, midi_ch = 0 (canale MIDI 1).
 
         MEMORIA E SCRITTURA
-        LS_buffer_storage ÃƒÂ¨ l'area condivisa, allocata staticamente in PSRAM.
+        LS_buffer_storage ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¨ l'area condivisa, allocata staticamente in PSRAM.
         LS_buffer_mono_ptr identifica la vista mono; LS_buffer_L_ptr e LS_buffer_R_ptr identificano i due canali stereo.
         Ogni vista attiva contiene LS_buffer_dim campioni, con indici fisici da 0 a LS_buffer_dim - 1.
         Dopo l'ultimo indice si riparte da zero: il buffer si comporta come un nastro circolare.
 
-        LiveSampler.Q_sample ÃƒÂ¨ l'indice dell'ultimo campione scritto; LS_Q_sample ne conserva una copia per la UI.
-        Dopo il reset Q_sample vale -1. Durante il primo riempimento, la parte successiva a Q non ÃƒÂ¨ ancora registrata.
+        LiveSampler.Q_sample ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¨ l'indice dell'ultimo campione scritto; LS_Q_sample ne conserva una copia per la UI.
+        Dopo il reset Q_sample vale -1. Durante il primo riempimento, la parte successiva a Q non ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¨ ancora registrata.
         Dopo un giro completo, quella parte contiene l'audio precedente, fino alla sua sovrascrittura.
         La scrittura non azzera preventivamente il blocco successivo.
 
@@ -4770,10 +4834,10 @@ FLASHMEM void loop()
 
         FINESTRA VISUALIZZATA
         La waveform mostra i campioni da LS_window_A_sample a LS_window_B_sample.
-        LS_window_width ÃƒÂ¨ l'ampiezza della finestra; LS_X_sample si trova al suo centro.
+        LS_window_width ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¨ l'ampiezza della finestra; LS_X_sample si trova al suo centro.
         LS_window_A_sample = LS_constrain_position(LS_X_sample - (LS_window_width - 1) / 2)
         LS_window_B_sample = LS_window_A_sample + LS_window_width - 1
-        Il limite destro resta una coordinata logica e puÃƒÂ² superare la fine fisica della cache.
+        Il limite destro resta una coordinata logica e puÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â² superare la fine fisica della cache.
 
         .................................(LS_X_sample)..........(LS_Y_sample)...................(LS_buffer_dim - 1)
                   (LS_window_A_sample)+++++++++|+++++++(LS_window_B_sample)
@@ -4781,7 +4845,7 @@ FLASHMEM void loop()
         PUNTI DI RIFERIMENTO
         LS_X_sample identifica il riferimento iniziale mostrato dalla UI.
         LS_Y_sample = LS_X_sample + LS_XY_delta identifica l'altro estremo del segmento per i modi loop.
-        LS_Y_sample puÃƒÂ² trovarsi fuori dalla finestra visualizzata o oltre l'ultimo indice fisico della cache.
+        LS_Y_sample puÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â² trovarsi fuori dalla finestra visualizzata o oltre l'ultimo indice fisico della cache.
         Il punto effettivo di lettura della voce viene calcolato separatamente da AudioPlayer in base al modo.
 
         FIXED: LS_XY_lock == true
@@ -4796,7 +4860,7 @@ FLASHMEM void loop()
         Con LS_X_delta = 0 la UI mostra SYNC; la waveform scorre mostrando l'audio precedente a sinistra.
 
         Al Note On il Player prepara la propria posizione di lettura: non segue continuamente LS_X_sample della UI.
-        In FWD, con cache piena, la lettura ÃƒÂ¨ circolare e non termina al limite B, anche dopo STOP della registrazione.
+        In FWD, con cache piena, la lettura ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¨ circolare e non termina al limite B, anche dopo STOP della registrazione.
         Durante il primo riempimento resta attiva la protezione che sfuma e arresta la voce quando raggiunge audio non registrato.
         Nei modi loop il contenuto riprodotto cambia se la registrazione sovrascrive il segmento selezionato.
 
@@ -5483,7 +5547,7 @@ FLASHMEM void loop()
         root_key = 60
         midi_ch = 0 (midi channel 1)
 
-        Se la registrazione ÃƒÂ¨ mono, PATCHES_MAX comprende 1 Instrument e il Sound SOUNDS_MAX:
+        Se la registrazione ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¨ mono, PATCHES_MAX comprende 1 Instrument e il Sound SOUNDS_MAX:
 
         */
 
@@ -13306,6 +13370,7 @@ FLASHMEM void LS_Capture_finish_save(void)
 
 void LS_refresh_LS_page(void)
 {
+    Info.LS_restart_antiflicker();
     // Discard notices from the previous page before entering Live Sampler.
 
     AudioNoInterrupts();
@@ -13534,7 +13599,7 @@ FLASHMEM void LS_setup_LS_Patch(bool stereo)
         Sound[SOUNDS_MAX].attack = 0;
         Sound[SOUNDS_MAX].decay = 50;
         Sound[SOUNDS_MAX].sustain = 50;
-        Sound[SOUNDS_MAX].release = 10;
+        Sound[SOUNDS_MAX].release = 2;
         Sound[SOUNDS_MAX].gain = 20;
 
         // Right Sound
@@ -13550,7 +13615,7 @@ FLASHMEM void LS_setup_LS_Patch(bool stereo)
         Sound[SOUNDS_MAX + 1].attack = 0;
         Sound[SOUNDS_MAX + 1].decay = 50;
         Sound[SOUNDS_MAX + 1].sustain = 50;
-        Sound[SOUNDS_MAX + 1].release = 10;
+        Sound[SOUNDS_MAX + 1].release = 2;
         Sound[SOUNDS_MAX + 1].gain = 20;
     }
 
@@ -13595,7 +13660,7 @@ FLASHMEM void LS_setup_LS_Patch(bool stereo)
         Sound[SOUNDS_MAX].attack = 0;
         Sound[SOUNDS_MAX].decay = 50;
         Sound[SOUNDS_MAX].sustain = 50;
-        Sound[SOUNDS_MAX].release = 10;
+        Sound[SOUNDS_MAX].release = 2;
         Sound[SOUNDS_MAX].gain = 28;
 
         Sound[SOUNDS_MAX + 1].used = false;
@@ -14888,6 +14953,7 @@ FLASHMEM void Startup_hardware_and_objects(void)
     tft.setRotation(3);
     tft.setTextWrap(false);
     tft.fillScreen(ILI9341_BLACK);
+    canvas.fillScreen(0);
     canvas.setTextWrap(false);
 
     // DelayManager
@@ -15323,7 +15389,7 @@ FLASHMEM bool TEST_Current_Patch_SD_round_trip(void)
     Serial.println(F("Patch successfully saved"));
 
     // 2. Alterazione intenzionale della Patch in RAM.
-    // Serve a dimostrare che Resume non ÃƒÂ¨ un semplice no-op.
+    // Serve a dimostrare che Resume non ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¨ un semplice no-op.
     Patch[test_patch_id].used = !Original_Patch.used;
 
     if (Patch[test_patch_id] == Original_Patch)
@@ -15352,7 +15418,7 @@ FLASHMEM bool TEST_Current_Patch_SD_round_trip(void)
     const bool data_match = Patch[test_patch_id] == Original_Patch;
 
     // Ripristino finale garantito.
-    // In caso di successo l'assegnazione ÃƒÂ¨ ridondante ma innocua.
+    // In caso di successo l'assegnazione ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¨ ridondante ma innocua.
     Patch[test_patch_id] = Original_Patch;
 
     if (!data_match)
