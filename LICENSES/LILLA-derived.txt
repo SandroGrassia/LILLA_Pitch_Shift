@@ -1,0 +1,121 @@
+Third-party attributions retained in LILLA components
+
+Verbatim license and attribution notices from the inspected inputs.
+Identical notices are grouped; listed paths identify their source files.
+A package-wide notice may cover code not linked into this firmware.
+
+========================================================================
+Source files:
+repository/lilla/lib/AmpliOutMuteIn/AmpliOutMuteIn.h
+repository/lilla/lib/AudioGain/AudioGain.h
+repository/lilla/lib/AudioPeakDetector/AudioPeakDetector.h
+repository/lilla/lib/AudioVCF/AudioVCF.h
+repository/lilla/lib/Mixer_2x1/Mixer_2x1.h
+repository/lilla/lib/output_noiseshaped_pwm/output_noiseshaped_pwm.cpp
+repository/lilla/lib/output_noiseshaped_pwm/output_noiseshaped_pwm.h
+repository/lilla/lib/Router_16x3/Router_16x3.h
+repository/lilla/lib/WaveLFO/WaveLFO.h
+repository/lilla/lib/WaveSine/WaveSine.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2014, Paul Stoffregen, paul@pjrc.com
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+repository/lilla/lib/LillaFRAM_2x512/LillaFRAM_2x512.cpp
+
+/**************************************************************************
+ * Derived from FRAM_MB85RC_I2C by SOSAndroid.fr (E. Ha.).
+ * Adapted for LILLA Audio Sampler to manage n.2 MB85RC512V devices as a
+ * single linear address space.
+ *
+ * Distributed under the BSD License reproduced in LillaFRAM_2x512.h.
+ * Copyright (c) 2013, SOSAndroid.fr (E. Ha.). All rights reserved.
+ **************************************************************************/
+
+========================================================================
+Source files:
+repository/lilla/lib/LillaFRAM_2x512/LillaFRAM_2x512.h
+
+/**************************************************************************
+ * Derived from FRAM_MB85RC_I2C by SOSAndroid.fr (E. Ha.).
+ * Adapted for LILLA Audio Sampler to manage n.2 MB85RC512V devices as a
+ * single linear address space.
+ *
+ * Software License Agreement (BSD License)
+ *
+ * Copyright (c) 2013, SOSAndroid.fr (E. Ha.)
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holders nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
+
+========================================================================
+Source files:
+repository/lilla/lib/MidiOut/MidiOut.cpp
+repository/lilla/lib/MidiOut/MidiOut.h
+
+// Midi_Reader
+// Credits: Francois Best (https://github.com/FortySevenEffects/arduino_midi_library/issues/165)
+
+========================================================================
+Source files:
+repository/lilla/lib/MidiReader/MidiReader.cpp
+
+/*
+ * LILLA Audio Sampler
+ * Author: Sandro Grassia, info@lillasampler.it
+ *
+ * Credits: FranÃ§ois Best (https://github.com/FortySevenEffects/arduino_midi_library/issues/165)
+ *
+ */
+
+========================================================================
+Source files:
+repository/lilla/lib/MidiReader/MidiReader.h
+
+// Lilla_Midi_Reader
+// Credits: Francois Best (https://github.com/FortySevenEffects/arduino_midi_library/issues/165)

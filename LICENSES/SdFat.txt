@@ -1,0 +1,231 @@
+SdFat from framework-arduinoteensy 1.162.0
+
+Verbatim license and attribution notices from the inspected inputs.
+Identical notices are grouped; listed paths identify their source files.
+A package-wide notice may cover code not linked into this firmware.
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/SdFat/LICENSE.md
+
+MIT License
+
+Copyright (c) 2011..2020 Bill Greiman
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/BufferedPrint.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/ArduinoFiles.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/CompileDateTime.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/DebugMacros.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FmtNumber.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FmtNumber.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsApiConstants.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsBlockDevice.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsBlockDeviceInterface.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsCache.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsCache.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsDateTime.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsDateTime.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsName.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsName.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsStructs.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsStructs.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsUtf.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FsUtf.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/SysCall.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/upcase.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/upcase.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatConfig.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatDbg.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatFile.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatFile.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatFilePrint.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatFileWrite.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatFormatter.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatFormatter.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatLib.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatName.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatPartition.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatPartition.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatVolume.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/ExFatLib/ExFatVolume.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatDbg.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatFile.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatFile.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatFileLFN.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatFilePrint.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatFileSFN.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatFormatter.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatFormatter.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatLib.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatName.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatPartition.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatPartition.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatVolume.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FatLib/FatVolume.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FreeStack.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FreeStack.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FsLib/FsFile.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FsLib/FsFile.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FsLib/FsFormatter.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FsLib/FsLib.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FsLib/FsNew.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FsLib/FsNew.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FsLib/FsVolume.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/FsLib/FsVolume.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/ArduinoStream.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/bufstream.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/fstream.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/ios.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/iostream.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/istream.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/istream.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/ostream.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/ostream.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/StdioStream.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/StdioStream.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/iostream/StreamBaseClass.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/MinimumSerial.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/MinimumSerial.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/RingBuf.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SdCard/SdCard.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SdCard/SdCardInfo.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SdCard/SdCardInfo.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SdCard/SdCardInterface.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SdCard/SdioCard.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SdCard/SdioTeensy.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SdCard/SdSpiCard.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SdCard/SdSpiCard.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SdFat.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SdFatConfig.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/sdios.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiArduinoDriver.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiArtemis.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiAvr.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiBareUnoDriver.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiBaseClass.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiChipSelect.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiDriver.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiDue.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiESP.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiLibDriver.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiParticle.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiSoftDriver.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiSTM32.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiSTM32Core.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/SpiDriver/SdSpiTeensy3.cpp
+
+/**
+ * Copyright (c) 2011-2021 Bill Greiman
+ * This file is part of the SdFat library for SD memory cards.
+ *
+ * MIT License
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/FmtNumber.cpp
+
+// __AVR__
+//------------------------------------------------------------------------------
+// Stimmer div/mod 10 for AVR
+// this code fragment works out i/10 and i%10 by calculating
+// i*(51/256)*(256/255)/2 == i*51/510 == i/10
+// by "j.k" I mean 32.8 fixed point, j is integer part, k is fractional part
+// j.k = ((j+1.0)*51.0)/256.0
+// (we add 1 because we will be using the floor of the result later)
+// divmod10_asm16 and divmod10_asm32 are public domain code by Stimmer.
+// http://forum.arduino.cc/index.php?topic=167414.msg1293679#msg1293679
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/PrintBasic.cpp
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/common/PrintBasic.h
+
+/**
+ * Copyright (c) 2011-2020 Bill Greiman
+ * This file is part of the SdFat library for SD memory cards.
+ *
+ * MIT License
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/DigitalIO/boards/GpioPinMap.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/DigitalIO/DigitalPin.h
+framework-arduinoteensy@1.162.0/libraries/SdFat/src/DigitalIO/SoftSPI.h
+
+/* Arduino DigitalIO Library
+ * Copyright (C) 2013 by William Greiman
+ *
+ * This file is part of the Arduino DigitalIO Library
+ *
+ * This Library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This Library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with the Arduino DigitalIO Library.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ */

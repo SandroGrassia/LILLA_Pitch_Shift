@@ -192,7 +192,7 @@ with tempfile.TemporaryDirectory(prefix='lilla-zero-raw-') as directory:
         fixture += re.sub(r'^#(?:include [<"](?:SD.h|WavImport.h)[>"]|pragma once)[^\n]*\n', '', wav_text, flags=re.M) + '\n'
     cpp.write_text(fixture + display + parsers + method + '\nvoid run_menu_case()\n{\n    switch (4)\n    {\n' + menu_case + '\n    }\n}\n' + tests, encoding='utf-8', newline='\r\n')
     exe = build / ('zero_raw_test.exe' if os.name == 'nt' else 'zero_raw_test')
-    subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror', '-I', str(build), '-I', str(ROOT / 'include'), '-I', str(ROOT / '.pio/libdeps/teensy41/dr_libs'), str(cpp), str(ROOT / 'src/ZeroRaw.cpp'), '-o', str(exe)], check=True)
+    subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror', '-I', str(build), '-I', str(ROOT / 'include'), '-I', str(ROOT.parent / '.pio/libdeps/lilla_fft_r2/dr_libs'), str(cpp), str(ROOT / 'src/ZeroRaw.cpp'), '-o', str(exe)], check=True)
     environment = os.environ.copy()
     environment['PATH'] = str(Path(compiler).parent) + os.pathsep + environment.get('PATH', '')
     subprocess.run([str(exe)], check=True, env=environment, timeout=90)

@@ -23,6 +23,7 @@ prefix = r'''
 #include <string>
 #include <vector>
 #define FLASHMEM
+namespace FftAttackCache { void Invalidate() {} }
 constexpr int INSTRUMENTS=8, SOUNDS_MAX=40, PATCHES_MAX=4, PLAYERS=2, FIRST_RECORDING_FILE=20, FIRST_LIVE_SAMPLING_FILE=22, PATCH_CACHE_ARRAY_COUNT=8;
 constexpr uint32_t PATCH_CACHE_ARRAY_SAMPLES=1024;
 constexpr int EMPTY=0, REC=1, PLAYONLY=2, LOOP_FWD=2, EN_PB_Select=0, ILI9341_RED=0, ILI9341_WHITE=1;

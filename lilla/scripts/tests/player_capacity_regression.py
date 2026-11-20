@@ -1,4 +1,4 @@
-"""Check upper voice bits and audio graph connections."""
+"""Check the two FFT voice mask bits and audio graph connections."""
 from pathlib import Path
 import os
 import re
@@ -12,14 +12,16 @@ manager = (ROOT / "lib/PlayersManager/PlayersManager.cpp").read_text(encoding="u
 def method(source, name):
     return re.search(r"^(?:void|uint16_t) " + re.escape(name) + r"[^\n]*\n\{.*?^\}", source, re.M | re.S).group(0)
 
-for voice in (14, 15):
+config = (ROOT / "lib/config/config.h").read_text(encoding="utf-8")
+assert re.search(r"constexpr int PLAYERS = 2;", config)
+for voice in (0, 1):
     for output, side in ((0, "L"), (1, "R")):
         assert f"Player[{voice}], {output}, Router_{side}, {voice}" in main
 code = r"""
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
-constexpr int PLAYERS = 16;
+constexpr int PLAYERS = 2;
 uint32_t millis() { return 1000; }
 struct Voice
 {
@@ -41,10 +43,10 @@ code += r"""
 int main()
 {
     PlayersManager manager;
-    Player[14].stop = Player[15].stop = true;
-    assert(manager.Fast_stop_players_using_tables(1) == 0xc000u);
-    assert(manager.Fast_stop_players_using_cache(1) == 0xc000u);
-    puts("PASS: voices 14/15 mask bits and graph connections");
+    Player[0].stop = Player[1].stop = true;
+    assert(manager.Fast_stop_players_using_tables(1) == 0x0003u);
+    assert(manager.Fast_stop_players_using_cache(1) == 0x0003u);
+    puts("PASS: voices 0/1 mask bits and graph connections");
 }
 """
 with tempfile.TemporaryDirectory(prefix="lilla-capacity-") as directory:

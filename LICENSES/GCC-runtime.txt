@@ -1,0 +1,17 @@
+GCC C++ runtime notices from toolchain-gccarmnoneeabi-teensy 1.150201.0
+
+Verbatim license and attribution notices from the inspected inputs.
+Identical notices are grouped; listed paths identify their source files.
+A package-wide notice may cover code not linked into this firmware.
+
+========================================================================
+Source files:
+toolchain-gccarmnoneeabi-teensy@1.150201.0/arm-none-eabi/include/c++/15.2.1/arm-none-eabi/bits/c++config.h
+
+// Copyright (C) 1997-2025 Free Software Foundation, Inc.
+//
+// This file is part of the GNU ISO C++ Library.  This library is free
+// software; you can redistribute it and/or modify it under the
+// terms of the GNU General Public License as published by the
+// Free Software Foundation; either version 3, or (at your option)
+// any later version.

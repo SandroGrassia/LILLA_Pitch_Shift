@@ -1,0 +1,160 @@
+Adafruit GFX Library 1.13.0
+
+Verbatim license and attribution notices from the inspected inputs.
+Identical notices are grouped; listed paths identify their source files.
+A package-wide notice may cover code not linked into this firmware.
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/Adafruit GFX Library/license.txt
+
+Software License Agreement (BSD License)
+
+Copyright (c) 2012 Adafruit Industries.  All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+- Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+- Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/Adafruit GFX Library/Adafruit_GFX.cpp
+
+/*
+This is the core graphics library for all our displays, providing a common
+set of graphics primitives (points, lines, circles, etc.).  It needs to be
+paired with a hardware-specific library for each display device we carry
+(to handle the lower-level functions).
+
+Adafruit invests time and resources providing this open source code, please
+support Adafruit & open-source hardware by purchasing products from Adafruit!
+
+Copyright (c) 2013 Adafruit Industries.  All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+- Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+- Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+ */
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/Adafruit GFX Library/Adafruit_GrayOLED.h
+
+/*!
+ * @file Adafruit_GrayOLED.h
+ *
+ * This is part of for Adafruit's GFX library, supplying generic support
+ * for grayscale OLED displays: http://www.adafruit.com/category/63_98
+ *
+ * These displays use I2C or SPI to communicate. I2C requires 2 pins
+ * (SCL+SDA) and optionally a RESET pin. SPI requires 4 pins (MOSI, SCK,
+ * select, data/command) and optionally a reset pin. Hardware SPI or
+ * 'bitbang' software SPI are both supported.
+ *
+ * Adafruit invests time and resources providing this open source code,
+ * please support Adafruit and open-source hardware by purchasing
+ * products from Adafruit!
+ *
+ * Written by Limor Fried/Ladyada for Adafruit Industries, with
+ * contributions from the open source community.
+ *
+ * BSD license, all text above, and the splash screen header file,
+ * must be included in any redistribution.
+ *
+ */
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/Adafruit GFX Library/Adafruit_SPITFT.cpp
+
+/*!
+ * @file Adafruit_SPITFT.cpp
+ *
+ * @mainpage Adafruit SPI TFT Displays (and some others)
+ *
+ * @section intro_sec Introduction
+ *
+ * Part of Adafruit's GFX graphics library. Originally this class was
+ * written to handle a range of color TFT displays connected via SPI,
+ * but over time this library and some display-specific subclasses have
+ * mutated to include some color OLEDs as well as parallel-interfaced
+ * displays. The name's been kept for the sake of older code.
+ *
+ * Adafruit invests time and resources providing this open source code,
+ * please support Adafruit and open-source hardware by purchasing
+ * products from Adafruit!
+
+ * @section dependencies Dependencies
+ *
+ * This library depends on
+ * <a href="https://github.com/adafruit/Adafruit-GFX-Library">Adafruit_GFX</a>
+ * being present on your system. Please make sure you have installed the latest
+ * version before using this library.
+ *
+ * @section author Author
+ *
+ * Written by Limor "ladyada" Fried for Adafruit Industries,
+ * with contributions from the open source community.
+ *
+ * @section license License
+ *
+ * BSD license, all text here must be included in any redistribution.
+ */
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/Adafruit GFX Library/Adafruit_SPITFT.h
+
+/*!
+ * @file Adafruit_SPITFT.h
+ *
+ * Part of Adafruit's GFX graphics library. Originally this class was
+ * written to handle a range of color TFT displays connected via SPI,
+ * but over time this library and some display-specific subclasses have
+ * mutated to include some color OLEDs as well as parallel-interfaced
+ * displays. The name's been kept for the sake of older code.
+ *
+ * Adafruit invests time and resources providing this open source code,
+ * please support Adafruit and open-source hardware by purchasing
+ * products from Adafruit!
+ *
+ * Written by Limor "ladyada" Fried for Adafruit Industries,
+ * with contributions from the open source community.
+ *
+ * BSD license, all text here must be included in any redistribution.
+ */

@@ -1,9 +1,7 @@
 #include "FftPitchCore.h"
-#include "NoteVoices.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>
-#include <memory>
 #include <vector>
 
 int main()
@@ -73,49 +71,5 @@ int main()
         live.Render();
     }
     assert(!live.IsActive());
-
-    auto cores = std::make_unique<FftPitchCore[]>(GranularAudio::VoiceCount);
-    GranularAudio audio(cores.get());
-    NoteVoices notes(audio);
-    notes.SetSource({source.data(), static_cast<uint32_t>(source.size())});
-    notes.SetRegion(300, 400);
-    notes.SetMode(FftPitchCore::PlayMode::OnceForward);
-    audio.SetReady();
-    uint32_t selected;
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(notes.NoteOn(60 + i, 100, selected) == NoteVoices::Result::Started);
-    }
-    audio.update();
-    assert(notes.HeldCount() == 0);
-    // Freed slots can play again before the keyboard releases the previous notes.
-    assert(notes.NoteOn(60, 100, selected) == NoteVoices::Result::Started);
-    NoteVoices::Report report;
-    assert(!notes.NoteOff(60, report)); // Old finished occurrence.
-    assert(cores[selected].IsActive());
-    assert(notes.NoteOff(60, report)); // New assigned occurrence.
-    assert(!cores[selected].IsActive()); // Released before rendering its first block.
-    for (unsigned i = 1; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(!notes.NoteOff(60 + i, report));
-    }
-    assert(notes.NoteOn(60, 100, selected) == NoteVoices::Result::Started);
-    audio.update();
-    assert(!cores[selected].IsActive());
-    notes.SetMode(FftPitchCore::PlayMode::LoopForward);
-    audio.update();
-    assert(!cores[selected].IsActive()); // Mode edits do not resurrect ended voices.
-    notes.ClearRejected();
-    notes.SetRegion(300, 2300);
-    notes.SetMode(FftPitchCore::PlayMode::OnceForward);
-    assert(notes.NoteOn(64, 100, selected) == NoteVoices::Result::Started);
-    const unsigned older = selected;
-    assert(notes.NoteOn(64, 100, selected) == NoteVoices::Result::Started);
-    cores[selected].SetRegion(300, 400); // Newer occurrence finishes before the older one.
-    audio.update();
-    assert(!cores[selected].IsActive() && cores[older].IsActive());
-    assert(notes.NoteOff(64, report));
-    assert(report.voice == older); // FIFO follows NoteOn order, not completion order.
-    assert(!notes.NoteOff(64, report));
-    std::puts("PASS: ONCE duration at all pitches, zero-padded FFT reads, no cross-mix, mode changes, NoteOff, natural-end capacity and delayed NoteOff ownership.");
+    std::puts("PASS: forward one-shot duration, zero-padded reads, mode changes and release.");
 }

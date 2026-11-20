@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 import subprocess
 
 root = Path(__file__).resolve().parents[1]
@@ -22,5 +23,6 @@ tests = (root / "tests/lilla_fft_adapter_test.cpp").read_text()
 unit = build / "adapter.cpp"
 unit.write_text(fixture + "\nuint32_t AudioPlayer::fft_first_frame_cycle = UINT32_MAX;\n" + "\n".join(functions) + "\n" + tests)
 exe = build / "adapter.exe"
-subprocess.run(["C:/msys64/ucrt64/bin/g++.exe", "-std=c++20", "-O2", "-Wall", "-Wextra", "-Werror", "-static", "-I", str(root / "include"), str(root / "src/FftPitchCore.cpp"), str(root / "src/FftSpectralFrame.cpp"), str(root / "src/FftAttackCache.cpp"), str(unit), "-o", str(exe)], check=True)
+compiler = shutil.which("g++") or "C:/msys64/ucrt64/bin/g++.exe"
+subprocess.run([compiler, "-std=c++20", "-O2", "-Wall", "-Wextra", "-Werror", "-static", "-I", str(root / "include"), str(root / "src/FftPitchCore.cpp"), str(root / "src/FftSpectralFrame.cpp"), str(root / "src/FftAttackCache.cpp"), str(unit), "-o", str(exe)], check=True)
 subprocess.run([str(exe)], check=True)

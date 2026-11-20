@@ -29,7 +29,7 @@ def main():
         if candidate.is_file():
             compiler = str(candidate)
     if compiler is None:
-        parser.error('g++ with C++20 support is required; see scripts/tests/README.md.')
+        parser.error('g++ with C++20 support is required; see lilla/scripts/tests/README.md.')
     environment['PATH'] = str(Path(compiler).parent) + os.pathsep + environment.get('PATH', '')
     failed = []
     started = time.monotonic()

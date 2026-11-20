@@ -1,0 +1,1099 @@
+Audio from framework-arduinoteensy 1.162.0
+
+Verbatim license and attribution notices from the inspected inputs.
+Identical notices are grouped; listed paths identify their source files.
+A package-wide notice may cover code not linked into this firmware.
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_fft1024.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_fft1024.h
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_fft256.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_fft256.h
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_peak.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_peak.h
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_print.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_print.h
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_rms.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_rms.h
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_tonedetect.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_tonedetect.h
+framework-arduinoteensy@1.162.0/libraries/Audio/Audio.h
+framework-arduinoteensy@1.162.0/libraries/Audio/AudioControl.h
+framework-arduinoteensy@1.162.0/libraries/Audio/control_cs42448.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/control_cs42448.h
+framework-arduinoteensy@1.162.0/libraries/Audio/control_sgtl5000.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/control_sgtl5000.h
+framework-arduinoteensy@1.162.0/libraries/Audio/control_wm8731.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/control_wm8731.h
+framework-arduinoteensy@1.162.0/libraries/Audio/data_spdif.c
+framework-arduinoteensy@1.162.0/libraries/Audio/data_ulaw.c
+framework-arduinoteensy@1.162.0/libraries/Audio/data_waveforms.c
+framework-arduinoteensy@1.162.0/libraries/Audio/data_windows.c
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_delay.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_delay.h
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_delay_ext.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_delay_ext.h
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_fade.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_fade.h
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_multiply.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_multiply.h
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_rectifier.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_rectifier.h
+framework-arduinoteensy@1.162.0/libraries/Audio/filter_biquad.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/filter_biquad.h
+framework-arduinoteensy@1.162.0/libraries/Audio/filter_variable.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/filter_variable.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_adc.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_adc.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_adcs.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_adcs.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_i2s.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_i2s.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_i2s2.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_i2s2.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_i2s_hex.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_i2s_oct.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_i2s_oct.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_i2s_quad.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_i2s_quad.h
+framework-arduinoteensy@1.162.0/libraries/Audio/mixer.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/mixer.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_dac.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_dac.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_dacs.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s2.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s2.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s_hex.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s_hex.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s_oct.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s_oct.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s_quad.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s_quad.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_mqs.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_mqs.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pwm.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pwm.h
+framework-arduinoteensy@1.162.0/libraries/Audio/play_memory.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/play_memory.h
+framework-arduinoteensy@1.162.0/libraries/Audio/play_queue.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/play_queue.h
+framework-arduinoteensy@1.162.0/libraries/Audio/play_sd_raw.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/play_sd_raw.h
+framework-arduinoteensy@1.162.0/libraries/Audio/play_sd_wav.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/play_sd_wav.h
+framework-arduinoteensy@1.162.0/libraries/Audio/record_queue.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/record_queue.h
+framework-arduinoteensy@1.162.0/libraries/Audio/spi_interrupt.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/spi_interrupt.h
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_dc.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_dc.h
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_pinknoise.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_pinknoise.h
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_sine.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_sine.h
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_waveform.h
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_whitenoise.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_whitenoise.h
+framework-arduinoteensy@1.162.0/libraries/Audio/utility/dma_chan.h
+framework-arduinoteensy@1.162.0/libraries/Audio/utility/dspinst.h
+framework-arduinoteensy@1.162.0/libraries/Audio/utility/pdb.h
+framework-arduinoteensy@1.162.0/libraries/Audio/utility/sqrt_integer.c
+framework-arduinoteensy@1.162.0/libraries/Audio/utility/sqrt_integer.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2014, Paul Stoffregen, paul@pjrc.com
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_notefreq.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/analyze_notefreq.h
+
+/* Audio Library Note Frequency Detection & Guitar/Bass Tuner
+ * Copyright (c) 2015, Colin Duffy
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/async_input_spdif3.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/async_input_spdif3.h
+framework-arduinoteensy@1.162.0/libraries/Audio/biquad.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_spdif3.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_spdif3.h
+framework-arduinoteensy@1.162.0/libraries/Audio/Quantizer.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/Quantizer.h
+framework-arduinoteensy@1.162.0/libraries/Audio/Resampler.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/Resampler.h
+framework-arduinoteensy@1.162.0/libraries/Audio/utility/imxrt_hw.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/utility/imxrt_hw.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2019, Paul Stoffregen, paul@pjrc.com
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/control_ak4558.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/control_ak4558.h
+
+/*
+ * HiFi Audio Codec Module support library for Teensy 3.x
+ *
+ * Copyright 2015, Michele Perla
+ *
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/control_cs4272.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/control_cs4272.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2014, Paul Stoffregen, paul@pjrc.com
+ *
+ * https://hackaday.io/project/5912-teensy-super-audio-board
+ * https://github.com/whollender/Audio/tree/SuperAudioBoard
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/control_tlv320aic3206.cpp
+
+/* 
+	control_tlv320aic3206
+	
+	Created: Brendan Flynn (http://www.flexvoltbiosensor.com/) for Tympan, Jan-Feb 2017
+	Purpose: Control module for Texas Instruments TLV320AIC3206 compatible with Teensy Audio Library
+ 
+	License: MIT License.  Use at your own risk.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/control_tlv320aic3206.h
+
+/*
+	control_tlv320aic3206
+
+	Created: Brendan Flynn (http://www.flexvoltbiosensor.com/) for Tympan, Jan-Feb 2017
+	Modified: Chip Audette (https://openaudio.blogspot.com) for Tympan 2017-2018
+	Purpose: Control module for Texas Instruments TLV320AIC3206 compatible with Teensy Audio Library
+
+	License: MIT License.  Use at your own risk.
+
+	Note that the TLV320AIC3206 has a reset that should be connected to microcontroller.
+		This code defaults to Teensy Pin 21, which was used on Tympan Rev C.
+		You can set the reset pin in the constructor
+		
+	Note that this can configure the AIC for 32-bit per sample I2S transfers or 16-bit per sample.
+		Defaults to 16 bits per sample to allow it to work with default Teensy audio library.
+	
+	Example Usage for Teensy:
+	
+		#include <Audio.h>	//Teensy Audio Library
+		int AIC3206_RESET_PIN=21;     //What pin is your AIC3206 reset pin connected to?
+		AudioControlTLV320AIC3206     audioHardware(AIC3206_RESET_PIN);
+		AudioInputI2S                 i2s_in;        //Digital audio *from* the AIC.
+		AudioOutputI2S                i2s_out;       //Digital audio *to* the AIC.
+		
+		AudioConnection               patchCord1(i2s_in, 0, i2s_out, 0); //connect left input to left output
+		AudioConnection               patchCord2(i2s_in, 1, i2s_out, 1); //connect right input to right output
+		
+		void setup(void)
+		{
+		  //begin the serial comms (for debugging)
+		  Serial.begin(115200);  delay(500);
+		  Serial.println("AudioPassThru: Starting setup()...");
+
+		  //allocate the dynamic memory for audio processing blocks
+		  AudioMemory(10); 
+
+		  //Enable the TLV32AIC3206 to start the audio flowing!
+		  audioHardware.enable(); // activate AIC
+
+		  //Choose the desired input
+		  audioHardware.inputSelect(AIC3206_INPUT_IN1);       // use Input 1
+
+		  //Set the desired volume levels
+		  audioHardware.volume_dB(0);                   // headphone amplifier.  -63.6 to +24 dB in 0.5dB steps.
+		  audioHardware.setInputGain_dB(10.0); // set input volume, 0-47.5dB in 0.5dB setps
+		}
+
+		void loop(void)
+		{
+		  // Nothing to do
+		}
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_bitcrusher.cpp
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2014, Jonathan Payne (jon@jonnypayne.com)
+ * Based on Effect_Fade by Paul Stoffregen
+ * Also samplerate reduction based on Pete Brown's bitcrusher here: 
+ * http://10rem.net/blog/2013/01/13/a-simple-bitcrusher-and-sample-rate-reducer-in-cplusplus-for-a-windows-store-app
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_bitcrusher.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2014, Jonathan Payne (jon@jonnypayne.com)
+ * Based on Effect_Fade by Paul Stoffregen
+
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_chorus.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_chorus.h
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_flange.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_flange.h
+framework-arduinoteensy@1.162.0/libraries/Audio/filter_fir.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/filter_fir.h
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_tonesweep.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_tonesweep.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2014, Pete (El Supremo)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_combine.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_granular.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_granular.h
+
+/*
+ * Copyright (c) 2018 John-Michael Reed
+ * bleeplabs.com
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_combine.h
+
+/* Copyright (c) 2018 John-Michael Reed
+ * bleeplabs.com
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * Combine analog signals with bitwise expressions like XOR.
+ * Combining two simple oscillators results in interesting new waveforms,
+ * Combining white noise or dynamic incoming audio results in aggressive digital distortion.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_envelope.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_envelope.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_tdm.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_tdm.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_tdm2.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_tdm2.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_tdm.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_tdm.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_tdm2.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_tdm2.h
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_pwm.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_pwm.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2017, Paul Stoffregen, paul@pjrc.com
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_freeverb.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_freeverb.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_pdm.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_pdm.h
+framework-arduinoteensy@1.162.0/libraries/Audio/input_pdm_i2s2.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/input_pdm_i2s2.h
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_waveform.cpp
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2018, Paul Stoffregen, paul@pjrc.com
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_midside.cpp
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2015, Hedde Bosman
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_midside.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2015, Hedde Bosman
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_reverb.cpp
+
+/*
+ * Copyright (c) 2016 Joao Rossi Filho
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_reverb.h
+
+/*  Reverb for Teensy
+ *
+ *  Author: Joao Rossi Filho
+ *          joaorossifilho@gmail.com
+ *
+ *  Soon I'll make a commit with nice comments and discription
+ *
+ * Copyright (c) 2016 Joao Rossi FIlho
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_wavefolder.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_wavefolder.h
+
+/* Wavefolder effect for Teensy Audio library
+ *
+ * Copyright (c) 2020, Mark Tillotson
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_waveshaper.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/effect_waveshaper.h
+
+/*
+ * Waveshaper for Teensy 3.X audio
+ *
+ * Copyright (c) 2017 Damien Clarke, http://damienclarke.me
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/filter_ladder.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/filter_ladder.h
+
+/* Audio Library for Teensy, Ladder Filter
+ * Copyright (c) 2021, Richard van Hoesel
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/input_i2s_hex.h
+
+/* Audio Library for Teensy 3.X // github.com/PaulStoffregen/cores/blob/master/teensy4/AudioStream.h
+ * Copyright (c) 2014, Paul Stoffregen, paul@pjrc.com
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/input_spdif3.cpp
+
+/*
+ by Frank Bösing
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/input_spdif3.h
+
+// Frank Bösing
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/memcpy_audio.h
+
+/* Teensyduino Audio Memcpy
+ * Copyright (c) 2016 Frank Bösing
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/memcpy_audio.S
+
+/* Teensyduino Audio Memcpy
+ * Copyright (c) 2016, 2017, 2018, 2019 Frank Bösing
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be 
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows 
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/output_adat.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_adat.h
+
+/* ADAT for Teensy 3.X
+ * Copyright (c) 2017, Ernstjan Freriks,
+ * Thanks to Frank Bösing & KPC & Paul Stoffregen!
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/output_dacs.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pt8211.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pt8211.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pt8211_2.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pt8211_2.h
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_karplusstrong.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_karplusstrong.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2016, Paul Stoffregen, paul@pjrc.com
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/output_i2s.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pt8211.cpp
+
+// added jan 2021, Frank Bösing
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pt8211.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pt8211_2.cpp
+
+//Adapted to PT8211, Frank Bösing, Ben-Rheinland
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pt8211.h
+
+//I2S adapted to PT8211, Frank Bösing.
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/output_pt8211_2.h
+
+//Frank Bösing, Ben-Rheinland
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/output_spdif.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_spdif.h
+framework-arduinoteensy@1.162.0/libraries/Audio/output_spdif2.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_spdif2.h
+
+/* SPDIF for Teensy 3.X
+ * Copyright (c) 2015, Frank Bösing, f.boesing@gmx.de,
+ * Thanks to KPC & Paul Stoffregen!
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/output_spdif3.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/output_spdif3.h
+
+/* Hardware-SPDIF for Teensy 4
+ * Copyright (c) 2019, Frank Bösing, f.boesing@gmx.de
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/play_serialflash_raw.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/play_serialflash_raw.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2014, Paul Stoffregen, paul@pjrc.com
+ * Modified to use SerialFlash instead of SD library by Wyatt Olson <wyatt@digitalcave.ca>
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_simple_drum.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_simple_drum.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2016, Byron Jacquot, SparkFun Electronics
+ *
+ * Development of this audio library was funded by PJRC.COM, LLC by sales of
+ * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
+ * open source software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_wavetable.cpp
+framework-arduinoteensy@1.162.0/libraries/Audio/synth_wavetable.h
+
+/* Audio Library for Teensy 3.X
+ * Copyright (c) 2017, TeensyAudio PSU Team
+ *
+ * Development of this audio library was sponsored by PJRC.COM, LLC.
+ * Please support PJRC's efforts to develop open source
+ * software by purchasing Teensy or other PJRC products.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice, development funding notice, and this permission
+ * notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */

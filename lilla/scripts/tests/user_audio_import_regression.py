@@ -485,6 +485,6 @@ int main()
 '''
     cpp=build/'test.cpp';exe=build/'test.exe'
     cpp.write_text(fixture+checks,encoding='utf-8')
-    subprocess.run([compiler,'-std=c++20','-Wall','-Wextra','-Werror','-I',str(ROOT/'.pio/libdeps/teensy41/dr_libs'),str(cpp),'-o',str(exe)],check=True)
+    subprocess.run([compiler,'-std=c++20','-Wall','-Wextra','-Werror','-I',str(ROOT.parent/'.pio/libdeps/lilla_fft_r2/dr_libs'),str(cpp),'-o',str(exe)],check=True)
     env=os.environ.copy();env['PATH']=str(Path(compiler).parent)+os.pathsep+env.get('PATH','')
     subprocess.run([str(exe)],check=True,env=env)

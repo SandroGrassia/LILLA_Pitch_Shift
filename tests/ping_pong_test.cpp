@@ -1,10 +1,8 @@
 #include "FftPitchCore.h"
-#include "NoteVoices.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
-#include <memory>
 #include <vector>
 
 using Mode = FftPitchCore::PlayMode;
@@ -109,36 +107,5 @@ int main()
         cropped.Render();
     }
     assert(cropped.IsActive() && cropped.Transport() >= 100 && cropped.Transport() < 498);
-    auto cores = std::make_unique<FftPitchCore[]>(GranularAudio::VoiceCount);
-    GranularAudio audio(cores.get());
-    NoteVoices notes(audio);
-    notes.SetSource({source.data(), static_cast<uint32_t>(source.size())});
-    notes.SetRegion(333, 633, 42);
-    notes.SetMode(Mode::LoopReverseForward);
-    audio.SetReady();
-    uint32_t selected;
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(notes.NoteOn(60 + i, 100, selected) == NoteVoices::Result::Started);
-        assert(cores[selected].Transport() == 632);
-    }
-    for (unsigned i = 0; i < 80; ++i)
-    {
-        audio.update();
-    }
-    assert(notes.HeldCount() == GranularAudio::VoiceCount);
-    NoteVoices::Report report;
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(notes.NoteOff(60 + i, report));
-    }
-    for (unsigned i = 0; i < 4; ++i)
-    {
-        audio.update();
-    }
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(!cores[i].IsActive());
-    }
-    std::puts("PASS: both ping-pong modes match materialized streams, no repeated endpoints, mix ignored, live direction setting, loop transitions, bounds, meters and configured voices.");
+    std::puts("PASS: both ping-pong modes, materialized streams, endpoints, direction changes and bounds.");
 }

@@ -3,7 +3,7 @@
  * Adapted for LILLA Audio Sampler to manage n.2 MB85RC512V devices as a
  * single linear address space.
  *
- * Distributed under the BSD License reproduced in FRAM_MB85RC_I2C.h.
+ * Distributed under the BSD License reproduced in LillaFRAM_2x512.h.
  * Copyright (c) 2013, SOSAndroid.fr (E. Ha.). All rights reserved.
  **************************************************************************/
 

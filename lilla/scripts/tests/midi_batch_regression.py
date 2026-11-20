@@ -36,7 +36,7 @@ prefix = r'''
 uint32_t clock_us = 0, clock_step = 0;
 uint32_t audio_update_time_micros = 0;
 uint32_t audio_update_cycle = 0, audio_player_emergency_stops = 0;
-struct CallbackStub { unsigned calls = 0; void Update() { ++calls; } void Prepare_read_budget() {} } callbacks;
+struct CallbackStub { unsigned calls = 0; void Update() { ++calls; } void Prepare_read_budget() {} void Prepare_attack_cache() {} } callbacks;
 struct LillaClock
 {
     CallbackStub *Players_Manager_ptr = &callbacks;
