@@ -76,11 +76,11 @@ The repository contains one firmware target, `lilla_fft_r2`:
 
 | Path | Purpose |
 | --- | --- |
-| `lilla/src/`, `lilla/include/`, `lilla/lib/` | HW R2 application, UI, storage, audio graph and required components. |
-| `src/`, `include/` | FFT core, spectral frames, attack cache and diagnostics. |
-| `lilla/scripts/` | Firmware naming, library paths, linker placement and HEX export. |
+| `src/`, `include/` | HW R2 application, FFT core, spectral frames, attack cache and diagnostics. |
+| `lib/` | UI, storage, audio graph and required components. |
+| `scripts/` | Firmware naming, library paths, linker placement and HEX export. |
 | `tests/` | FFT core, transport, scheduling and production player adapter regressions. |
-| `lilla/scripts/tests/` | Application, MIDI, storage, effects and UI regressions. |
+| `scripts/tests/` | Application, MIDI, storage, effects and UI regressions. |
 | `.pio/` | Ignored, generated build outputs, dependencies and host test executables. |
 
 Granular/WSOLA prototypes, offline engine comparisons, unused hardware drivers
@@ -100,14 +100,14 @@ The Teensy R2 build and the following host regression suites pass:
 python tests/lilla_fft_adapter_test.py
 python tests/scheduling_test.py
 python tests/region_controls_test.py
-python -B lilla/scripts/tests/run_regressions.py
+python -B scripts/tests/run_regressions.py
 ```
 
 Host tests require Python 3.10+ and a C++20 `g++` compiler. On Windows the
 runners also recognize `C:/msys64/ucrt64/bin/g++.exe`. Build the firmware first
 to install the framework and decoder dependencies used by application tests.
 The FFT suites run from the checked-out sources without fetching old Git commits.
-See [application test instructions](lilla/scripts/tests/README.md) for filtering
+See [application test instructions](scripts/tests/README.md) for filtering
 and optional MP3 fixtures.
 
 Hardware checks confirmed continuous recording with overlapping notes and

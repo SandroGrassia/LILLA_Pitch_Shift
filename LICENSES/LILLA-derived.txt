@@ -6,16 +6,16 @@ A package-wide notice may cover code not linked into this firmware.
 
 ========================================================================
 Source files:
-repository/lilla/lib/AmpliOutMuteIn/AmpliOutMuteIn.h
-repository/lilla/lib/AudioGain/AudioGain.h
-repository/lilla/lib/AudioPeakDetector/AudioPeakDetector.h
-repository/lilla/lib/AudioVCF/AudioVCF.h
-repository/lilla/lib/Mixer_2x1/Mixer_2x1.h
-repository/lilla/lib/output_noiseshaped_pwm/output_noiseshaped_pwm.cpp
-repository/lilla/lib/output_noiseshaped_pwm/output_noiseshaped_pwm.h
-repository/lilla/lib/Router_16x3/Router_16x3.h
-repository/lilla/lib/WaveLFO/WaveLFO.h
-repository/lilla/lib/WaveSine/WaveSine.h
+repository/lib/AmpliOutMuteIn/AmpliOutMuteIn.h
+repository/lib/AudioGain/AudioGain.h
+repository/lib/AudioPeakDetector/AudioPeakDetector.h
+repository/lib/AudioVCF/AudioVCF.h
+repository/lib/Mixer_2x1/Mixer_2x1.h
+repository/lib/output_noiseshaped_pwm/output_noiseshaped_pwm.cpp
+repository/lib/output_noiseshaped_pwm/output_noiseshaped_pwm.h
+repository/lib/Router_16x3/Router_16x3.h
+repository/lib/WaveLFO/WaveLFO.h
+repository/lib/WaveSine/WaveSine.h
 
 /* Audio Library for Teensy 3.X
  * Copyright (c) 2014, Paul Stoffregen, paul@pjrc.com
@@ -45,7 +45,7 @@ repository/lilla/lib/WaveSine/WaveSine.h
 
 ========================================================================
 Source files:
-repository/lilla/lib/LillaFRAM_2x512/LillaFRAM_2x512.cpp
+repository/lib/LillaFRAM_2x512/LillaFRAM_2x512.cpp
 
 /**************************************************************************
  * Derived from FRAM_MB85RC_I2C by SOSAndroid.fr (E. Ha.).
@@ -58,7 +58,7 @@ repository/lilla/lib/LillaFRAM_2x512/LillaFRAM_2x512.cpp
 
 ========================================================================
 Source files:
-repository/lilla/lib/LillaFRAM_2x512/LillaFRAM_2x512.h
+repository/lib/LillaFRAM_2x512/LillaFRAM_2x512.h
 
 /**************************************************************************
  * Derived from FRAM_MB85RC_I2C by SOSAndroid.fr (E. Ha.).
@@ -95,15 +95,15 @@ repository/lilla/lib/LillaFRAM_2x512/LillaFRAM_2x512.h
 
 ========================================================================
 Source files:
-repository/lilla/lib/MidiOut/MidiOut.cpp
-repository/lilla/lib/MidiOut/MidiOut.h
+repository/lib/MidiOut/MidiOut.cpp
+repository/lib/MidiOut/MidiOut.h
 
 // Midi_Reader
 // Credits: Francois Best (https://github.com/FortySevenEffects/arduino_midi_library/issues/165)
 
 ========================================================================
 Source files:
-repository/lilla/lib/MidiReader/MidiReader.cpp
+repository/lib/MidiReader/MidiReader.cpp
 
 /*
  * LILLA Audio Sampler
@@ -115,7 +115,7 @@ repository/lilla/lib/MidiReader/MidiReader.cpp
 
 ========================================================================
 Source files:
-repository/lilla/lib/MidiReader/MidiReader.h
+repository/lib/MidiReader/MidiReader.h
 
 // Lilla_Midi_Reader
 // Credits: Francois Best (https://github.com/FortySevenEffects/arduino_midi_library/issues/165)

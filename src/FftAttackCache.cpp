@@ -1,3 +1,9 @@
+/*
+   LILLA Audio Sampler
+   Author: Sandro Grassia (info@lillasampler.it)
+   www.lillasampler.it
+*/
+
 #include "FftAttackCache.h"
 #ifdef __IMXRT1062__
 #include <Arduino.h>

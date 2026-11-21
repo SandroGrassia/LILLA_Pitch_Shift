@@ -1,0 +1,41 @@
+/*
+ * LILLA Audio Sampler
+ * Author: Sandro Grassia, info@lillasampler.it
+ * www.lillasampler.it
+ *
+ */
+
+#pragma once
+
+#include <Arduino.h>
+#include "SharedLoop.h"
+#include "GraphicElements.h"
+#include "DisplayMidiLoop.h"
+#include <SPI.h>
+#include "config.h"
+
+class LoopMetronomo
+{
+private:
+    static constexpr int Metro_LED_Y = 64; // Y-PIXEL primo led Metronomo
+    const int Metro_LED_X = display_coordinate_x(DisplayMidiLoop::Loop_track1_column); // X-PIXEL primo led Metronomo
+    int beat;
+    int metro_delta_ms[LOOP_metro_leds]; // delta_t in ms tra i passi del metronomo
+
+    // riferimenti esterni
+    DisplayMidiLoop &Display;
+
+public:
+    LoopMetronomo(DisplayMidiLoop &Display) : Display(Display) {}
+
+    // riferimento esterno
+    ILI9341_t3n *tft_ptr = nullptr;
+
+    void Update(bool with_led = true); // avanza il metronomo e i led
+    void Setup(const int LOOP_time);
+    void Leds_off(void); // spegne tutti i led
+    void Led_ON(int led); // accende il led e assegna beat
+    int Read_metro_delta_ms(void); // delta_t per il prossimo beat
+
+    unsigned long metro_time; // (ms) istante di esecuzione del prossimo evento da eseguire rispetto a LOOP_Clock
+};

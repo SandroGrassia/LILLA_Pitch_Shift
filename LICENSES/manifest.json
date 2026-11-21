@@ -579,22 +579,22 @@
     "LICENSES/LILLA-derived.txt": {
       "sha256": "2126ecb8ae49e0284fe7ea39a98af5521a13d1fc436c674afff791aaf665cf8c",
       "sources": {
-        "repository/lilla/lib/AmpliOutMuteIn/AmpliOutMuteIn.h": "4730e5a685f57559d69ebfb158de9ebb0c51d2cfd262292001a9a793fac9c82a",
-        "repository/lilla/lib/AudioGain/AudioGain.h": "a7cb36e642752903428c9ef61e99cdd4b42909fd0b1b6e14aa6d219363166546",
-        "repository/lilla/lib/AudioPeakDetector/AudioPeakDetector.h": "a7742e98ab589e79531dce0e0881729f6b32201cd65d75009926f25f199d9058",
-        "repository/lilla/lib/AudioVCF/AudioVCF.h": "c978d4edd8df6538c1fd670b474c016f5ee079bce7ba126b3ba68e5502e6c640",
-        "repository/lilla/lib/LillaFRAM_2x512/LillaFRAM_2x512.cpp": "96eba2c79ff80dfbc9618ccbb4b90151b3630f985a05c18c474fc00f63853be9",
-        "repository/lilla/lib/LillaFRAM_2x512/LillaFRAM_2x512.h": "7a53fae36fbb84ae94658157195ba5aab4f857aa8ef0125b4152d17f41787a52",
-        "repository/lilla/lib/MidiOut/MidiOut.cpp": "7bd0b8bb32d8d841c0aeb2207ae47078f4c33f2796b1eff506250fef9281a0b7",
-        "repository/lilla/lib/MidiOut/MidiOut.h": "222e7b35f0ed02190983affdc3aaf3fba773054481d6f0cad561ec1a3ac3bd66",
-        "repository/lilla/lib/MidiReader/MidiReader.cpp": "e004cee33afa365ae377e635a61c9352b616161146f5ea0d15c6856035567383",
-        "repository/lilla/lib/MidiReader/MidiReader.h": "4d18e89a536797742dcd9ac6c1679ebb4bf21c1346bca1b1596b5ebb3b806e82",
-        "repository/lilla/lib/Mixer_2x1/Mixer_2x1.h": "95455f3a54f86f40ae03f8522cb53345f30ac066f656976ae98df49d389353fe",
-        "repository/lilla/lib/output_noiseshaped_pwm/output_noiseshaped_pwm.cpp": "bece849bb2ac311f36b3848832d1e3542c4910c271acc8870bb255570fad0324",
-        "repository/lilla/lib/output_noiseshaped_pwm/output_noiseshaped_pwm.h": "764bdd6a075eb89a32b0a68a137f924e3b94970ea614696c0761bda93628c181",
-        "repository/lilla/lib/Router_16x3/Router_16x3.h": "465fec2eeaeed6f471427596cc65d1e83e5f1452e181e6307a889b745c34def0",
-        "repository/lilla/lib/WaveLFO/WaveLFO.h": "84b0383adc6e3c5b7b93af8dfa0841efc6cc32c936ca12bdcd175ff486acc237",
-        "repository/lilla/lib/WaveSine/WaveSine.h": "611484958b707fcc3d7a52333366af9bb178d4a945adfd24e9667e5afd5987be"
+        "repository/lib/AmpliOutMuteIn/AmpliOutMuteIn.h": "4730e5a685f57559d69ebfb158de9ebb0c51d2cfd262292001a9a793fac9c82a",
+        "repository/lib/AudioGain/AudioGain.h": "a7cb36e642752903428c9ef61e99cdd4b42909fd0b1b6e14aa6d219363166546",
+        "repository/lib/AudioPeakDetector/AudioPeakDetector.h": "a7742e98ab589e79531dce0e0881729f6b32201cd65d75009926f25f199d9058",
+        "repository/lib/AudioVCF/AudioVCF.h": "c978d4edd8df6538c1fd670b474c016f5ee079bce7ba126b3ba68e5502e6c640",
+        "repository/lib/LillaFRAM_2x512/LillaFRAM_2x512.cpp": "96eba2c79ff80dfbc9618ccbb4b90151b3630f985a05c18c474fc00f63853be9",
+        "repository/lib/LillaFRAM_2x512/LillaFRAM_2x512.h": "7a53fae36fbb84ae94658157195ba5aab4f857aa8ef0125b4152d17f41787a52",
+        "repository/lib/MidiOut/MidiOut.cpp": "7bd0b8bb32d8d841c0aeb2207ae47078f4c33f2796b1eff506250fef9281a0b7",
+        "repository/lib/MidiOut/MidiOut.h": "222e7b35f0ed02190983affdc3aaf3fba773054481d6f0cad561ec1a3ac3bd66",
+        "repository/lib/MidiReader/MidiReader.cpp": "e004cee33afa365ae377e635a61c9352b616161146f5ea0d15c6856035567383",
+        "repository/lib/MidiReader/MidiReader.h": "4d18e89a536797742dcd9ac6c1679ebb4bf21c1346bca1b1596b5ebb3b806e82",
+        "repository/lib/Mixer_2x1/Mixer_2x1.h": "95455f3a54f86f40ae03f8522cb53345f30ac066f656976ae98df49d389353fe",
+        "repository/lib/output_noiseshaped_pwm/output_noiseshaped_pwm.cpp": "bece849bb2ac311f36b3848832d1e3542c4910c271acc8870bb255570fad0324",
+        "repository/lib/output_noiseshaped_pwm/output_noiseshaped_pwm.h": "764bdd6a075eb89a32b0a68a137f924e3b94970ea614696c0761bda93628c181",
+        "repository/lib/Router_16x3/Router_16x3.h": "465fec2eeaeed6f471427596cc65d1e83e5f1452e181e6307a889b745c34def0",
+        "repository/lib/WaveLFO/WaveLFO.h": "84b0383adc6e3c5b7b93af8dfa0841efc6cc32c936ca12bdcd175ff486acc237",
+        "repository/lib/WaveSine/WaveSine.h": "611484958b707fcc3d7a52333366af9bb178d4a945adfd24e9667e5afd5987be"
       }
     },
     "LICENSES/GCC-runtime.txt": {

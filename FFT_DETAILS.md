@@ -458,9 +458,9 @@ demonstrates reuse, not adequate sustained CPU headroom.
 | Source mapping, FIR, interpolation and staged scheduling | [FftPitchCore.cpp](src/FftPitchCore.cpp) |
 | Hann, FFT, frequency estimates, peaks, phase locking and overlap | [FftSpectralFrame.cpp](src/FftSpectralFrame.cpp) |
 | Cache keys, construction, restoration and invalidation | [FftAttackCache.cpp](src/FftAttackCache.cpp) |
-| Audio graph adapter, startup turns, gain and output | [AudioPlayer.cpp](lilla/lib/AudioPlayer/AudioPlayer.cpp) |
-| Eligible presets and idle-only preparation | [PlayersManager.cpp](lilla/lib/PlayersManager/PlayersManager.cpp) |
-| Scheduling cache preparation with MIDI/control work | [LillaClock.cpp](lilla/lib/LillaClock/LillaClock.cpp) |
+| Audio graph adapter, startup turns, gain and output | [AudioPlayer.cpp](lib/AudioPlayer/AudioPlayer.cpp) |
+| Eligible presets and idle-only preparation | [PlayersManager.cpp](lib/PlayersManager/PlayersManager.cpp) |
+| Scheduling cache preparation with MIDI/control work | [LillaClock.cpp](lib/LillaClock/LillaClock.cpp) |
 | Cached/uncached and live-adapter tests | [Adapter tests](tests/lilla_fft_adapter_test.cpp) |
 
 The diagrams document intended computation and scheduling. Hardware measurement

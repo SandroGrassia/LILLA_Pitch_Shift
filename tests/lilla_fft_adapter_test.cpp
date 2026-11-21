@@ -1,3 +1,9 @@
+/*
+   LILLA Audio Sampler
+   Author: Sandro Grassia (info@lillasampler.it)
+   www.lillasampler.it
+*/
+
 int main()
 {
     std::vector<int16_t> source(40000);

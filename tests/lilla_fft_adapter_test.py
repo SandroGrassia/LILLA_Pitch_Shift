@@ -5,7 +5,7 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 build = root / ".pio/lilla_adapter_test"
 build.mkdir(parents=True, exist_ok=True)
-source = (root / "lilla/lib/AudioPlayer/AudioPlayer.cpp").read_text()
+source = (root / "lib/AudioPlayer/AudioPlayer.cpp").read_text()
 names = ["Fft_mode", "Read_fft_source", "Configure_fft_live_region", "Prepare_fft_live", "Start_fft", "Update_fft"]
 functions = []
 for name in names:
