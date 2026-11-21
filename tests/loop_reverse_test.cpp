@@ -1,9 +1,13 @@
+/*
+   LILLA Audio Sampler
+   Author: Sandro Grassia (info@lillasampler.it)
+   www.lillasampler.it
+*/
+
 #include "FftPitchCore.h"
-#include "NoteVoices.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>
-#include <memory>
 #include <vector>
 
 int main()
@@ -76,36 +80,5 @@ int main()
         editing.Render();
     }
     assert(editing.IsActive() && editing.Transport() >= 100 && editing.Transport() < 300);
-    auto cores = std::make_unique<FftPitchCore[]>(GranularAudio::VoiceCount);
-    GranularAudio audio(cores.get());
-    NoteVoices notes(audio);
-    notes.SetSource({source.data(), static_cast<uint32_t>(source.size())});
-    notes.SetRegion(333, 633, 42);
-    notes.SetMode(Mode::LoopReverse);
-    audio.SetReady();
-    uint32_t selected;
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(notes.NoteOn(60 + i, 100, selected) == NoteVoices::Result::Started);
-        assert(cores[selected].Transport() == 632);
-    }
-    for (unsigned i = 0; i < 80; ++i)
-    {
-        audio.update();
-    }
-    assert(notes.HeldCount() == GranularAudio::VoiceCount);
-    NoteVoices::Report report;
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(notes.NoteOff(60 + i, report));
-    }
-    for (unsigned i = 0; i < 4; ++i)
-    {
-        audio.update();
-    }
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(!cores[i].IsActive());
-    }
-    std::puts("PASS: LOOP_REV equals reversed-source LOOP_FWD, tiny regions, repeated seams, cross-mix edits, pitch 0.5..3, live bounds, release and configured voices.");
+    std::puts("PASS: reverse loops, cross-mix edits, pitch, bounds and release.");
 }

@@ -1,9 +1,13 @@
+/*
+   LILLA Audio Sampler
+   Author: Sandro Grassia (info@lillasampler.it)
+   www.lillasampler.it
+*/
+
 #include "FftPitchCore.h"
-#include "NoteVoices.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>
-#include <memory>
 #include <vector>
 
 int main()
@@ -143,26 +147,5 @@ int main()
         previous = sample;
     }
     assert(previous == 10000);
-
-    auto cores = std::make_unique<FftPitchCore[]>(GranularAudio::VoiceCount);
-    GranularAudio audio(cores.get());
-    NoteVoices notes(audio);
-    notes.SetSource({source.data(), static_cast<uint32_t>(source.size())});
-    notes.SetRegion(0, 100);
-    notes.SetMode(FftPitchCore::PlayMode::OnceReverse);
-    audio.SetReady();
-    uint32_t selected;
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(notes.NoteOn(60 + i, 100, selected) == NoteVoices::Result::Started);
-        assert(cores[i].Transport() == 99);
-    }
-    audio.update();
-    assert(notes.HeldCount() == 0);
-    assert(notes.NoteOn(60, 100, selected) == NoteVoices::Result::Started);
-    NoteVoices::Report report;
-    assert(!notes.NoteOff(60, report));
-    assert(cores[selected].IsActive());
-    assert(notes.NoteOff(60, report));
-    std::puts("PASS: ONCE_REV matches reversed-source ONCE_FWD exactly, start/end bounds, lookahead silence, pitch/duration, live edits and configured-voice reuse.");
+    std::puts("PASS: reverse one-shot equivalence, boundaries, direction changes and fades.");
 }

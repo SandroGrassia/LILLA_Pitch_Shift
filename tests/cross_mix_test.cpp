@@ -1,51 +1,18 @@
+/*
+   LILLA Audio Sampler
+   Author: Sandro Grassia (info@lillasampler.it)
+   www.lillasampler.it
+*/
+
 #include "FftPitchCore.h"
-#include "PlaybackRegion.h"
-#include "NoteVoices.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
-#include <memory>
 #include <vector>
 
 int main()
 {
-    PlaybackRegion region;
-    region.Reset(1000);
-    region.RotateStep(-5);
-    region.MoveCrossMix(1);
-    assert(region.CrossMix() == 2);
-    region.MoveCrossMix(-1);
-    assert(region.CrossMix() == 0);
-    region.MoveCrossMix(10000);
-    assert(region.CrossMix() == 300);
-    region.MoveTo(-900);
-    assert(region.Length() == 100 && region.CrossMix() == 42);
-    region.MoveTo(900);
-    assert(region.CrossMix() == 42);
-    region.Reset(674);
-    assert(region.CrossMixMax() == 42);
-    region.Reset(675);
-    assert(region.CrossMixMax() == 300);
-    region.MoveCrossMix(15);
-    assert(region.CrossMix() == 30);
-    region.MoveCrossMix(1);
-    assert(region.CrossMix() == 34);
-    region.MoveCrossMix(14);
-    assert(region.CrossMix() == 90);
-    region.MoveCrossMix(1);
-    assert(region.CrossMix() == 100);
-    region.MoveCrossMix(-1);
-    assert(region.CrossMix() == 90);
-    region.MoveCrossMix(-15);
-    assert(region.CrossMix() == 30);
-    region.RotateStep(5);
-    region.MoveCrossMix(1);
-    assert(region.CrossMix() == 34); // Independent of the trim increment.
-    region.Reset(2);
-    region.MoveCrossMix(1);
-    assert(region.CrossMix() == 0);
-
     std::vector<int16_t> source(1400);
     for (unsigned i = 0; i < source.size(); ++i)
     {
@@ -177,41 +144,5 @@ int main()
         }
         assert(once_edit.Render() == once_reference.Render());
     }
-
-    auto cores = std::make_unique<FftPitchCore[]>(GranularAudio::VoiceCount);
-    GranularAudio audio(cores.get());
-    NoteVoices notes(audio);
-    notes.SetSource({source.data(), static_cast<uint32_t>(source.size())});
-    notes.SetRegion(100, 1100, 100);
-    audio.SetReady();
-    uint32_t selected;
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(notes.NoteOn(60 + i, 127, selected) == NoteVoices::Result::Started);
-        assert(cores[i].CrossMix() == 100);
-    }
-    for (unsigned i = 0; i < 10; ++i)
-    {
-        audio.update();
-    }
-    notes.SetRegion(300, 400, 50);
-    for (unsigned i = 0; i < 20; ++i)
-    {
-        audio.update();
-    }
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(cores[i].CrossMix() == 50);
-        assert(cores[i].Transport() >= 350 && cores[i].Transport() < 400);
-    }
-    notes.SetRegion(300, 400, 0);
-    for (unsigned i = 0; i < 20; ++i)
-    {
-        audio.update();
-    }
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(cores[i].CrossMix() == 0);
-    }
-    std::puts("PASS: cross-mix control bounds, RAW blend, loop timing, FFT materialized-stream equivalence, seam reduction, live edits and configured voices.");
+    std::puts("PASS: RAW blend, loop timing, FFT stream equivalence, seams and live edits.");
 }

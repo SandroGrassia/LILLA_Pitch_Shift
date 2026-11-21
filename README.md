@@ -72,8 +72,21 @@ The build exports `LIlla_PitchShift_v_0_0_13.hex` to the repository root and
 verifies that it matches the compiled file. The Upload task builds and uploads
 the current sources. For a manual upload, select this HEX file in Teensy Loader.
 
-The application lives in `lilla/src/` and `lilla/lib/`; shared DSP code is in
-`include/` and `src/`. Required build helpers are in `lilla/scripts/`.
+The repository contains one firmware target, `lilla_fft_r2`:
+
+| Path | Purpose |
+| --- | --- |
+| `src/`, `include/` | HW R2 application, FFT core, spectral frames, attack cache and diagnostics. |
+| `lib/` | UI, storage, audio graph and required components. |
+| `scripts/` | Firmware naming, library paths, linker placement and HEX export. |
+| `tests/` | FFT core, transport, scheduling and production player adapter regressions. |
+| `scripts/tests/` | Application, MIDI, storage, effects and UI regressions. |
+| `.pio/` | Ignored, generated build outputs, dependencies and host test executables. |
+
+Granular/WSOLA prototypes, offline engine comparisons, unused hardware drivers
+and tests of the retired player are outside this firmware's scope. Tracked
+historical sources remain available in Git history. The root contains only the
+current release HEX.
 
 ## Diagnostics and validation
 
@@ -87,7 +100,15 @@ The Teensy R2 build and the following host regression suites pass:
 python tests/lilla_fft_adapter_test.py
 python tests/scheduling_test.py
 python tests/region_controls_test.py
+python -B scripts/tests/run_regressions.py
 ```
+
+Host tests require Python 3.10+ and a C++20 `g++` compiler. On Windows the
+runners also recognize `C:/msys64/ucrt64/bin/g++.exe`. Build the firmware first
+to install the framework and decoder dependencies used by application tests.
+The FFT suites run from the checked-out sources without fetching old Git commits.
+See [application test instructions](scripts/tests/README.md) for filtering
+and optional MP3 fixtures.
 
 Hardware checks confirmed continuous recording with overlapping notes and
 improved waveform display stability. Host tests do not measure hardware timing
@@ -98,3 +119,16 @@ Firmware SHA-256:
 
 See [Firmware Architecture](FIRMWARE_ARCHITECTURE.md) for memory ownership and
 scheduling, and [FFT Details](FFT_DETAILS.md) for the DSP design.
+
+## License
+
+Original LILLA PitchShift code is licensed under **GPL-3.0-or-later**.
+See [LICENSE](LICENSE) for the full text and [LICENSING.md](LICENSING.md) for
+the scope, retained third-party terms and firmware source-delivery requirements.
+Third-party copyright and license notices remain in force; copies and the
+inspected dependency versions are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [LICENSES/](LICENSES/).
+
+The additional PJRC target-selection condition is preserved. Its compatibility
+with GPLv3 distribution of the combined firmware remains an open question,
+documented in [LICENSING.md](LICENSING.md#compatibility-of-the-firmware-combination).

@@ -1,0 +1,166 @@
+/*
+ * LILLA Audio Sampler
+ * Author: Sandro Grassia, info@lillasampler.it
+ * www.lillasampler.it
+ *
+ */
+
+// StereoLiveSampler registra su file in PSRAM
+
+#include "StereoLiveSampler.h"
+
+void StereoLiveSampler::Begin(void)
+{
+    writing = false;
+}
+
+void StereoLiveSampler::Reset(void)
+{
+    Q_sample = -1;
+    first_write_flag = true;
+}
+
+void StereoLiveSampler::Start(bool stereo_in)
+{
+    stereo = stereo_in;
+    book_stop_flag = false;
+    decay_gain_flag = false;
+    attack_gain_flag = true;
+    samples_counter = Slope_samples;
+
+    // Record!!
+    writing = true;
+}
+
+void StereoLiveSampler::Stop(void)
+{
+    book_stop_flag = true;
+}
+
+void StereoLiveSampler::update(void)
+{
+    // only update if we're writing
+    if (!writing)
+    {
+        return;
+    }
+
+    if (book_stop_flag && !attack_gain_flag)
+    {
+        decay_gain_flag = true;
+        samples_counter = Slope_samples;
+        book_stop_flag = false;
+    }
+
+    audio_block_t *in_block_L = receiveReadOnly(0);
+    audio_block_t *in_block_R = receiveReadOnly(1);
+
+    static const int16_t silence[AUDIO_BLOCK_SAMPLES] = {};
+    const int16_t *samples_L = in_block_L != nullptr ? in_block_L->data : silence;
+    const int16_t *samples_R = in_block_R != nullptr ? in_block_R->data : silence;
+
+    // microtimer = 0;
+
+    if (Q_sample == LS_buffer_dim - 1)
+    {
+        Q_sample = -1;
+        first_write_flag = false;
+    }
+    const int Q_sample_cache = Q_sample; // Use the wrapped position for the gain ramps as well as the copy.
+    if (stereo) // si copiano i sample entranti direttamente su PSRAM, array L e array R
+    {
+        memcpy(LS_buffer_L_ptr + Q_sample + 1, samples_L, AUDIO_BLOCK_BYTES);
+        memcpy(LS_buffer_R_ptr + Q_sample + 1, samples_R, AUDIO_BLOCK_BYTES);
+    }
+    else // Mix directly from the input blocks, preserving the existing mono rounding.
+    {
+        for (auto i = 0; i < AUDIO_BLOCK_SAMPLES; ++i)
+        {
+            LS_buffer_mono_ptr[Q_sample + 1 + i] = (samples_L[i] >> 1) + (samples_R[i] >> 1);
+        }
+    }
+
+    Q_sample += AUDIO_BLOCK_SAMPLES; // ultimo Q_sample scritto al ciclo ATTUALE
+
+    /*
+    if (Q_sample < 10000 || Q_sample > LS_buffer_dim - 10000)
+    {
+        Serial.print("Q_sample ");
+        Serial.println(Q_sample);
+    }
+    */
+
+    if (attack_gain_flag)
+    {
+        if (stereo)
+        {
+            for (auto sample = 0; sample < AUDIO_BLOCK_SAMPLES; ++sample)
+            {
+                float factor = (1.0 - samples_counter / Slope_samples);
+                LS_buffer_L_ptr[Q_sample_cache + 1 + sample] = LS_buffer_L_ptr[Q_sample_cache + 1 + sample] * factor;
+                LS_buffer_R_ptr[Q_sample_cache + 1 + sample] = LS_buffer_R_ptr[Q_sample_cache + 1 + sample] * factor;
+                --samples_counter;
+            }
+        }
+
+        else
+        {
+            for (auto sample = 0; sample < AUDIO_BLOCK_SAMPLES; ++sample)
+            {
+                float factor = (1.0 - samples_counter / Slope_samples);
+                LS_buffer_mono_ptr[Q_sample_cache + 1 + sample] = LS_buffer_mono_ptr[Q_sample_cache + 1 + sample] * factor;
+                --samples_counter;
+            }
+        }
+
+        if (samples_counter == 0)
+        {
+            attack_gain_flag = false;
+        }
+    }
+
+    else if (decay_gain_flag)
+    {
+        if (stereo)
+        {
+            for (auto sample = 0; sample < AUDIO_BLOCK_SAMPLES; ++sample)
+            {
+                float factor = samples_counter / Slope_samples;
+                LS_buffer_L_ptr[Q_sample_cache + 1 + sample] = LS_buffer_L_ptr[Q_sample_cache + 1 + sample] * factor;
+                LS_buffer_R_ptr[Q_sample_cache + 1 + sample] = LS_buffer_R_ptr[Q_sample_cache + 1 + sample] * factor;
+                --samples_counter;
+            }
+        }
+
+        else
+        {
+            for (auto sample = 0; sample < AUDIO_BLOCK_SAMPLES; ++sample)
+            {
+                float factor = samples_counter / Slope_samples;
+                LS_buffer_mono_ptr[Q_sample_cache + 1 + sample] = LS_buffer_mono_ptr[Q_sample_cache + 1 + sample] * factor;
+                --samples_counter;
+            }
+        }
+
+        if (samples_counter == 0)
+        {
+            decay_gain_flag = false;
+            writing = false;
+        }
+    }
+
+    if (in_block_L != nullptr)
+    {
+        release(in_block_L);
+    }
+    if (in_block_R != nullptr)
+    {
+        release(in_block_R);
+    }
+    return;
+}
+
+bool StereoLiveSampler::Is_writing(void)
+{
+    return writing;
+}

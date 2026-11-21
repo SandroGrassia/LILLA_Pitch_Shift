@@ -1,0 +1,1450 @@
+Teensy 4 core from framework-arduinoteensy 1.162.0
+
+Verbatim license and attribution notices from the inspected inputs.
+Identical notices are grouped; listed paths identify their source files.
+A package-wide notice may cover code not linked into this firmware.
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/analog.c
+framework-arduinoteensy@1.162.0/cores/teensy4/avr_emulation.h
+framework-arduinoteensy@1.162.0/cores/teensy4/bootdata.c
+framework-arduinoteensy@1.162.0/cores/teensy4/clockspeed.c
+framework-arduinoteensy@1.162.0/cores/teensy4/CrashReport.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/CrashReport.h
+framework-arduinoteensy@1.162.0/cores/teensy4/debugprintf.c
+framework-arduinoteensy@1.162.0/cores/teensy4/delay.c
+framework-arduinoteensy@1.162.0/cores/teensy4/digital.c
+framework-arduinoteensy@1.162.0/cores/teensy4/extmem.c
+framework-arduinoteensy@1.162.0/cores/teensy4/fuse.c
+framework-arduinoteensy@1.162.0/cores/teensy4/HardwareSerial.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/HardwareSerial.h
+framework-arduinoteensy@1.162.0/cores/teensy4/HardwareSerial1.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/HardwareSerial2.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/HardwareSerial3.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/HardwareSerial4.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/HardwareSerial5.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/HardwareSerial6.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/HardwareSerial7.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/HardwareSerial8.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/imxrt.h
+framework-arduinoteensy@1.162.0/cores/teensy4/interrupt.c
+framework-arduinoteensy@1.162.0/cores/teensy4/MIDIUSB.h
+framework-arduinoteensy@1.162.0/cores/teensy4/pwm.c
+framework-arduinoteensy@1.162.0/cores/teensy4/startup.c
+framework-arduinoteensy@1.162.0/cores/teensy4/tempmon.c
+framework-arduinoteensy@1.162.0/cores/teensy4/Tone.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/usb.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_desc.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_dev.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_mouse.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_seremu.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_touch.c
+
+/* Teensyduino Core Library
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2019 PJRC.COM, LLC.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/Arduino.h
+framework-arduinoteensy@1.162.0/cores/teensy4/avr/interrupt.h
+framework-arduinoteensy@1.162.0/cores/teensy4/avr/wdt.h
+framework-arduinoteensy@1.162.0/cores/teensy4/binary.h
+framework-arduinoteensy@1.162.0/cores/teensy4/core_id.h
+framework-arduinoteensy@1.162.0/cores/teensy4/Keyboard.h
+framework-arduinoteensy@1.162.0/cores/teensy4/Mouse.h
+framework-arduinoteensy@1.162.0/cores/teensy4/pgmspace.h
+framework-arduinoteensy@1.162.0/cores/teensy4/wiring_private.h
+
+// This header file is in the public domain.
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/arm_common_tables.h
+framework-arduinoteensy@1.162.0/cores/teensy4/arm_const_structs.h
+framework-arduinoteensy@1.162.0/cores/teensy4/arm_math.h
+
+/*
+ * Copyright (C) 2010-2017 ARM Limited or its affiliates. All rights reserved.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the License); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an AS IS BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/arm_math.h
+
+/**
+   \mainpage CMSIS DSP Software Library
+   *
+   * Introduction
+   * ------------
+   *
+   * This user manual describes the CMSIS DSP software library,
+   * a suite of common signal processing functions for use on Cortex-M processor based devices.
+   *
+   * The library is divided into a number of functions each covering a specific category:
+   * - Basic math functions
+   * - Fast math functions
+   * - Complex math functions
+   * - Filters
+   * - Matrix functions
+   * - Transforms
+   * - Motor control functions
+   * - Statistical functions
+   * - Support functions
+   * - Interpolation functions
+   *
+   * The library has separate functions for operating on 8-bit integers, 16-bit integers,
+   * 32-bit integer and 32-bit floating-point values.
+   *
+   * Using the Library
+   * ------------
+   *
+   * The library installer contains prebuilt versions of the libraries in the <code>Lib</code> folder.
+   * - arm_cortexM7lfdp_math.lib (Cortex-M7, Little endian, Double Precision Floating Point Unit)
+   * - arm_cortexM7bfdp_math.lib (Cortex-M7, Big endian, Double Precision Floating Point Unit)
+   * - arm_cortexM7lfsp_math.lib (Cortex-M7, Little endian, Single Precision Floating Point Unit)
+   * - arm_cortexM7bfsp_math.lib (Cortex-M7, Big endian and Single Precision Floating Point Unit on)
+   * - arm_cortexM7l_math.lib (Cortex-M7, Little endian)
+   * - arm_cortexM7b_math.lib (Cortex-M7, Big endian)
+   * - arm_cortexM4lf_math.lib (Cortex-M4, Little endian, Floating Point Unit)
+   * - arm_cortexM4bf_math.lib (Cortex-M4, Big endian, Floating Point Unit)
+   * - arm_cortexM4l_math.lib (Cortex-M4, Little endian)
+   * - arm_cortexM4b_math.lib (Cortex-M4, Big endian)
+   * - arm_cortexM3l_math.lib (Cortex-M3, Little endian)
+   * - arm_cortexM3b_math.lib (Cortex-M3, Big endian)
+   * - arm_cortexM0l_math.lib (Cortex-M0 / Cortex-M0+, Little endian)
+   * - arm_cortexM0b_math.lib (Cortex-M0 / Cortex-M0+, Big endian)
+   * - arm_ARMv8MBLl_math.lib (ARMv8M Baseline, Little endian)
+   * - arm_ARMv8MMLl_math.lib (ARMv8M Mainline, Little endian)
+   * - arm_ARMv8MMLlfsp_math.lib (ARMv8M Mainline, Little endian, Single Precision Floating Point Unit)
+   * - arm_ARMv8MMLld_math.lib (ARMv8M Mainline, Little endian, DSP instructions)
+   * - arm_ARMv8MMLldfsp_math.lib (ARMv8M Mainline, Little endian, DSP instructions, Single Precision Floating Point Unit)
+   *
+   * The library functions are declared in the public file <code>arm_math.h</code> which is placed in the <code>Include</code> folder.
+   * Simply include this file and link the appropriate library in the application and begin calling the library functions. The Library supports single
+   * public header file <code> arm_math.h</code> for Cortex-M cores with little endian and big endian. Same header file will be used for floating point unit(FPU) variants.
+   * Define the appropriate pre processor MACRO ARM_MATH_CM7 or ARM_MATH_CM4 or  ARM_MATH_CM3 or
+   * ARM_MATH_CM0 or ARM_MATH_CM0PLUS depending on the target processor in the application.
+   * For ARMv8M cores define pre processor MACRO ARM_MATH_ARMV8MBL or ARM_MATH_ARMV8MML.
+   * Set Pre processor MACRO __DSP_PRESENT if ARMv8M Mainline core supports DSP instructions.
+   * 
+   *
+   * Examples
+   * --------
+   *
+   * The library ships with a number of examples which demonstrate how to use the library functions.
+   *
+   * Toolchain Support
+   * ------------
+   *
+   * The library has been developed and tested with MDK-ARM version 5.14.0.0
+   * The library is being tested in GCC and IAR toolchains and updates on this activity will be made available shortly.
+   *
+   * Building the Library
+   * ------------
+   *
+   * The library installer contains a project file to re build libraries on MDK-ARM Tool chain in the <code>CMSIS\\DSP_Lib\\Source\\ARM</code> folder.
+   * - arm_cortexM_math.uvprojx
+   *
+   *
+   * The libraries can be built by opening the arm_cortexM_math.uvprojx project in MDK-ARM, selecting a specific target, and defining the optional pre processor MACROs detailed above.
+   *
+   * Pre-processor Macros
+   * ------------
+   *
+   * Each library project have differant pre-processor macros.
+   *
+   * - UNALIGNED_SUPPORT_DISABLE:
+   *
+   * Define macro UNALIGNED_SUPPORT_DISABLE, If the silicon does not support unaligned memory access
+   *
+   * - ARM_MATH_BIG_ENDIAN:
+   *
+   * Define macro ARM_MATH_BIG_ENDIAN to build the library for big endian targets. By default library builds for little endian targets.
+   *
+   * - ARM_MATH_MATRIX_CHECK:
+   *
+   * Define macro ARM_MATH_MATRIX_CHECK for checking on the input and output sizes of matrices
+   *
+   * - ARM_MATH_ROUNDING:
+   *
+   * Define macro ARM_MATH_ROUNDING for rounding on support functions
+   *
+   * - ARM_MATH_CMx:
+   *
+   * Define macro ARM_MATH_CM4 for building the library on Cortex-M4 target, ARM_MATH_CM3 for building library on Cortex-M3 target
+   * and ARM_MATH_CM0 for building library on Cortex-M0 target, ARM_MATH_CM0PLUS for building library on Cortex-M0+ target, and
+   * ARM_MATH_CM7 for building the library on cortex-M7.
+   *
+   * - ARM_MATH_ARMV8MxL:
+   *
+   * Define macro ARM_MATH_ARMV8MBL for building the library on ARMv8M Baseline target, ARM_MATH_ARMV8MBL for building library
+   * on ARMv8M Mainline target.
+   *
+   * - __FPU_PRESENT:
+   *
+   * Initialize macro __FPU_PRESENT = 1 when building on FPU supported Targets. Enable this macro for floating point libraries.
+   *
+   * - __DSP_PRESENT:
+   *
+   * Initialize macro __DSP_PRESENT = 1 when ARMv8M Mainline core supports DSP instructions.
+   *
+   * <hr>
+   * CMSIS-DSP in ARM::CMSIS Pack
+   * -----------------------------
+   *
+   * The following files relevant to CMSIS-DSP are present in the <b>ARM::CMSIS</b> Pack directories:
+   * |File/Folder                   |Content                                                                 |
+   * |------------------------------|------------------------------------------------------------------------|
+   * |\b CMSIS\\Documentation\\DSP  | This documentation                                                     |
+   * |\b CMSIS\\DSP_Lib             | Software license agreement (license.txt)                               |
+   * |\b CMSIS\\DSP_Lib\\Examples   | Example projects demonstrating the usage of the library functions      |
+   * |\b CMSIS\\DSP_Lib\\Source     | Source files for rebuilding the library                                |
+   *
+   * <hr>
+   * Revision History of CMSIS-DSP
+   * ------------
+   * Please refer to \ref ChangeLog_pg.
+   *
+   * Copyright Notice
+   * ------------
+   *
+   * Copyright (C) 2010-2015 ARM Limited. All rights reserved.
+   */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/AudioStream.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/AudioStream.h
+framework-arduinoteensy@1.162.0/cores/teensy4/avr_functions.h
+framework-arduinoteensy@1.162.0/cores/teensy4/DMAChannel.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/DMAChannel.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.c
+framework-arduinoteensy@1.162.0/cores/teensy4/main.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/nonstd.c
+framework-arduinoteensy@1.162.0/cores/teensy4/Print.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/Print.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_audio.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_audio.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_desc.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_inst.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_joystick.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_joystick.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_keyboard.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_keyboard.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_midi.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_midi.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_mouse.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_mtp.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_mtp.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_names.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_rawhid.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_rawhid.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_seremu.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_serial.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_serial.h
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_serial2.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_serial3.c
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_touch.h
+framework-arduinoteensy@1.162.0/cores/teensy4/wiring.h
+framework-arduinoteensy@1.162.0/cores/teensy4/WProgram.h
+framework-arduinoteensy@1.162.0/cores/teensy4/yield.cpp
+
+/* Teensyduino Core Library
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2017 PJRC.COM, LLC.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/avr/eeprom.h
+framework-arduinoteensy@1.162.0/cores/teensy4/avr/io.h
+framework-arduinoteensy@1.162.0/cores/teensy4/avr/power.h
+framework-arduinoteensy@1.162.0/cores/teensy4/avr/sleep.h
+
+/* Simple compatibility headers for AVR code used with ARM chips
+ * Copyright (c) 2015 Paul Stoffregen <paul@pjrc.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/avr/pgmspace.h
+
+/* Simple compatibility headers for AVR code used with NXP IMXRT chips
+ * Copyright (c) 2018 Paul Stoffregen <paul@pjrc.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/Client.h
+
+/*
+  Client.h - Base class that provides Client
+  Copyright (c) 2011 Adrian McEwen.  All right reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/cmsis_gcc.h
+
+/*
+ * Copyright (c) 2009-2020 Arm Limited. All rights reserved.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the License); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an AS IS BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/core_cm7.h
+
+/*
+ * Copyright (c) 2009-2017 ARM Limited. All rights reserved.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the License); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an AS IS BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/core_cmInstr.h
+
+/**
+ * @file     core_cmInstr.h
+ * @brief    CMSIS Cortex-M Core Instruction Access Header File
+ * @version  V3.01
+ * @date     06. March 2012
+ *
+ * @note
+ * Copyright (C) 2009-2012 ARM Limited. All rights reserved.
+ *
+ * @par
+ * ARM Limited (ARM) is supplying this software for use with Cortex-M
+ * processor based microcontrollers.  This file can be freely distributed
+ * within development tools that are supporting such ARM based processors.
+ *
+ * @par
+ * THIS SOFTWARE IS PROVIDED "AS IS".  NO WARRANTIES, WHETHER EXPRESS, IMPLIED
+ * OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE APPLY TO THIS SOFTWARE.
+ * ARM SHALL NOT, IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR
+ * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
+ *
+ ******************************************************************************/
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/core_pins.h
+framework-arduinoteensy@1.162.0/cores/teensy4/IntervalTimer.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/IntervalTimer.h
+framework-arduinoteensy@1.162.0/cores/teensy4/pins_arduino.h
+
+/* Teensyduino Core Library
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2018 PJRC.COM, LLC.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/eeprom.c
+framework-arduinoteensy@1.162.0/cores/teensy4/rtc.c
+
+/* Teensyduino Core Library
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2019 PJRC.COM, LLC.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be 
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows 
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/elapsedMillis.h
+
+/* Elapsed time types - for easy-to-use measurements of elapsed time
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2017 PJRC.COM, LLC
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/EventResponder.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/EventResponder.h
+
+/* EventResponder - Simple event-based programming for Arduino
+ * Copyright 2017 Paul Stoffregen
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/FS.h
+
+/* Teensyduino Core Library - File base class
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2021 PJRC.COM, LLC.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/inplace_function.h
+
+/*
+ * Boost Software License - Version 1.0 - August 17th, 2003
+ *
+ * Permission is hereby granted, free of charge, to any person or organization
+ * obtaining a copy of the software and accompanying documentation covered by
+ * this license (the "Software") to use, reproduce, display, distribute,
+ * execute, and transmit the Software, and to prepare derivative works of the
+ * Software, and to permit third-parties to whom the Software is furnished to
+ * do so, all subject to the following:
+ *
+ * The copyright notices in the Software and this entire statement, including
+ * the above license grant, this restriction and the following disclaimer,
+ * must be included in all copies of the Software, in whole or in part, and
+ * all derivative works of the Software, unless such copies or derivative
+ * works are solely in the form of machine-executable object code generated by
+ * a source language processor.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT
+ * SHALL THE COPYRIGHT HOLDERS OR ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE
+ * FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/IPAddress.cpp
+
+/*
+  IPAddress.cpp - Base class that provides IPAddress
+  Copyright (c) 2011 Adrian McEwen.  All right reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/IPAddress.h
+
+/*
+ *
+ * MIT License:
+ * Copyright (c) 2011 Adrian McEwen
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * adrianm@mcqn.com 1/1/2011
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+
+/* Teensyduino Core Library
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2023 PJRC.COM, LLC.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+framework-arduinoteensy@1.162.0/cores/teensy4/keylayouts.h
+
+// 169 ©     COPYRIGHT SIGN
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/math_helper.h
+
+/* ----------------------------------------------------------------------
+* Copyright (C) 2010 ARM Limited. All rights reserved.
+*
+* $Date:        29. November 2010
+* $Revision: 	V1.0.3
+*
+* Project: 	    CMSIS DSP Library
+*
+* Title:	    math_helper.h
+*
+*
+* Description:	Prototypes of all helper functions required.
+*
+* Target Processor: Cortex-M4/Cortex-M3
+*
+* Version 1.0.3 2010/11/29
+*    Re-organized the CMSIS folders and updated documentation.
+*
+* Version 1.0.2 2010/11/11
+*    Documentation updated.
+*
+* Version 1.0.1 2010/10/05
+*    Production release and review comments incorporated.
+*
+* Version 1.0.0 2010/09/20
+*    Production release and review comments incorporated.
+*
+* Version 0.0.7  2010/06/10
+*    Misra-C changes done
+* -------------------------------------------------------------------- */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/memcpy-armv7m.S
+
+/*
+ * Copyright (c) 2013 ARM Ltd
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the company may not be used to endorse or promote
+ *    products derived from this software without specific prior written
+ *    permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ARM LTD ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL ARM LTD BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/memset.S
+
+/*
+ * Copyright (c) 2014 Travis Geiselbrecht
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files
+ * (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/MTP_Const.h
+framework-arduinoteensy@1.162.0/cores/teensy4/MTP_Teensy.cpp
+
+// MTP.cpp - Teensy MTP Responder library
+// Copyright (C) 2017 Fredrik Hubinette <hubbe@hubbe.net>
+//
+// With updates from MichaelMC and Yoong Hor Meng <yoonghm@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/MTP_Storage.cpp
+
+// Storage.cpp - Teensy MTP Responder library
+// Copyright (C) 2017 Fredrik Hubinette <hubbe@hubbe.net>
+//
+// With updates from MichaelMC and Yoong Hor Meng <yoonghm@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/MTP_Storage.h
+
+// Storage.h - Teensy MTP Responder library
+// Copyright (C) 2017 Fredrik Hubinette <hubbe@hubbe.net>
+//
+// With updates from MichaelMC and Yoong Hor Meng <yoonghm@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/MTP_Teensy.h
+
+// MTP.h - Teensy MTP Responder library
+// Copyright (C) 2017 Fredrik Hubinette <hubbe@hubbe.net>
+//
+// With updates from MichaelMC and Yoong Hor Meng <yoonghm@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/new.cpp
+
+/* Teensyduino Core Library
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2018 PJRC.COM, LLC.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/Print.cpp
+
+// Long ago this file contained code from Arduino.cc, which was
+// Copyright (c) 2008 David A. Mellis.  No substantial portion of
+// Arduino's original code remains.  In fact, several improvements
+// developed for Teensyduino have made their way back into
+// Arduino's code base.  :-)
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/Printable.h
+
+/*
+  Printable.h - Interface class that allows printing of complex types
+  Copyright (c) 2011 Adrian McEwen.  All right reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/Server.h
+
+/*
+  Server.h - Base class that provides Server
+  Copyright (c) 2011 Adrian McEwen.  All right reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_alloc_valid.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_calloc.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_free.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_hash.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_malloc.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_malloc_stats.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_pool.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_realloc.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_realloc_i.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_realloc_move.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_szalloc.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_util.c
+framework-arduinoteensy@1.162.0/cores/teensy4/sm_zalloc.c
+framework-arduinoteensy@1.162.0/cores/teensy4/smalloc_i.h
+
+/*
+ * This file is a part of SMalloc.
+ * SMalloc is MIT licensed.
+ * Copyright (c) 2017 Andrey Rys.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/smalloc.h
+
+/*
+ * SMalloc -- a *static* memory allocator.
+ *
+ * See README for a complete description.
+ *
+ * SMalloc is MIT licensed.
+ * Copyright (c) 2017 Andrey Rys.
+ * Written during Aug2017.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/Stream.cpp
+
+/*
+ Stream.cpp - adds parsing methods to Stream class
+ Copyright (c) 2008 David A. Mellis.  All right reserved.
+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+ Created July 2011
+ parsing functions based on TextFinder library by Michael Margolis
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/Stream.h
+
+/*
+  Stream.h - base class for character-based streams.
+  Copyright (c) 2010 David A. Mellis.  All right reserved.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/Time.cpp
+
+/*
+  time.c - low level time and date functions
+  Copyright (c) Michael Margolis 2009-2014
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+  1.0  6  Jan 2010 - initial release
+  1.1  12 Feb 2010 - fixed leap year calculation error
+  1.2  1  Nov 2010 - fixed setTime bug (thanks to Korman for this)
+  1.3  24 Mar 2012 - many edits by Paul Stoffregen: fixed timeStatus() to update
+                     status, updated examples for Arduino 1.0, fixed ARM
+                     compatibility issues, added TimeArduinoDue and TimeTeensy3
+                     examples, add error checking and messages to RTC examples,
+                     add examples to DS1307RTC library.
+  1.4  5  Sep 2014 - compatibility with Arduino 1.5.7
+*/
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/Udp.h
+
+/*
+ *  Udp.cpp: Library to send/receive UDP packets.
+ *
+ * NOTE: UDP is fast, but has some important limitations (thanks to Warren Gray for mentioning these)
+ * 1) UDP does not guarantee the order in which assembled UDP packets are received. This
+ * might not happen often in practice, but in larger network topologies, a UDP
+ * packet can be received out of sequence.
+ * 2) UDP does not guard against lost packets - so packets *can* disappear without the sender being
+ * aware of it. Again, this may not be a concern in practice on small local networks.
+ * For more information, see http://www.cafeaulait.org/course/week12/35.html
+ *
+ * MIT License:
+ * Copyright (c) 2008 Bjoern Hartmann
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * bjoern@cs.stanford.edu 12/30/2008
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_flightsim.cpp
+framework-arduinoteensy@1.162.0/cores/teensy4/usb_flightsim.h
+
+/* Teensyduino Core Library
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2013 PJRC.COM, LLC.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/util/atomic.h
+
+/*
+* This is port of Dean Camera's ATOMIC_BLOCK macros for AVR to ARM Cortex M3 
+* v1.0
+* Mark Pendrith, Nov 27, 2012.
+*
+* From Mark:
+* >When I ported the macros I emailed Dean to ask what attribution would be
+* >appropriate, and here is his response:
+* >
+* >>Mark,
+* >>I think it's great that you've ported the macros; consider them
+* >>public domain, to do with whatever you wish. I hope you find them >useful .
+* >>
+* >>Cheers!
+* >>- Dean 
+*/
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/util/crc16.h
+
+/* Copyright (c) 2002, 2003, 2004  Marek Michalkiewicz
+   All rights reserved.
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions are met:
+
+   * Redistributions of source code must retain the above copyright
+     notice, this list of conditions and the following disclaimer.
+
+   * Redistributions in binary form must reproduce the above copyright
+     notice, this list of conditions and the following disclaimer in
+     the documentation and/or other materials provided with the
+     distribution.
+
+   * Neither the name of the copyright holders nor the names of
+     contributors may be used to endorse or promote products derived
+     from this software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  POSSIBILITY OF SUCH DAMAGE. */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/util/delay.h
+framework-arduinoteensy@1.162.0/cores/teensy4/util/parity.h
+
+/* Teensyduino Core Library
+ * http://www.pjrc.com/teensy/
+ * Copyright (c) 2016 PJRC.COM, LLC.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. If the Software is incorporated into a build system that allows
+ * selection among a list of target devices, then similar target
+ * devices manufactured by PJRC.COM must be included in the list of
+ * target devices and selectable in the same manner.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/WCharacter.h
+
+/*
+ WCharacter.h - Character utility functions for Wiring & Arduino
+ Copyright (c) 2010 Hernando Barragan.  All right reserved.
+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/WMath.cpp
+
+/*
+  Part of the Wiring project - http://wiring.org.co
+  Copyright (c) 2004-06 Hernando Barragan
+  Modified 13 August 2006, David A. Mellis for Arduino - http://www.arduino.cc/
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General
+  Public License along with this library; if not, write to the
+  Free Software Foundation, Inc., 59 Temple Place, Suite 330,
+  Boston, MA  02111-1307  USA
+*/
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/WString.cpp
+
+/*
+  WString.cpp - String library for Wiring & Arduino
+  ...mostly rewritten by Paul Stoffregen...
+  Copyright (c) 2009-10 Hernando Barragan.  All rights reserved.
+  Copyright 2011, Paul Stoffregen, paul@pjrc.com
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
+========================================================================
+Source files:
+framework-arduinoteensy@1.162.0/cores/teensy4/WString.h
+
+/*
+  WString.h - String library for Wiring & Arduino
+  ...mostly rewritten by Paul Stoffregen...
+  Copyright (c) 2009-10 Hernando Barragan.  All right reserved.
+  Copyright 2011, Paul Stoffregen, paul@pjrc.com
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/

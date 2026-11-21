@@ -1,42 +1,17 @@
-#include "PlaybackRegion.h"
-#include "NoteVoices.h"
+/*
+   LILLA Audio Sampler
+   Author: Sandro Grassia (info@lillasampler.it)
+   www.lillasampler.it
+*/
+
+#include "FftPitchCore.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>
-#include <climits>
-#include <memory>
 #include <vector>
 
 int main()
 {
-    PlaybackRegion trim;
-    trim.Reset(10000);
-    assert(trim.From() == 0 && trim.To() == 9999 && trim.Step() == 625);
-    trim.RotateStep(-5);
-    assert(trim.Step() == 1);
-    trim.MoveFrom(200);
-    trim.MoveTo(-400);
-    assert(trim.From() == 200 && trim.To() == 9599);
-    trim.ToggleSlice();
-    trim.MoveFrom(100);
-    assert(trim.From() == 300 && trim.To() == 9699);
-    trim.MoveFrom(INT_MAX);
-    assert(trim.From() == 600 && trim.To() == 9999);
-    trim.ResetFrom();
-    assert(trim.From() == 0 && trim.To() == 9399);
-    trim.MoveTo(INT_MIN);
-    assert(trim.Length() == 100);
-    trim.ResetStep();
-    assert(trim.Step() == 6);
-    trim.Reset(2);
-    trim.MoveFrom(INT_MAX);
-    trim.MoveTo(INT_MIN);
-    assert(trim.From() == 0 && trim.To() == 1);
-    trim.RotateStep(INT_MIN);
-    assert(trim.Step() == 1);
-    trim.RotateStep(INT_MAX);
-    assert(trim.AutoStep());
-
     std::vector<int16_t> source(4099);
     for (unsigned i = 0; i < source.size(); ++i)
     {
@@ -109,42 +84,5 @@ int main()
     {
         assert(shifted.Render() == 0);
     }
-
-    // Publish edits to six active voices and inherit them on subsequent Note Ons.
-    auto cores = std::make_unique<FftPitchCore[]>(GranularAudio::VoiceCount);
-    GranularAudio audio(cores.get());
-    NoteVoices notes(audio);
-    notes.SetSource({source.data(), static_cast<uint32_t>(source.size())});
-    notes.SetRegion(300, 900);
-    audio.SetReady();
-    uint32_t selected;
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(notes.NoteOn(60 + i, 127, selected) == NoteVoices::Result::Started);
-        assert(cores[i].RegionFrom() == 300 && cores[i].RegionEnd() == 900);
-    }
-    for (unsigned i = 0; i < 20; ++i)
-    {
-        audio.update();
-    }
-    notes.SetRegion(3000, 3100);
-    for (unsigned i = 0; i < 20; ++i)
-    {
-        audio.update();
-    }
-    for (unsigned i = 0; i < GranularAudio::VoiceCount; ++i)
-    {
-        assert(cores[i].RegionFrom() == 3000 && cores[i].RegionEnd() == 3100);
-        assert(cores[i].Transport() >= 3000 && cores[i].Transport() < 3100);
-        NoteVoices::Report report;
-        assert(notes.NoteOff(60 + i, report));
-        assert(report.parameters_changed);
-    }
-    for (unsigned i = 0; i < 4; ++i)
-    {
-        audio.update();
-    }
-    assert(notes.NoteOn(72, 100, selected) == NoteVoices::Result::Started);
-    assert(cores[selected].RegionFrom() == 3000);
-    std::puts("PASS: Lilla trim controls, crop equivalence at 0.5..3, tiny loops, live edits, release during edits and configured-voice region publication.");
+    std::puts("PASS: FFT crop equivalence, tiny loops, region edits and source isolation.");
 }

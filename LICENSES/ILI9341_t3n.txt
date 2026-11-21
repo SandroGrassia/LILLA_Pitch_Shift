@@ -1,0 +1,123 @@
+ILI9341_t3n f1bfb81825
+
+Verbatim license and attribution notices from the inspected inputs.
+Identical notices are grouped; listed paths identify their source files.
+A package-wide notice may cover code not linked into this firmware.
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/ILI9341_t3n/src/ILI9341_t3n.cpp
+
+/***************************************************
+  This is our library for the Adafruit ILI9341 Breakout and Shield
+  ----> http://www.adafruit.com/products/1651
+
+  Check out the links above for our tutorials and wiring diagrams
+  These displays use SPI to communicate, 4 or 5 pins are required to
+  interface (RST is optional)
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing
+  products from Adafruit!
+
+  Written by Limor Fried/Ladyada for Adafruit Industries.
+  MIT license, all text above must be included in any redistribution
+ ****************************************************/
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/ILI9341_t3n/src/ILI9341_t3n.cpp
+libdeps/lilla_fft_r2/ILI9341_t3n/src/ILI9341_t3n.h
+
+// <SoftEgg>
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/ILI9341_t3n/src/ILI9341_t3n.cpp
+libdeps/lilla_fft_r2/ILI9341_t3n/src/ILI9341_t3n.h
+
+//Additional graphics routines by Tim Trzepacz, SoftEgg LLC added December 2015
+//(And then accidentally deleted and rewritten March 2016. Oops!)
+//Gradient support
+//----------------
+//		fillRectVGradient	- fills area with vertical gradient
+//		fillRectHGradient	- fills area with horizontal gradient
+//		fillScreenVGradient - fills screen with vertical gradient
+// 	fillScreenHGradient - fills screen with horizontal gradient
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/ILI9341_t3n/src/ILI9341_t3n.cpp
+
+// <\SoftEgg>
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/ILI9341_t3n/src/ILI9341_t3n.cpp
+
+/*
+This is the core graphics library for all our displays, providing a common
+set of graphics primitives (points, lines, circles, etc.).  It needs to be
+paired with a hardware-specific library for each display device we carry
+(to handle the lower-level functions).
+
+Adafruit invests time and resources providing this open source code, please
+support Adafruit & open-source hardware by purchasing products from Adafruit!
+
+Copyright (c) 2013 Adafruit Industries.  All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+- Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+- Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+*/
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/ILI9341_t3n/src/ILI9341_t3n.h
+
+/***************************************************
+  This is our library for the Adafruit  ILI9341 Breakout and Shield
+  ----> http://www.adafruit.com/products/1651
+
+  Check out the links above for our tutorials and wiring diagrams
+  These displays use SPI to communicate, 4 or 5 pins are required to
+  interface (RST is optional)
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing
+  products from Adafruit!
+
+  Written by Limor Fried/Ladyada for Adafruit Industries.
+  MIT license, all text above must be included in any redistribution
+ ****************************************************/
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/ILI9341_t3n/src/ILI9341_t3n.h
+
+// <\SoftEgg>
+// Also some of this comes from the DMA version of the library...
+
+========================================================================
+Source files:
+libdeps/lilla_fft_r2/ILI9341_t3n/src/ILI9341_t3n.h
+
+/* ILI9341_t3DMA library code is placed under the MIT license
+ * Copyright (c) 2016 Frank Bösing
+ *
+*/

@@ -1,3 +1,9 @@
+/*
+   LILLA Audio Sampler
+   Author: Sandro Grassia (info@lillasampler.it)
+   www.lillasampler.it
+*/
+
 // Hardware shim for testing the actual adapter methods extracted from AudioPlayer.cpp.
 #include "FftPitchCore.h"
 #include "FftAttackCache.h"
