@@ -21,7 +21,7 @@ or use [LIlla_PitchShift_v_0_0_13.hex](LIlla_PitchShift_v_0_0_13.hex) from this 
 ## Hardware
 
 - Teensy 4.1 at 600 MHz, using the Arduino framework and Teensy Audio library.
-- Lilla HW R2 with 256 KB FRAM and 32 MB PSRAM.
+- Lilla HW R2 with 128 KiB FRAM (2 × 512 Kbit) and 32 MB PSRAM.
 - Audio processing in blocks of 128 samples at approximately 44.1 kHz.
 
 ## Playback and Live Sampler
