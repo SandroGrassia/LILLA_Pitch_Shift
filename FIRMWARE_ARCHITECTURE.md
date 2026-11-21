@@ -10,7 +10,7 @@ For the DSP strategy, formulas and graphical examples, see
 ## 1. Platform and component boundaries
 
 The Teensy 4.1 runs at 600 MHz with the Arduino framework and Teensy Audio library.
-R2 provides 256 KB FRAM and 32 MB PSRAM. The application is assembled in
+R2 provides 128 KiB FRAM (2 × 512 Kbit) and 32 MB PSRAM. The application is assembled in
 `src/main.cpp`; components live under `lib/`. The DSP engine is shared
 through `include/FftPitchCore.h`, `src/FftPitchCore.cpp`,
 `include/FftSpectralFrame.h` and `src/FftSpectralFrame.cpp`.
